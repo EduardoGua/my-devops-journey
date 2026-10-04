@@ -22,7 +22,7 @@
 | 11 | [Procesos y señales](clase-11-procesos-y-senales.md) | VM | 75 min |
 | 12 | [systemd: servicios](clase-12-systemd.md) | VM | 90 min |
 | 13 | [Logs y journalctl](clase-13-logs.md) | VM | 75 min |
-| 14 | [Recursos: CPU, memoria y disco](clase-14-recursos.md) | VM | 90 min |
+| 14 | [Recursos: CPU, memoria y disco](clase-14-recursos.md) | VM | 120 min |
 | 15 | [SSH a fondo](clase-15-ssh.md) | Ubuntu + VM | 90 min |
 | | **C. Redes** | | |
 | 16 | [Cómo viaja una petición: el modelo de capas](clase-16-modelo-de-capas.md) | VM | 75 min |

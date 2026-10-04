@@ -66,7 +66,8 @@ Lo más potente de los SG es usar **otro SG como origen**: "la base de datos ace
 | `ufw allow from 10.0.0.5 to any port 5432 proto tcp` | permitir solo desde un origen |
 | `ufw deny 80/tcp` | descartar (DROP) |
 | `ufw reject 8080/tcp` | rechazar (REJECT) |
-| `ufw delete <n>` | borrar la regla número n |
+| `ufw delete <n>` | borrar la regla número n (solo esa: la copia IPv6 tiene otro número) |
+| `ufw delete allow 80/tcp` | borrar una regla escribiéndola igual que se creó (borra IPv4 e IPv6 a la vez) |
 | `ufw enable` / `disable` | activar / desactivar |
 | `ufw logging on` | registrar bloqueos (`[UFW BLOCK]` en el log del kernel) |
 
@@ -163,10 +164,10 @@ time nc -zv -w 5 $IP 9002
 9001 tarda 5 s y da timeout; 9002 falla al instante con *refused*. Mismo efecto de seguridad, síntoma distinto. Limpia:
 ```bash
 kill %1 %2
+sudo ufw status numbered          # cada regla aparece dos veces: IPv4 y (v6)
+sudo ufw delete deny 9001/tcp     # borra las dos copias de una vez
+sudo ufw delete reject 9002/tcp
 sudo ufw status numbered
-sudo ufw delete <número de la regla 9001>
-sudo ufw status numbered          # los números se reordenan: vuelve a mirarlos
-sudo ufw delete <número de la regla 9002>
 ```
 
 ### 6. Stateful en acción
@@ -182,7 +183,7 @@ Funciona aunque **no** hay ninguna regla de entrada para las respuestas de los s
 Comprueba que tienes el snapshot `pre-firewall`. En la VM:
 ```bash
 sudo ufw status numbered
-sudo ufw delete <número de la regla OpenSSH>     # repite si hay una para IPv6
+sudo ufw delete allow OpenSSH     # borra la regla de IPv4 y la de IPv6
 ```
 
 Tu sesión actual **sigue viva** (es una conexión ya establecida, y el firewall tiene estado). Ahora, desde tu PC:

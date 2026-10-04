@@ -98,6 +98,34 @@ sudo whoami              # el usuario ubuntu tiene sudo sin contraseña (como en
 exit
 ```
 
+### 3b. ¿Tiene internet tu servidor?
+
+Compruébalo antes de seguir: las próximas clases instalan paquetes dentro de la VM. (`multipass exec` ejecuta un comando dentro de la VM sin entrar en ella; lo verás con calma en el paso 4.)
+
+```bash
+multipass exec servidor-01 -- curl -sI -m 10 http://archive.ubuntu.com/ubuntu/ | head -1
+```
+
+Si ves una línea `HTTP/1.1 200 OK` (o un `30x`), todo está bien: **sáltate el resto de este apartado**.
+
+Si no sale nada o da error, es casi seguro un choque conocido entre **Docker y Multipass**. En tu PC está instalado Docker, que pone la regla de "reenvío" del firewall en `DROP` (lo comprobé: `FORWARD DROP`). Esa regla puede bloquear el tráfico que tu PC reenvía desde las VMs hacia internet. Lo entenderás del todo en las clases 20 (NAT) y 23 (firewall). Por ahora, el arreglo:
+
+```bash
+sudo iptables -I DOCKER-USER -i mpqemubr0 -j ACCEPT
+sudo iptables -I DOCKER-USER -o mpqemubr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+multipass exec servidor-01 -- curl -sI -m 10 http://archive.ubuntu.com/ubuntu/ | head -1
+```
+
+`DOCKER-USER` es la cadena que Docker reserva para reglas tuyas y que nunca toca. Estas dos líneas permiten el tráfico que sale de las VMs y sus respuestas. Se pierden al reiniciar el PC. Para que sean permanentes, instala el servicio que está preparado en el repo (es un servicio de systemd: los verás en la clase 12):
+
+```bash
+sudo cp ~/my-devops-journey/recursos/clase-08/multipass-docker.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now multipass-docker
+```
+
+Anota en tu cierre si te hizo falta: es tu primer incidente de red resuelto.
+
 ### 4. Ejecutar sin entrar
 
 ```bash

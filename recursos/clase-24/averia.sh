@@ -19,9 +19,11 @@ reset() {
     n=$(ufw status numbered | grep -E "8080/tcp( \(v6\))? +DENY" | head -1 | sed -E 's/^\[ *([0-9]+)\].*/\1/')
     ufw --force delete "$n" >/dev/null
   done
-  systemctl enable --now backend >/dev/null 2>&1
+  systemctl reset-failed backend 2>/dev/null || true
+  systemctl enable backend >/dev/null 2>&1
   systemctl restart backend
   rm -f "$ESTADO"
+  sleep 2   # dar tiempo al backend a arrancar antes de que se pruebe
   echo "Backend restaurado: 0.0.0.0:8080, activo, sin reglas DENY en el 8080."
 }
 
@@ -43,4 +45,5 @@ case $n in
      echo "4: el backend escucha en el 8081 en vez del 8080. Síntoma: refused en el 8080. Se ve en ss -tlnp y en la unit." > "$ESTADO" ;;
 esac
 chmod 600 "$ESTADO"
+sleep 1
 echo "Avería provocada. Ahora el servicio falla visto desde servidor-01. ¡A diagnosticar!"

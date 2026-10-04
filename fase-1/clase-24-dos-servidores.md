@@ -45,6 +45,8 @@ echo "servidor-01=$IP1  servidor-02=$IP2"
 
 Antes de seguir, calcula **en papel** (clase 17): ¿están en la misma subred? ¿Necesitan un router para hablar entre ellas?
 
+Comprueba que se ven: `multipass exec servidor-01 -- ping -c 2 $IP2`. Si no hay respuesta, aplica el arreglo de Docker del apartado 3b de la clase 08.
+
 Añade tu llave de laboratorio y una entrada en `~/.ssh/config` (como en la clase 15):
 ```bash
 multipass exec servidor-02 -- bash -c "echo '$(cat ~/.ssh/lab_ed25519.pub)' >> ~/.ssh/authorized_keys"
@@ -210,6 +212,7 @@ Provócalas tú y resuélvelas, o pide a alguien que las provoque:
 1. Haz que `/salud` de `api.lab` compruebe **de verdad** el backend (`proxy_pass` a una ruta del backend), en lugar de responder `ok` directamente. ¿Qué devuelve cuando el backend está caído? ¿Por qué es mejor para un balanceador?
 2. Añade un **segundo** backend: lanza `servidor-03` con el mismo servicio y configura en nginx un `upstream` con los dos. Para uno y comprueba que la web sigue respondiendo. (Pista: busca `upstream` en la documentación de nginx.) Acabas de construir un balanceador de carga casero.
 3. Cuando termines, **para** las VMs que no uses: `multipass stop servidor-02 servidor-03`. La RAM de tu PC te lo agradecerá. Es la misma costumbre que en AWS.
+4. Los snapshots ocupan disco. Lista los que tienes (`multipass list --snapshots`) y borra los que ya no necesites: `multipass delete --purge servidor-01.pre-rutas`. Conserva al menos uno reciente de cada VM.
 
 ## Cierre
 

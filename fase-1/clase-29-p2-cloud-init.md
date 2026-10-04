@@ -137,20 +137,28 @@ check() {   # check "descripción" comando...
   if "$@" >/dev/null 2>&1; then echo "✅ $desc"; else echo "❌ $desc"; FALLOS=$((FALLOS + 1)); fi
 }
 
-SSH="ssh -i $KEY -o IdentitiesOnly=yes -o ConnectTimeout=5 -o BatchMode=yes"
+SSH_OPTS="-o IdentitiesOnly=yes -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+SSH="ssh -i $KEY $SSH_OPTS"
+remoto() { $SSH deploy@"$IP" "$@"; }   # ejecuta un comando en el servidor como deploy
 
-check "R1 deploy entra con llave"            $SSH deploy@"$IP" true
-# check "R2 contraseñas rechazadas"          ... (pista: la prueba "pasa" si ssh FALLA → usa '!' con bash -c)
-# check "R2 root rechazado"                  ...
-# check "R4 /health responde 200"            ...
-# check "R5 puerto 8080 cerrado (timeout)"   ...
-# check "R6 fail2ban activo"                 ...
+check "R1 deploy entra con llave"            remoto true
+# check "R2 el servidor no ofrece contraseñas" ...
+# check "R2 PermitRootLogin no"                ...   (pista: 'sudo sshd -T' muestra la configuración efectiva)
+# check "R4 /health responde 200"              ...
+# check "R5 lo que no es 22/80 no llega"       ...   (lee el aviso de abajo antes de escribirla)
+# check "R6 fail2ban activo"                   ...
 
 echo "Fallos: $FALLOS"
 exit $(( FALLOS > 0 ))
 ```
 
-Completa las comprobaciones. Deben **fallar** si el servidor no cumple. Pruébalo: lanza una VM **sin** cloud-init (`multipass launch lts --name sin-config`) y pásale `verify.sh`. Deben salir ❌, y el código de salida debe ser 1.
+Completa las comprobaciones. Y aquí está la lección más importante del proyecto: **un test que no puede fallar no prueba nada.** Tres trampas reales:
+
+- **"Las contraseñas se rechazan"**: si lo pruebas con `ssh -o BatchMode=yes ...`, tu **cliente** ni siquiera intenta una contraseña, así que el test "pasa" aunque el servidor las acepte. Hay que preguntar al **servidor** qué métodos ofrece. Con `-o PreferredAuthentications=none -o PubkeyAuthentication=no`, sshd responde con la lista: `Permission denied (publickey)` es lo correcto; `(publickey,password)` es un fallo.
+- **"root no puede entrar"**: si intentas `ssh root@...` con tu llave, falla siempre, porque tu llave no está en la cuenta de root, haya o no `PermitRootLogin no`. Comprueba la configuración efectiva: `sudo sshd -T | grep -x 'permitrootlogin no'`.
+- **"El 8080 está cerrado"**: si no hay nada escuchando en el 8080, cualquier conexión falla, **haya o no firewall**. Para probar el firewall, levanta **algo** que escuche en otro puerto (`sudo systemd-run --unit=verify-probe python3 -m http.server 8081 --bind 0.0.0.0`), comprueba que desde dentro responde, que desde fuera **no** se llega, y páralo.
+
+Prueba tus pruebas: lanza una VM **sin** cloud-init (`multipass launch lts --name sin-config`) y pásale `verify.sh`. La mayoría de las comprobaciones deben salir ❌ y el código de salida debe ser 1. Si algo sale ✅ en esa VM, pregúntate si tu test mide lo que crees.
 
 ### 5. La prueba de fuego: reproducibilidad
 
@@ -161,11 +169,14 @@ time (
   multipass launch lts --name web-01 --memory 1G --disk 8G --cloud-init /tmp/p2.yaml
   IPW=$(multipass info web-01 | awk '/IPv4/ {print $2}')
   multipass exec web-01 -- cloud-init status --wait
+  ssh-keygen -R "$IPW" >/dev/null 2>&1      # servidor nuevo = host key nueva (clase 15)
   ./verify.sh "$IPW"
 )
 ```
 
 Todo en verde y en menos de 5 minutos: **R7 cumplido**. Guarda la salida para el README.
+
+El `ssh-keygen -R` no es un truco: un servidor recreado tiene **otra** host key. Si recibe la misma IP, SSH se negará a conectar (clase 15). Con servidores "ganado" esto es normal, y en la nube se resuelve publicando las host keys o usando certificados de SSH; aquí basta con olvidar la vieja.
 
 Opcional: convierte ese bloque en un script `rebuild.sh`.
 
@@ -174,7 +185,7 @@ Opcional: convierte ese bloque en un script `rebuild.sh`.
 1. Mete un **tabulador** en la indentación del YAML y lanza. ¿Qué detecta `cloud-init schema`? ¿Y qué pasa si no lo validas?
 2. Quita `- default` de `users` y lanza. Prueba `multipass shell web-01`. ¿Por qué falla? (Pista: ¿con qué usuario entra Multipass?)
 3. Pon `ufw --force enable` **antes** de `ufw allow OpenSSH` en `runcmd`. ¿Te quedas fuera? Razona por qué podría no pasar aquí (piensa en el orden y en el tiempo) y por qué en otro contexto sí pasaría.
-4. Desde otra VM o desde tu PC, haz 5 intentos de SSH fallidos seguidos contra `web-01` con un usuario inexistente. Después mira `sudo fail2ban-client status sshd` en `web-01`. ¿Te baneó? ¿Cómo te desbaneas? (`sudo fail2ban-client set sshd unbanip <IP>`)
+4. Desde **servidor-01** (no desde tu PC: si baneas a tu PC, también dejará de funcionar `multipass shell` durante los 10 minutos del baneo), haz 6 intentos de SSH seguidos contra `web-01` con un usuario inexistente: `for i in 1 2 3 4 5 6; do ssh -o BatchMode=yes noexiste@<IP de web-01> true; done`. Después mira `sudo fail2ban-client status sshd` en `web-01`. ¿Aparece la IP de servidor-01 en *Banned IP list*? ¿Puede servidor-01 conectar ahora a cualquier puerto de web-01? Desbanéala: `sudo fail2ban-client set sshd unbanip <IP>`.
 
 ## Entregable
 
@@ -274,18 +285,48 @@ runcmd:
 final_message: "P2 ready after $UPTIME seconds"
 ```
 
-**Comprobaciones de verify.sh**
+**verify.sh completo**
 ```bash
-check "R1 deploy entra con llave"          $SSH deploy@"$IP" true
-check "R2 contraseñas rechazadas"          bash -c "! ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no -o BatchMode=yes -o ConnectTimeout=5 deploy@$IP true"
-check "R2 root rechazado"                  bash -c "! $SSH root@$IP true"
-check "R4 /health responde 200"            bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 5 http://$IP/health)\" = 200 ]"
-check "R4 página propia"                   bash -c "curl -s -m 5 http://$IP/ | grep -q 'cloud-init'"
-check "R5 puerto 8080 no accesible"        bash -c "! nc -z -w 3 $IP 8080"
-check "R5 ufw activo"                      $SSH deploy@"$IP" "sudo ufw status | grep -q 'Status: active'"
-check "R6 fail2ban activo"                 $SSH deploy@"$IP" "systemctl is-active --quiet fail2ban"
-check "R3 unattended-upgrades activo"      $SSH deploy@"$IP" "systemctl is-enabled --quiet unattended-upgrades"
+#!/bin/bash
+# Uso: ./verify.sh <IP> [llave privada]
+# Comprueba desde FUERA que el servidor cumple R1-R6. Sale con 0 solo si todo pasa.
+set -u
+IP="${1:?Uso: $0 <IP> [llave]}"
+KEY="${2:-$HOME/.ssh/lab_ed25519}"
+FALLOS=0
+
+check() {   # check "descripción" comando...
+  local desc="$1"; shift
+  if "$@" >/dev/null 2>&1; then echo "✅ $desc"; else echo "❌ $desc"; FALLOS=$((FALLOS + 1)); fi
+}
+
+SSH_OPTS="-o IdentitiesOnly=yes -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+SSH="ssh -i $KEY $SSH_OPTS"
+remoto() { $SSH deploy@"$IP" "$@"; }
+
+check "R1 deploy entra con llave"            remoto true
+check "R2 el servidor no ofrece contraseñas" bash -c "ssh $SSH_OPTS -o PubkeyAuthentication=no -o PreferredAuthentications=none deploy@$IP true 2>&1 | grep -q 'Permission denied (publickey)\.'"
+check "R2 PermitRootLogin no"                bash -c "$SSH deploy@$IP 'sudo sshd -T' | grep -qx 'permitrootlogin no'"
+check "R2 MaxAuthTries 3"                    bash -c "$SSH deploy@$IP 'sudo sshd -T' | grep -qx 'maxauthtries 3'"
+check "R3 unattended-upgrades habilitado"    remoto "systemctl is-enabled --quiet unattended-upgrades"
+check "R4 /health responde 200"              bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 5 http://$IP/health)\" = 200 ]"
+check "R4 la portada es la nuestra"          bash -c "curl -s -m 5 http://$IP/ | grep -q 'cloud-init'"
+
+# R5: una sonda que SÍ escucha en el 8081, para que el test pueda fallar si no hay firewall
+remoto "sudo systemd-run --quiet --unit=verify-probe python3 -m http.server 8081 --bind 0.0.0.0" >/dev/null 2>&1
+sleep 1
+check "R5 sonda escuchando en el 8081 (dentro)" remoto "curl -s -o /dev/null -m 3 http://127.0.0.1:8081/"
+check "R5 el 8081 NO es accesible desde fuera"  bash -c "! nc -z -w 3 $IP 8081"
+remoto "sudo systemctl stop verify-probe" >/dev/null 2>&1
+check "R5 ufw activo con entrada denegada"   bash -c "$SSH deploy@$IP 'sudo ufw status verbose' | grep -q 'Default: deny (incoming)'"
+
+check "R6 fail2ban activo"                   remoto "systemctl is-active --quiet fail2ban"
+
+echo "Fallos: $FALLOS"
+exit $(( FALLOS > 0 ))
 ```
+
+Este script se probó contra un servidor endurecido (11 ✅, código 0) y contra uno sin endurecer (fallan R2, R4 y R5, código 1). `unattended-upgrades` ya viene activo en Ubuntu, así que R3 pasa casi siempre: tu cloud-init lo **garantiza** también en otras imágenes.
 
 **Cierre:**
 1. Las mascotas se cuidan a mano y son irremplazables; el ganado se define en código y se reemplaza sin drama. Ganas reproducibilidad, documentación viva (el archivo **es** la documentación), revisión en PRs, recuperación rápida y entornos idénticos.

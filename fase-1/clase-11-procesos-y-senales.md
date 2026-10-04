@@ -242,7 +242,7 @@ En `notas/fase-1/clase-11.md`:
 
 **4.** `remove` desinstala el programa, pero deja sus archivos de configuración en `/etc`. `purge` borra también la configuración.
 
-**Reto:** 1) `systemd`; el `etime` es el tiempo desde el arranque. 2) `pkill -f "sleep 500"`. Riesgo: `pkill` busca por patrón y puede coincidir con procesos que no querías (un `pkill python` mata **todos** los Python de la máquina, incluidas otras apps). Antes se comprueba con `pgrep -a` qué coincide. 3) El proceso con `nice 19` recibe mucha menos CPU cuando compiten: la prioridad solo importa cuando hay escasez. `kill %1 %2` o `pkill yes`.
+**Reto:** 1) `systemd`; el `etime` es el tiempo desde el arranque. 2) `pkill -f "sleep 500"`. Riesgo: `pkill` busca por patrón y puede coincidir con procesos que no querías (un `pkill python` mata **todos** los Python de la máquina, incluidas otras apps). Con `-f` busca en la línea de comandos completa, y `sudo pkill -f patrón` puede llegar a matar al propio `sudo`, cuya línea también contiene el patrón. Antes se comprueba con `pgrep -af patrón` qué coincide, y si hay duda, se mata por PID. 3) El proceso con `nice 19` recibe mucha menos CPU cuando compiten: la prioridad solo importa cuando hay escasez. `kill %1 %2` o `pkill yes`.
 </details>
 
 ## Inglés

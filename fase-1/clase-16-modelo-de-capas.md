@@ -127,7 +127,7 @@ En la salida de `tcpdump` busca los *flags* entre corchetes:
 | `[.]` | ACK |
 | `[P.]` | PUSH: lleva datos (la petición o la respuesta) |
 | `[F.]` | FIN: cierre |
-| `[R]` | RST: rechazo o corte brusco |
+| `[R]` o `[R.]` | RST: rechazo o corte brusco |
 
 Para con `Ctrl+C`. Ahora mira el **contenido** (HTTP va en texto claro):
 ```bash
@@ -158,7 +158,7 @@ ping -c 2 $IP
 nc -zv $IP 80
 curl -v http://$IP/
 ```
-`ping` ✅, pero el puerto ❌ con `Connection refused`. En `tcpdump`: tu `[S]` recibe un **`[R]`**. El kernel de la VM contesta "aquí no escucha nadie en el 80". **Refused = llegaste a la máquina y no hay proceso en ese puerto.**
+`ping` ✅, pero el puerto ❌ con `Connection refused`. En `tcpdump`: tu `[S]` recibe un **`[R.]`**. El kernel de la VM contesta "aquí no escucha nadie en el 80". **Refused = llegaste a la máquina y no hay proceso en ese puerto.**
 
 ```bash
 ssh servidor-01 sudo systemctl start nginx
@@ -167,7 +167,7 @@ ssh servidor-01 sudo systemctl start nginx
 **2. Un puerto donde nadie escucha y un destino que no existe:**
 ```bash
 nc -zv -w 3 $IP 81                 # refused: la máquina existe, el puerto no
-nc -zv -w 3 10.255.255.1 80        # timeout: nadie contesta
+nc -zv -w 3 192.0.2.1 80           # timeout: nadie contesta (192.0.2.0/24 es un rango de documentación: nunca existe)
 ```
 
 Dos fallos **distintos** que tienen que sonarte para siempre:
@@ -176,6 +176,7 @@ Dos fallos **distintos** que tienen que sonarte para siempre:
 |---------|---------------|----------------|
 | **Connection refused** (inmediato) | Llegaste, pero nadie escucha en ese puerto | servicio caído, puerto equivocado, escucha solo en 127.0.0.1 |
 | **Timeout** (espera y se rinde) | Nadie contestó | firewall o **security group** que descarta, ruta inexistente, máquina apagada |
+| **No route to host** | Un router (o tu propia máquina) dice que no hay camino | IP de tu misma red que no existe (nadie responde al ARP), un firewall que rechaza con ICMP, rutas rotas |
 
 En AWS, un **timeout** al conectar a una EC2 es casi siempre un **security group** o una tabla de rutas. Un **refused** es tu aplicación.
 

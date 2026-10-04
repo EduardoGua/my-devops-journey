@@ -117,10 +117,17 @@ ls -ld /srv/proyecto
 
 El `2` inicial activa el **setgid** en el directorio (verás una `s` en el grupo): todo lo que se cree dentro hereda el grupo `devs` en vez del grupo personal de quien lo crea. Sin él, los archivos de Ana serían del grupo `ana` y Luis no podría editarlos.
 
+Antes de seguir, mira un detalle que va a importar:
+```bash
+umask
+sudo -u ana bash -c 'umask'
+```
+Probablemente tu sesión tiene `0002`, pero lo que ejecutas con `sudo -u` tiene `0022`: el `sudo` de Ubuntu 26.04 (*sudo-rs*) aplica su propia máscara. Los archivos los crea **el proceso**, y es **su** umask el que cuenta. Por eso en las pruebas siguientes la fijamos a mano: así el resultado no depende de la versión de sudo.
+
 🔮 **Predice** el resultado de cada línea:
 
 ```bash
-sudo -u ana bash -c 'echo "paso 1" >> /srv/proyecto/plan.txt'
+sudo -u ana bash -c 'umask 002; echo "paso 1" >> /srv/proyecto/plan.txt'
 sudo -u ana bash -c 'umask 022; echo "borrador" > /srv/proyecto/borrador.txt'
 ls -l /srv/proyecto
 sudo ls -l /srv/proyecto
@@ -132,11 +139,11 @@ sudo -u carla cat /srv/proyecto/plan.txt
 Qué deberías ver:
 - `ls -l /srv/proyecto` como `ubuntu` **falla**: `ubuntu` no está en `devs`, y el directorio no da nada a "otros". Por eso el siguiente lleva `sudo`.
 - Los dos archivos son del grupo `devs` gracias al setgid. ✅
-- `plan.txt` es `rw-rw-r--` y Luis puede añadir. ✅
-- `borrador.txt` es `rw-r--r--` y Luis **no** puede escribir. ❌ La diferencia es el **umask**: Ubuntu da a los usuarios normales `umask 002` (el grupo conserva la escritura), pero el borrador se creó con `umask 022`, que se la quita. Muchos servicios y scripts trabajan con 022.
+- `plan.txt` (creado con umask 002) es `rw-rw-r--`, y Luis puede añadir. ✅
+- `borrador.txt` (creado con umask 022) es `rw-r--r--`, y Luis **no** puede escribir. ❌ El umask 022 quitó la escritura al grupo. Muchos servicios, scripts y el propio sudo trabajan con 022.
 - Carla no puede ni leer: no está en `devs`.
 
-En equipos reales, un directorio compartido necesita dos piezas: **setgid** (que el grupo sea el correcto) y **permisos de grupo correctos** (umask 002 o ACLs por defecto con `setfacl -d`). Con una sola de las dos falla. Arregla el borrador:
+En equipos reales, un directorio compartido necesita dos piezas: **setgid** (que el grupo sea el correcto) y **permisos de grupo correctos**: umask 002 en quien crea los archivos, o mejor, ACLs por defecto en el directorio (`setfacl -d -m g:devs:rwX /srv/proyecto`), que no dependen de nadie. Con una sola de las dos piezas falla. Arregla el borrador:
 
 ```bash
 sudo chmod g+w /srv/proyecto/borrador.txt
@@ -219,6 +226,14 @@ sudo usermod -U luis
 ```
 Cuando alguien deja la empresa, primero se **bloquea** (es reversible y se conserva el rastro) y se borra después, cuando ya está todo revisado. Ojo: bloquear la contraseña no bloquea sus llaves SSH (clase 15).
 
+
+**5. El comodín y sudo:**
+```bash
+sudo ls /srv/proyecto
+sudo rm /srv/proyecto/*.txt
+sudo ls /srv/proyecto
+```
+🔮 ¿Se borró algo? No: `rm` se queja de que no existe `'/srv/proyecto/*.txt'`. El comodín lo expande **tu shell** (usuario `ubuntu`) **antes** de ejecutar `sudo`, y tu shell no puede leer `/srv/proyecto`, así que deja el patrón tal cual (clase 03). Es la misma trampa que `sudo echo … >> archivo` (clase 10). Si quieres que el comodín lo expanda root: `sudo bash -c 'rm /srv/proyecto/*.txt'`. No lo ejecutes ahora: necesitas esos archivos.
 ## Reto
 
 1. Crea el usuario de servicio `appsvc`, sin casa, con shell `/usr/sbin/nologin` y como usuario de sistema (`useradd --system`). Comprueba que nadie puede entrar con `su - appsvc`.

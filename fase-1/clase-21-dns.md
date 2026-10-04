@@ -152,6 +152,7 @@ Snapshot primero (desde tu PC): `multipass stop servidor-01 && multipass snapsho
 **1. Un DNS que no responde.** En la VM:
 ```bash
 IFACE=$(ip route | awk '/default/ {print $5; exit}')
+GHIP=$(dig +short github.com | tail -1); echo "IP de GitHub: $GHIP"   # apúntala ANTES de romper el DNS
 resolvectl status $IFACE | grep -i "dns server"
 sudo resolvectl dns $IFACE 192.0.2.1          # una IP que no existe
 sudo resolvectl flush-caches
@@ -160,7 +161,7 @@ sudo resolvectl flush-caches
 🔮 **Predice** cuáles fallan y cuáles no:
 ```bash
 curl -s -m 10 -o /dev/null -w "%{http_code}\n" https://github.com || echo "FALLA"
-ping -c 2 -W 2 140.82.112.3
+ping -c 2 -W 2 $GHIP
 ping -c 2 -W 2 github.com
 dig +short github.com
 dig +short github.com @8.8.8.8

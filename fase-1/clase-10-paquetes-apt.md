@@ -98,10 +98,10 @@ ls /etc/nginx/
 ### 4. Herramientas que usarás
 
 ```bash
-sudo apt install -y htop tree jq net-tools dnsutils traceroute
+sudo apt install -y htop tree jq net-tools dnsutils traceroute tcpdump netcat-openbsd ufw rsync acl
 ```
 
-`dnsutils` trae `dig` y `net-tools` el antiguo `netstat`. Los usarás en el bloque de redes.
+`dnsutils` trae `dig`; `net-tools`, el antiguo `netstat`; `tcpdump` captura tráfico; `netcat-openbsd` es `nc`. Muchos ya vienen instalados: `apt` simplemente te dirá que ya están en la versión más reciente. Los usarás en el resto del curso.
 
 ### 5. Actualizar el sistema
 

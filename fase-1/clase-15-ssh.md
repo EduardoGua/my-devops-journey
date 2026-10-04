@@ -81,7 +81,7 @@ La imagen de Multipass no permite contraseñas, así que usamos `multipass exec`
 
 ```bash
 multipass exec servidor-01 -- bash -c "echo '$(cat ~/.ssh/lab_ed25519.pub)' >> ~/.ssh/authorized_keys"
-multipass exec servidor-01 -- cat .ssh/authorized_keys
+multipass exec servidor-01 -- cat /home/ubuntu/.ssh/authorized_keys
 ```
 
 Verás dos llaves: la de Multipass y la tuya.

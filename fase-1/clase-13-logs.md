@@ -32,6 +32,8 @@ Los logs son la **memoria** del servidor. En un incidente, la pregunta "¿qué p
       nginx ──► /var/log/nginx/access.log y error.log
 ```
 
+> ⚠️ **rsyslog es opcional.** Si en tu VM no existen `/var/log/syslog` ni `/var/log/auth.log`, es que esa instalación solo usa el journal (cada vez más común en imágenes mínimas y contenedores). No pasa nada: todo está en `journalctl`. En esta clase verás siempre las dos formas.
+
 Lo que un servicio de systemd escribe en **stdout/stderr** acaba en el journal sin configurar nada. Por eso tu `miapp` de la clase 12 ya tiene logs. Es la misma idea que los logs de Docker y Kubernetes: **la app escribe a stdout y la plataforma los recoge.**
 
 ### Niveles de gravedad (prioridad syslog)
@@ -59,7 +61,7 @@ Lo que un servicio de systemd escribe en **stdout/stderr** acaba en el journal s
 | `journalctl -p err -b` | errores desde el último arranque |
 | `journalctl -b -1` | el arranque **anterior** (útil tras un reinicio inesperado) |
 | `journalctl -k` | solo mensajes del kernel |
-| `journalctl _COMM=sshd` | por nombre de proceso |
+| `journalctl _COMM=sudo` | por nombre de proceso (en Ubuntu 26.04, las sesiones SSH aparecen como `sshd-session`; es más fiable usar `-u ssh`) |
 | `journalctl -o json-pretty -n 1` | en JSON: así lo consumen las herramientas |
 | `journalctl --no-pager` | sin `less`, para pipes y scripts |
 | `journalctl --disk-usage` | cuánto ocupa el journal |
@@ -127,7 +129,7 @@ ssh -o ConnectTimeout=3 -o BatchMode=yes root@$IP
 En la VM:
 ```bash
 sudo journalctl -u ssh --since "5 min ago" --no-pager
-sudo grep -E "Invalid user|Connection closed" /var/log/auth.log | tail
+sudo grep -E "Invalid user|Connection closed" /var/log/auth.log | tail     # solo si existe auth.log
 ```
 
 Esto es lo que verías en cualquier servidor con SSH abierto a internet: **bots probando usuarios todo el día**. En la clase 15 lo blindarás.
@@ -198,7 +200,7 @@ Si `-b -1` dice que no hay datos, el journal de esta VM **no es persistente** y 
 1. ¿Cuántas veces se ha usado `sudo` hoy en la VM? (`journalctl _COMM=sudo --since today`)
 2. Muestra **solo** los errores de nginx de la última hora.
 3. Haz que `miapp` escriba algo en el journal al arrancar: añade con un drop-in `ExecStartPre=/bin/echo "miapp arrancando en el puerto 8080"`, reinicia y encuéntralo con `journalctl -u miapp`.
-4. ¿Qué IP ha intentado entrar por SSH más veces en `/var/log/auth.log`? (Pipeline de la clase 05.)
+4. ¿Qué IP ha intentado entrar por SSH más veces? Usa el journal (`journalctl -u ssh`) o `/var/log/auth.log` si existe. (Pipeline de la clase 05.)
 
 ## Cierre
 
@@ -233,7 +235,7 @@ Y el `error.log` de nginx en esa franja.
 ```bash
 journalctl _COMM=sudo --since today --no-pager | grep -c COMMAND
 journalctl -u nginx -p err --since "1 hour ago" --no-pager      # y: sudo tail /var/log/nginx/error.log
-sudo grep "Invalid user" /var/log/auth.log | awk '{print $(NF-2)}' | sort | uniq -c | sort -rn | head -3
+sudo journalctl -u ssh --no-pager | grep "Invalid user" | awk '{print $(NF-2)}' | sort | uniq -c | sort -rn | head -3
 ```
 En la última, la posición del campo de la IP depende del formato del mensaje. Comprueba con una línea real cuál es antes de confiar en el resultado (lección de la clase 05).
 </details>

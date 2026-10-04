@@ -2,6 +2,14 @@
 
 Léelo una vez entero. Después vuelve solo cuando tengas una duda sobre el método.
 
+## Cómo leer las clases
+
+Las clases son archivos Markdown con partes plegables (la autocorrección). Para verlas bien:
+- **VS Code** (ya lo tienes): `code ~/my-devops-journey`, abre la clase y pulsa `Ctrl+Shift+V` para la vista previa. Ponla en una mitad de la pantalla y la terminal en la otra.
+- **GitHub**: en la web de tu repo se ven igual de bien, también desde el móvil para repasar.
+
+Con `cat`, `less` o `nano` las respuestas de la autocorrección se ven **sin plegar**: no uses esas herramientas para leer las clases.
+
 ## Tu rutina
 
 1. Abre [`PROGRESO.md`](PROGRESO.md). Ahí está la clase que toca.

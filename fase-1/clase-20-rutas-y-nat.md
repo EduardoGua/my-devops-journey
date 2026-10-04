@@ -143,6 +143,7 @@ En la VM: `ping -c 3 8.8.8.8`.
 En `mpqemubr0` el origen es la IP de la VM (`10.x.x.x`). En `wlo1` el origen es **`192.168.1.13`**, la de tu PC. Acabas de ver el NAT reescribiendo paquetes. La regla está en el firewall de tu PC:
 ```bash
 sudo nft list ruleset 2>/dev/null | grep -i -B2 -A2 masquerade | head -20
+sudo iptables -t nat -S 2>/dev/null | grep -i masquerade      # si lo anterior no muestra nada
 ```
 
 ## Rómpelo

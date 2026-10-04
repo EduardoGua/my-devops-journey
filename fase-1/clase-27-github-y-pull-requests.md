@@ -134,10 +134,14 @@ La rama se borró en GitHub y en local, y `main` tiene **un** commit con el camb
 
 ### 4. Proteger `main`
 
-En la web: **Settings → Branches → Add branch ruleset** (o *Add rule*):
-- Target: la rama por defecto (`main`)
+En la web: **Settings → Rules → Rulesets → New ruleset → New branch ruleset**:
+- Nombre: `protect-main` · *Enforcement status*: **Active**
+- *Target branches*: **Include default branch**
 - ✅ *Require a pull request before merging*
 - ✅ *Block force pushes*
+- **No** añadas a nadie en *Bypass list*: así la regla se aplica también a ti, que eres admin.
+
+(Si usas la pantalla antigua, *Settings → Branches → Add classic branch protection rule*, marca además *Do not allow bypassing the above settings*. Si no, como dueño del repo podrías saltártela sin darte cuenta.)
 
 Pruébalo:
 ```bash

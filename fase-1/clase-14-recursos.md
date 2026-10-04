@@ -1,12 +1,13 @@
 # Clase 14 — Recursos: CPU, memoria y disco
 
-**Dónde:** VM `servidor-01` · **Tiempo:** 90 min · **Bloque:** B. Administrar un servidor
+**Dónde:** VM `servidor-01` · **Tiempo:** 120 min (puedes partirla en dos sesiones) · **Bloque:** B. Administrar un servidor
 
 ## Objetivo
 
 - Interpretar la **carga** (load average) y el uso de CPU, incluido el *steal* de la nube.
 - Leer la memoria de verdad: `free`, `available`, cache, swap y el **OOM killer**.
 - Diagnosticar un **disco lleno**, incluidos los dos casos traicioneros: inodos agotados y archivos borrados que siguen abiertos.
+- Conectar, formatear, montar y ampliar un **disco nuevo**, como harás con un volumen EBS, sin poner en riesgo el arranque.
 
 ## Por qué importa
 
@@ -69,6 +70,8 @@ Si la memoria se agota, el kernel invoca al **OOM killer** (*Out Of Memory*): el
 | `lsof +L1` | archivos **borrados** que siguen abiertos |
 
 Un **inodo** es la ficha de un archivo (permisos, dueño, dónde están sus datos). Cada sistema de archivos tiene un número fijo. Millones de archivos diminutos pueden agotarlos con gigas libres: `No space left on device` con `df -h` al 60 %.
+
+Un mismo inodo puede tener **varios nombres**: los **enlaces duros** (`ln original otro-nombre`; `ls -li` muestra el número de inodo y cuántos nombres tiene). El espacio de un archivo solo se libera cuando desaparece su **último nombre** y **ningún proceso** lo tiene abierto. Un enlace simbólico (`ln -s`, clase 02) es otra cosa: un archivo pequeño que contiene una ruta.
 
 Un archivo borrado que un proceso **sigue teniendo abierto** no libera su espacio hasta que ese proceso lo cierra. `df` dice "lleno", `du` no encuentra el espacio. Pasa constantemente con logs borrados a mano.
 
@@ -187,10 +190,13 @@ sudo lsof +L1
 
 `df` sigue contando los 2 GB y `du` no los encuentra. `lsof +L1` muestra el proceso que retiene el archivo borrado (`tail`). Para liberarlo, ese proceso tiene que cerrarlo: reiniciarlo, matarlo o, en servicios como nginx, enviarle la señal de reabrir logs.
 
+Mata **ese** proceso por su PID, el de la columna `PID` de `lsof`:
 ```bash
-sudo pkill -f "tail -f /var/log/enorme.log"
+sudo kill <PID>
 df -h /
 ```
+
+(¿Por qué no `sudo pkill -f "tail -f /var/log/enorme.log"`? Porque `pkill -f` busca el patrón en la línea de comandos **completa** de todos los procesos, y la del propio `sudo` que lanza el `pkill` también lo contiene. Puede acabar matando a tu propio `sudo`. Matar por el PID que te dio el diagnóstico es preciso.)
 
 **Lección:** para vaciar un log que está en uso no se borra: se **trunca**, con `sudo truncate -s 0 archivo` o `: | sudo tee archivo`. El proceso sigue escribiendo en el mismo archivo, que ahora está vacío.
 
@@ -209,24 +215,91 @@ cd ~ && sudo umount /mnt/mini
 
 "No space left on device" con casi todo el espacio libre: se acabaron los inodos. Pasa con colas de correo, sesiones de PHP, cachés con millones de archivos o `node_modules` gigantes.
 
-## Rómpelo
+### 7. Un disco nuevo: lo mismo que un volumen EBS
 
-Ya rompiste memoria y disco. Ahora haz el **diagnóstico a ciegas**: pide a alguien (o haz tú, con los ojos "cerrados") que ejecute **uno** de estos en la VM sin decirte cuál:
+En AWS, para añadir espacio a una instancia creas un **volumen EBS** y lo conectas: aparece como un disco **vacío** (`/dev/nvme1n1`). Antes de usarlo hay que darle formato, montarlo y hacer el montaje permanente. En la VM simulamos ese disco con un archivo (un *loop device*):
 
 ```bash
-stress-ng --cpu 2 --timeout 300s &                         # A
-stress-ng --vm 1 --vm-bytes 700M --timeout 300s &          # B
-sudo fallocate -l 7G /var/tmp/x                            # C
-stress-ng --hdd 2 --timeout 300s &                         # D (mucha escritura en disco)
+sudo truncate -s 1G /var/tmp/volumen-ebs.img                        # el "volumen" de 1 GB
+DEV=$(sudo losetup -fP --show /var/tmp/volumen-ebs.img); echo $DEV  # "conectarlo": aparece como /dev/loopN
+lsblk
 ```
 
-Encuentra cuál fue con `uptime`, `top`, `free -h`, `df -h` y `vmstat 1`. Escribe tu razonamiento. Limpia con `pkill stress-ng` y `sudo rm -f /var/tmp/x`.
+🔮 **Predice:** ¿puedes guardar algo ya en ese disco?
+
+No: está en crudo, sin **sistema de archivos**. Dale formato y móntalo:
+```bash
+sudo mkfs.ext4 -L datos $DEV
+sudo mkdir -p /datos
+echo "escrito ANTES de montar" | sudo tee /datos/oculto.txt
+sudo mount $DEV /datos
+df -h /datos
+ls /datos
+```
+
+¿Dónde está `oculto.txt`? El disco montado **tapa** lo que había en esa carpeta. El archivo sigue ocupando sitio en `/`, pero nadie lo ve mientras el montaje esté encima: es otra causa de "`df` y `du` no cuadran". Reaparecerá al desmontar.
+
+Haz el montaje **permanente** en `/etc/fstab`, usando el **UUID**: los nombres de dispositivo pueden cambiar entre arranques, el UUID no.
+```bash
+sudo blkid $DEV
+UUID=$(sudo blkid -s UUID -o value $DEV)
+sudo cp /etc/fstab /etc/fstab.bak
+echo "UUID=$UUID /datos ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
+sudo umount /datos
+sudo mount -a              # monta todo lo de fstab: si hay un error, mejor verlo AHORA
+findmnt /datos
+sudo findmnt --verify      # revisa fstab entero
+```
+
+`nofail` significa "si este disco no está, arranca igualmente". Sin él, un volumen que falta o una línea mal escrita dejan al servidor **sin arrancar**, y en una EC2 no puedes entrar a arreglarlo (la consola del sistema de la clase 12 te dirá por qué). **Regla:** después de tocar `fstab`, siempre `sudo mount -a` y `sudo findmnt --verify` **antes** de reiniciar.
+
+**Ampliar** el volumen (en AWS: *Modify volume* y después ampliar el sistema de archivos):
+```bash
+sudo truncate -s 2G /var/tmp/volumen-ebs.img   # el volumen crece
+sudo losetup -c $DEV                           # el sistema se entera del nuevo tamaño
+df -h /datos
+```
+🔮 ¿Muestra ya 2 GB? No: el **disco** creció, pero el **sistema de archivos** sigue igual.
+```bash
+sudo resize2fs $DEV
+df -h /datos
+```
+En una EC2 con particiones, el orden es `growpart` (ampliar la partición) y después `resize2fs` (ext4) o `xfs_growfs` (XFS, el de Amazon Linux). Es una tarea real habitual y una pregunta de entrevista.
+
+Limpia, en este orden:
+```bash
+sudo umount /datos
+ls /datos                               # oculto.txt reaparece
+sudo cp /etc/fstab.bak /etc/fstab       # quita la línea de fstab ANTES de quitar el disco
+sudo losetup -d $DEV
+sudo rm /var/tmp/volumen-ebs.img /datos/oculto.txt
+sudo findmnt --verify
+```
+
+## Rómpelo
+
+Ya rompiste memoria y disco. Ahora haz el **diagnóstico a ciegas**. Guarda cuatro "sospechosos" en un archivo y deja que la máquina elija uno al azar sin decirte cuál:
+
+```bash
+cat > ~/sospechosos.sh <<'FIN'
+stress-ng --cpu 2 --timeout 300s > /dev/null 2>&1 &
+stress-ng --vm 1 --vm-bytes 700M --timeout 300s > /dev/null 2>&1 &
+sudo fallocate -l $(( $(df --output=avail -B1 / | tail -1) - 300000000 )) /var/tmp/x
+stress-ng --hdd 2 --timeout 300s > /dev/null 2>&1 &
+FIN
+sed -n "$(shuf -i 1-4 -n 1)p" ~/sospechosos.sh | bash
+clear
+```
+
+Encuentra cuál fue (CPU, memoria, disco lleno o disco saturado de escrituras) con `uptime`, `top`, `free -h`, `df -h` y `vmstat 1`. Escribe tu razonamiento **antes** de comprobarlo con `pgrep -a stress-ng; ls -lh /var/tmp/x`. Limpia con `pkill stress-ng; sudo rm -f /var/tmp/x` y repite hasta acertar los cuatro.
 
 ## Reto
 
 1. Escribe un **one-liner** de salud que imprima en una línea: carga del 1.er minuto, memoria `available` en MB y % de uso del disco `/`. (Pistas: `cut -d' ' -f1 /proc/loadavg`, `free -m | awk '/Mem/ {print $7}'`, `df --output=pcent / | tail -1`.) Será el embrión de tu proyecto P3.
 2. ¿Qué tamaño tienen los 5 archivos más grandes de todo el sistema? (`sudo find / -xdev -type f -size +50M -exec ls -lh {} + 2>/dev/null | sort -k5 -h | tail -5`)
 3. ¿Cuánto swap tiene la VM? Busca qué es `vm.swappiness` (`cat /proc/sys/vm/swappiness`).
+4. Crea un archivo, hazle un enlace duro y un enlace simbólico, y borra el original. ¿Cuál de los dos sigue funcionando? Explícalo con `ls -li`.
+5. ¿Qué pasaría si en el `fstab` del paso 7 no hubieras puesto `nofail` y el disco no estuviera al arrancar?
 
 ## Cierre
 
@@ -254,6 +327,10 @@ En `notas/fase-1/clase-14.md`:
 ```bash
 echo "load=$(cut -d' ' -f1 /proc/loadavg) mem_avail=$(free -m | awk '/Mem/ {print $7}')MB disk=$(df --output=pcent / | tail -1 | tr -d ' ')"
 ```
+
+**Reto 4:** el enlace **duro** sigue funcionando: es otro nombre del mismo inodo, y los datos no se liberan mientras quede un nombre. El **simbólico** queda roto: apuntaba a una ruta que ya no existe.
+
+**Reto 5:** systemd esperaría al disco y, al no aparecer, el arranque fallaría y el sistema entraría en modo de emergencia. En una EC2, la instancia no llegaría a aceptar SSH, y habría que leer la consola del sistema y reparar `fstab` montando el disco raíz en otra instancia.
 </details>
 
 ## Inglés
@@ -266,6 +343,9 @@ echo "load=$(cut -d' ' -f1 /proc/loadavg) mem_avail=$(free -m | awk '/Mem/ {prin
 | out of memory (OOM) killer | asesino por falta de memoria |
 | inode | inodo |
 | disk full | disco lleno |
+| volume / to mount | volumen / montar |
+| filesystem | sistema de archivos |
+| hard link / symbolic link | enlace duro / simbólico |
 
 🎙️ *"When the disk looks full but `du` doesn't add up, I check for deleted files still held open with `lsof +L1`, and for inode exhaustion with `df -i`."*
 

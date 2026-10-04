@@ -19,6 +19,17 @@ Toda aplicación en un servidor corre como servicio: nginx, bases de datos, tu A
 
 `systemd` es el **PID 1**: el primer proceso, padre de todos. Arranca el sistema y **supervisa** los servicios: los inicia en orden, los reinicia si mueren y recoge sus logs (journald, clase 13).
 
+### Qué pasa al encender un servidor Linux
+
+Pregunta clásica de entrevista:
+
+```
+firmware (BIOS/UEFI) ─► gestor de arranque (GRUB) ─► kernel (+ initramfs) ─► systemd (PID 1) ─► targets y servicios ─► login
+  comprueba el hardware    elige y carga el kernel      monta el disco raíz       arranca todo en orden      (multi-user.target)
+```
+
+En una EC2 no ves la pantalla, pero sí la **consola del sistema** (*Get system log* / *EC2 serial console*). Ahí se diagnostica una instancia que no arranca, por ejemplo por un `fstab` roto (clase 14).
+
 ### Units
 
 Todo lo que gestiona systemd es una **unit**. Las más comunes:
@@ -256,7 +267,7 @@ La primera línea `ExecStart=` vacía **borra** el valor heredado; la segunda po
 sudo systemctl restart miapp
 watch -n1 systemctl status miapp --no-pager
 ```
-Verás cómo reintenta hasta que systemd se rinde (`start-limit-hit`): por defecto, más de 5 arranques en 10 segundos bloquean nuevos intentos. Así un servicio roto no consume la máquina reiniciándose sin fin. Sal de `watch` con `Ctrl+C` y deshaz:
+Verás cómo reintenta (`activating (auto-restart)`) hasta que systemd se rinde y lo deja en `failed`. En el log aparece `Start request repeated too quickly`: por defecto, más de 5 arranques en 10 segundos bloquean nuevos intentos. Así un servicio roto no consume la máquina reiniciándose sin fin. Para volver a arrancarlo después hay que limpiar ese estado con `systemctl reset-failed`. Sal de `watch` con `Ctrl+C` y deshaz:
 ```bash
 sudo systemctl revert miapp
 sudo systemctl reset-failed miapp

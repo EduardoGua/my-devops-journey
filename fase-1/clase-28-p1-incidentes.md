@@ -34,8 +34,8 @@ Desde tu PC:
 ```bash
 multipass launch lts --name incidentes --cpus 1 --memory 1G --disk 8G
 multipass transfer ~/my-devops-journey/recursos/clase-28/incidentes.sh incidentes:/home/ubuntu/
-multipass exec incidentes -- chmod +x incidentes.sh
-multipass exec incidentes -- sudo ./incidentes.sh preparar
+multipass exec incidentes -- chmod +x /home/ubuntu/incidentes.sh
+multipass exec incidentes -- sudo /home/ubuntu/incidentes.sh preparar
 ```
 
 Debe terminar con `✅ La tienda funciona.` Haz un snapshot del estado sano:
@@ -185,7 +185,7 @@ En `notas/fase-1/clase-28.md`:
 |---|------------|----------------|---------|
 | 1 | `index.html` con dueño root y permisos `600`: los workers (`www-data`) no pueden leerlo | `403` + `Permission denied` en `error.log` | `chmod 644 /var/www/shop/index.html` |
 | 2 | La unit pone `PORT=8081`, pero nginx envía al 8080 | `502` + `Connection refused` en `error.log`; `ss -tlnp` → `:8081` | corregir `Environment=PORT=8080`, `daemon-reload`, `restart` |
-| 3 | Falta `DB_HOST` en la unit: la app muere al arrancar (`KeyError: 'DB_HOST'`) y systemd reintenta hasta rendirse | `502`; `journalctl -u shopapp` con la traza | restaurar `Environment=DB_HOST=db.shop.internal` (mejor con un drop-in), `daemon-reload`, `reset-failed`, `restart` |
+| 3 | Falta `DB_HOST` en la unit: la app muere al arrancar (`KeyError: 'DB_HOST'`) y systemd la reintenta en bucle (`activating (auto-restart)`), y puede acabar en `failed` | `502`; `journalctl -u shopapp` con la traza | restaurar `Environment=DB_HOST=db.shop.internal` (mejor con un drop-in), `daemon-reload`, `reset-failed`, `restart` |
 | 4 | Disco lleno por archivos ocultos en `/var/lib/shop/.cache/` | `500` en `/api/`; log: `No space left on device`; `df -h` al 100 %; `du -sh /var/lib/shop/.[!.]*` | borrar `/var/lib/shop/.cache` |
 | 5 | Falta `api.shop.internal` en `/etc/hosts`: nginx no arranca (`host not found in upstream`) | tienda entera caída (refused); `nginx -t` | volver a añadir `127.0.0.1 api.shop.internal`, `nginx -t`, `start nginx` |
 | 6 | ufw con `DENY` en el 80 | **timeout** desde fuera, OK desde dentro; `ufw status` | `ufw delete deny 80/tcp && ufw allow 80/tcp` |

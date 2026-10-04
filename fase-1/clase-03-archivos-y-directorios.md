@@ -72,6 +72,8 @@ Escribe tres líneas. Atajos de `nano` (`^` significa `Ctrl`):
 | `Ctrl+W` | buscar |
 | `Ctrl+K` / `Ctrl+U` | cortar / pegar una línea |
 
+> **Si un día te ves dentro de `vim`** (muchos servidores y contenedores solo traen `vi`/`vim`, y comandos como `git commit` o `crontab -e` pueden abrirlo): no se sale con `Ctrl+C`. Pulsa `Esc` y escribe `:q!` + `Enter` para salir **sin guardar**, o `:wq` + `Enter` para **guardar y salir**. Con eso sobrevives; si algún día quieres aprender vim de verdad, ejecuta `vimtutor`.
+
 ```bash
 cat notas.txt
 wc -l notas.txt
@@ -145,6 +147,34 @@ echo *.csv
 
 Si nada coincide, bash deja el patrón **tal cual**. Un `rm *.csv` sin coincidencias intentaría borrar un archivo llamado literalmente `*.csv`.
 
+### 8. Empaquetar y comprimir: `tar` y `gzip`
+
+Un **tarball** (`.tar.gz`) es un solo archivo que contiene muchos, comprimido. Es el formato de los backups, de los logs viejos (`.gz`) y de buena parte del software que descargarás.
+
+| Comando | Qué hace |
+|---------|----------|
+| `tar czf copia.tar.gz carpeta/` | **c**rea un archivo comprimido con g**z**ip (**f** = nombre del archivo) |
+| `tar tzf copia.tar.gz` | lis**t**a el contenido **sin** extraer |
+| `tar xzf copia.tar.gz -C destino/` | e**x**trae dentro de `destino/` |
+| `gzip archivo` / `gunzip archivo.gz` | comprime / descomprime un solo archivo (reemplaza el original) |
+| `zcat`, `zless`, `zgrep` | leen un `.gz` sin descomprimirlo |
+
+```bash
+tar czf backup-config-$(date +%F).tar.gz config/
+ls -lh *.tar.gz
+tar tzf backup-config-*.tar.gz
+mkdir -p restaurado && tar xzf backup-config-*.tar.gz -C restaurado/
+tree restaurado
+
+cp /etc/services servicios.txt && gzip servicios.txt
+ls -lh servicios.txt.gz
+zgrep -c tcp servicios.txt.gz
+```
+
+🔮 **Predice:** ¿cuánto ocupará `servicios.txt.gz` comparado con el original (`ls -lh /etc/services`)? El texto se comprime muy bien: por eso los logs rotados se guardan en `.gz`.
+
+> Truco para recordar `tar`: **c**rear, **x**traer, lis**t**ar, siempre con **f**ile. `z` = gzip.
+
 ## Rómpelo
 
 **1. `cp` sobrescribe en silencio:**
@@ -184,6 +214,7 @@ En `labs/clase-03/reto/`, sin mirar arriba:
 3. Mueve solo los `web-*.log` a `logs/web/` (créalo). Antes, comprueba el patrón con `echo`.
 4. Haz una copia de seguridad de toda la carpeta `logs` como `logs.bak`, conservando fechas y permisos.
 5. Borra `logs/2026` entero y comprueba que `logs.bak` sigue intacta.
+6. Empaqueta `logs.bak` en `logs-<fecha de hoy>.tar.gz`, lista su contenido **sin** extraerlo y extráelo dentro de una carpeta `restore/`.
 
 Escribe los comandos en tu cierre.
 
@@ -221,6 +252,13 @@ rm -r logs/2026
 tree
 ```
 `{1,2,3}` es la *expansión de llaves*: genera las tres palabras aunque los archivos no existan. Es distinta de `*`, que solo coincide con archivos que ya existen.
+
+Punto 6:
+```bash
+tar czf "logs-$(date +%F).tar.gz" logs.bak
+tar tzf logs-*.tar.gz
+mkdir -p restore && tar xzf logs-*.tar.gz -C restore/
+```
 </details>
 
 ## Inglés
@@ -232,6 +270,7 @@ tree
 | wildcard / glob | comodín |
 | backup | copia de seguridad |
 | to follow a log | seguir un log en directo |
+| tarball / archive | paquete `.tar.gz` |
 
 🎙️ *"Before I edit a config file on a server, I always make a backup copy, and I preview any wildcard with `echo` or `ls` before deleting."*
 

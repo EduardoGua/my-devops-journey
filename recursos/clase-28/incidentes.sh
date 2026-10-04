@@ -18,6 +18,13 @@ WEB_DIR=/var/www/shop
 UNIT=/etc/systemd/system/shopapp.service
 SITE=/etc/nginx/sites-available/shop
 
+hosts_quitar() {   # quita de /etc/hosts las líneas que contienen $1 (sin reemplazar el archivo)
+  local tmp; tmp=$(mktemp)
+  grep -v -- "$1" /etc/hosts > "$tmp" || true
+  cat "$tmp" > /etc/hosts
+  rm -f "$tmp"
+}
+
 preparar() {
   export DEBIAN_FRONTEND=noninteractive
   if ! command -v nginx >/dev/null || ! command -v ufw >/dev/null; then
@@ -98,7 +105,7 @@ server {
 NGINX
   rm -f /etc/nginx/sites-enabled/default
   ln -sf "$SITE" /etc/nginx/sites-enabled/shop
-  sed -i '/shop\.internal/d' /etc/hosts
+  hosts_quitar "shop.internal"
   echo "127.0.0.1 api.shop.internal" >> /etc/hosts
 
   # limpiar restos de incidentes anteriores
@@ -112,19 +119,19 @@ NGINX
   ufw --force enable >/dev/null
 
   systemctl daemon-reload
-  systemctl enable --now shopapp >/dev/null 2>&1
+  systemctl reset-failed shopapp nginx 2>/dev/null || true
+  systemctl enable shopapp nginx >/dev/null 2>&1
   systemctl restart shopapp
   nginx -t -q
-  systemctl enable --now nginx >/dev/null 2>&1
-  systemctl reload nginx
+  systemctl restart nginx
   sleep 1
   comprobar
 }
 
 comprobar() {
   local ok=1 web api
-  web=$(curl -s -o /dev/null -w "%{http_code}" -m 5 http://127.0.0.1/ || echo "000")
-  api=$(curl -s -o /dev/null -w "%{http_code}" -m 8 http://127.0.0.1/api/ || echo "000")
+  web=$(curl -s -o /dev/null -w "%{http_code}" -m 5 http://127.0.0.1/ || true)
+  api=$(curl -s -o /dev/null -w "%{http_code}" -m 8 http://127.0.0.1/api/ || true)
   [ "$web" = "200" ] || ok=0
   [ "$api" = "200" ] || ok=0
   ufw status | grep -qE "^80/tcp +ALLOW" || ok=0
@@ -157,7 +164,7 @@ romper() {
        avail=$(df --output=avail -B1 / | tail -1)
        fallocate -l $(( avail - 20000000 )) /var/lib/shop/.cache/blob.tmp
        dd if=/dev/zero of=/var/lib/shop/.cache/fill bs=1M count=50 2>/dev/null || true ;;
-    5) sed -i '/api\.shop\.internal/d' /etc/hosts
+    5) hosts_quitar "api.shop.internal"
        systemctl restart nginx 2>/dev/null || true ;;
     6) ufw delete allow 80/tcp >/dev/null; ufw deny 80/tcp >/dev/null ;;
     7) avail=$(df --output=avail -B1 / | tail -1)

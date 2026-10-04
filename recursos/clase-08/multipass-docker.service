@@ -1,0 +1,18 @@
+# Solo hace falta si tus VMs de Multipass no tienen internet porque Docker está instalado (clase 08).
+# Docker pone la política de reenvío del firewall en DROP; esto permite el tráfico de las VMs.
+# Instalar:   sudo cp multipass-docker.service /etc/systemd/system/
+#             sudo systemctl daemon-reload && sudo systemctl enable --now multipass-docker
+# Quitar:     sudo systemctl disable --now multipass-docker && sudo rm /etc/systemd/system/multipass-docker.service
+[Unit]
+Description=Permite que las VMs de Multipass salgan a internet con Docker instalado
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'iptables -C DOCKER-USER -i mpqemubr0 -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER -i mpqemubr0 -j ACCEPT'
+ExecStart=/bin/sh -c 'iptables -C DOCKER-USER -o mpqemubr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER -o mpqemubr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT'
+
+[Install]
+WantedBy=multi-user.target

@@ -164,6 +164,9 @@ Automatizar lo que ya sabes hacer a mano.
 Primero consola y CLI, entendiendo cada pieza. Terraform viene después: escribir como código algo que nunca hiciste a mano produce archivos copiados sin entender.
 
 **Víspera (sesión única antes de empezar)**
+
+> ⏳ **Cuándo crear la cuenta.** Desde julio de 2025, las cuentas nuevas de AWS empiezan con un **plan gratuito con créditos** (hasta 200 USD) que dura **6 meses** desde la creación; los servicios "siempre gratuitos" siguen aparte. Las fases 5 a 8 ocupan unos 5–6 meses, así que crear la cuenta **la semana antes de la F5**, y no antes, hace que los créditos cubran justo la parte del curso en la que hacen falta. Las condiciones cambian: léelas en la web de AWS el día que la crees y anótalas en tus notas.
+
 - [ ] Cuenta creada, MFA en root, root guardado bajo llave
 - [ ] Usuario de trabajo con IAM Identity Center o IAM, con MFA
 - [ ] Budgets con aviso en 5, 10 y 20 USD y el correo comprobado
@@ -171,7 +174,7 @@ Primero consola y CLI, entendiendo cada pieza. Terraform viene después: escribi
 - [ ] AWS CLI configurado
 
 **Temario**
-1. Modelo de responsabilidad compartida, regiones y zonas de disponibilidad, free tier, cómo se factura
+1. Modelo de responsabilidad compartida, regiones y zonas de disponibilidad, plan gratuito y créditos, cómo se factura
 2. IAM: usuarios, grupos, roles, políticas, mínimo privilegio, evaluación de políticas
 3. VPC: CIDR, subredes públicas y privadas, tablas de rutas, Internet Gateway y NAT (aplica lo de la F1)
 4. Security Groups frente a NACLs
