@@ -124,4 +124,4 @@ Las clases son el recurso principal. Para el examen y para ir más allá:
 
 ## Siguiente fase
 
-Fase 7 — CI/CD con GitHub Actions (se escribe a continuación).
+[Fase 7 — CI/CD con GitHub Actions](../fase-7/README.md)

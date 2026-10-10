@@ -73,6 +73,16 @@ Para cada 🟡 o ❌, añade debajo de tu respuesta una línea con `Corrección:
 
 Si quieres una segunda opinión, escríbeme `revisa clase-XX` y la reviso con el listón de una entrevista.
 
+Lo que puedes pedirme, tal cual:
+
+| Pídeme | Y hago |
+|--------|--------|
+| `revisa clase-XX` | reviso tu cierre y tus notas de esa clase |
+| `revisa la fase N` | **antes de empezar cada fase:** compruebo que sus versiones, precios y comandos siguen al día y corrijo lo que haya cambiado |
+| `revisa examen …` | corrijo tu examen (fundamentos, fases 4 a 7 o fases 8 a 10) con su rúbrica |
+| `haz de entrevistador para <puesto>` | un simulacro de entrevista, técnica y de comportamiento |
+| `cierra la ruta` | al terminar la clase 125: revisamos tu progreso, tu CV y los próximos tres meses |
+
 ## Deudas: máximo dos
 
 Una **deuda** es un 🟡 o ❌ sin corrección escrita, o una parte de la clase que no terminaste.
@@ -131,10 +141,10 @@ Lo que **no** se hace: buscar la solución del reto o pedirle a una IA que lo re
 |------|--------|
 | [`PLAN.md`](PLAN.md) | El mapa: las 10 fases, Vigía, certificaciones y empleo |
 | [`PROGRESO.md`](PROGRESO.md) | Dónde vas, qué toca hoy, criterios de salida y el registro de clases |
-| [`fase-1/`](fase-1/README.md), [`fase-2/`](fase-2/README.md), [`fase-3/`](fase-3/README.md) | Las clases de cada fase. Las siguientes se escriben cuando llegues |
+| [`fase-1/`](fase-1/README.md) … [`fase-10/`](fase-10/README.md) | Las 125 clases, una carpeta por fase. Cada README dice qué necesitas, sus criterios de salida y sus datos que caducan |
 | `notas/fase-N/` | **Tus** cierres, uno por clase |
 | `labs/` | Lo que creas al practicar en tu Ubuntu |
 | `projects/` | Los laboratorios integradores P1 y P2 |
-| `recursos/` | Archivos que usan las clases (logs de ejemplo, scripts de averías…) |
+| `recursos/` | Archivos que usan las clases (logs de ejemplo, scripts de averías…) y las pruebas de aceptación de Vigía, en `recursos/vigia/v1/` … `v7/` |
 | `~/vigia` | Tu proyecto de portafolio, en su propio repositorio |
 | Ruta Cloud & DevOps 2.0 | El registro mensual de horas y el recálculo de fechas |

@@ -8,12 +8,12 @@ My portfolio project, **Vigía**, lives in its own repository. Each version adds
 | v0.1 | 2 | GitHub, branches and pull requests | — |
 | v0.2 | 3 | DNS lookup time and TLS certificate expiry | — |
 | v1 | 4 | Python rewrite, SQLite, minimal JSON API, pytest | — |
-| v2 | 5 | Dockerfile and Docker Compose | — |
+| v2 | 5 | Multi-stage Dockerfile and Docker Compose with PostgreSQL | — |
 | v3 | 6 | Deployment on AWS (EC2, IAM role, S3, CloudWatch) | — |
-| v4 | 7 | CI/CD pipeline with GitHub Actions | — |
-| v5 | 8 | Infrastructure in Terraform | — |
-| v6 | 9 | Kubernetes (kind): Deployment and CronJob | — |
-| v7 | 10 | Metrics, Prometheus, Grafana and alerts | — |
+| v4 | 7 | CI/CD with GitHub Actions: OIDC, images in ECR, deployments over SSM with rollback | — |
+| v5 | 8 | All infrastructure in Terraform: S3 state with locking, a network module, plan on every PR | — |
+| v6 | 9 | Kubernetes (kind): Deployment, PostgreSQL StatefulSet, CronJob, Gateway API, rollouts | — |
+| v7 | 10 | Prometheus metrics, tested alerts, Grafana dashboards as code and an SLO | — |
 
 ## Course labs
 

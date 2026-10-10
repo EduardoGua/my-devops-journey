@@ -26,7 +26,7 @@ Full roadmap with exit criteria: [`PLAN.md`](PLAN.md).
 
 ## Flagship project: Vigía
 
-**Vigía** is a small uptime monitor that grows with every phase: a Bash script with cron (v0), then Python with tests, Docker, a deployment on AWS, a CI/CD pipeline, Terraform, Kubernetes and, finally, metrics and alerts (v7). It lives in its own repository (published from v0.1).
+**Vigía** is a small uptime monitor that grows with every phase: a Bash script with cron (v0), then Python with tests, Docker Compose with PostgreSQL, a deployment on AWS, a CI/CD pipeline with OIDC, Terraform, Kubernetes and, finally, Prometheus metrics, tested alerts and an SLO (v7). It lives in its own repository (published from v0.1); every version has black-box acceptance tests in [`recursos/vigia/`](recursos/vigia/).
 
 ## Course labs
 
@@ -41,11 +41,11 @@ Full roadmap with exit criteria: [`PLAN.md`](PLAN.md).
 PLAN.md            roadmap: phases, Vigía versions, exit criteria
 COMO-ESTUDIAR.md   study method
 PROGRESO.md        progress tracker and log
-fase-1/ … fase-3/  lessons (Spanish); later phases are written as I reach them
+fase-1/ … fase-10/ 125 lessons (Spanish), each phase with its exit criteria
 notas/             my notes and answers for each lesson
 labs/              practice output
 projects/          course labs P1 and P2 (English)
-recursos/          lesson resources (sample logs, lab scripts)
+recursos/          lesson resources (sample logs, lab scripts) and Vigía acceptance tests
 ```
 
 ## Stack
