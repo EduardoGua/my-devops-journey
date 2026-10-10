@@ -263,6 +263,38 @@ Recreación desde cero (fecha · minutos):
 
 ---
 
+## Fase 9 — Kubernetes
+
+### A. Kubernetes desde cero
+- [ ] 102 · Por qué orquestar: arquitectura, kind y kubectl ·
+- [ ] 103 · Pods, YAML y etiquetas ·
+- [ ] 104 · Deployments: escalar, actualizar y volver atrás ·
+- [ ] 105 · Services y DNS del cluster ·
+- [ ] 106 · ConfigMaps y Secrets ·
+- [ ] 107 · Sondas, requests y limits ·
+- [ ] 108 · Jobs y CronJobs ·
+
+### B. Kubernetes para operar
+- [ ] 109 · Volúmenes persistentes y StatefulSets ·
+- [ ] 110 · Namespaces y RBAC ·
+- [ ] 111 · Ingress y Gateway API ·
+- [ ] 112 · Depurar: CrashLoopBackOff, ImagePullBackOff y Pending ·
+- [ ] 113 · Helm ·
+
+### C. Proyecto
+- [ ] 114 · Vigía v6 (I): API y base de datos en kind ·
+- [ ] 115 · Vigía v6 (II): CronJob, rollout y qué cambia en EKS ·
+
+Averías de la clase 112, cronometradas (fecha · minutos):
+
+### Criterios de salida de la fase 9 (sin mirar)
+- [ ] Vigía corre en kind con Deployment, Service, ConfigMap, Secret y un CronJob
+- [ ] Hago una actualización y un *rollback* con `kubectl rollout`
+- [ ] Diagnostico un pod en CrashLoopBackOff y otro en ImagePullBackOff con `describe` y `logs`
+- [ ] Explico la diferencia entre una sonda *liveness* y una *readiness*
+
+---
+
 ## Vigía
 
 | Versión | Fase | Estado | Etiqueta |
@@ -284,8 +316,7 @@ Recreación desde cero (fecha · minutos):
 
 | Fase | Horas (Ruta 2.0) | Estado |
 |------|------------------|--------|
-| 9 · Kubernetes | 55–75 h | se escribe a continuación |
-| 10 · Observabilidad | 25–35 h | — |
+| 10 · Observabilidad | 25–35 h | se escribe a continuación |
 
 El temario de cada fase está en [`PLAN.md`](PLAN.md). Antes de empezar cada fase, pídeme `revisa la fase N`.
 

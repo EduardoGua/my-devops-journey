@@ -48,7 +48,7 @@ Las fases, su orden, sus horas y sus criterios de salida son **los mismos** en l
 | 7 · CI/CD con GitHub Actions | 25–35 h | [clases 82–91](fase-7/README.md), con el examen de las fases 4 a 7 | v4 |
 | ★ **Hito: empezar a postular** | 242–326 h acumuladas | | |
 | 8 · Terraform | 35–45 h | [clases 92–101](fase-8/README.md) | v5 |
-| 9 · Kubernetes | 55–75 h | ídem | v6 |
+| 9 · Kubernetes | 55–75 h | [clases 102–115](fase-9/README.md) | v6 |
 | 10 · Observabilidad | 25–35 h | ídem | v7 |
 
 Las horas son estimaciones de la Ruta para alguien que empieza de cero, con práctica y proyecto incluidos. A 7 h por semana, desde el 12 de octubre de 2026, el hito llega entre junio y septiembre de 2027. La Ruta explica cómo recalcularlo cada mes con tus horas reales; la columna *Tiempo* del registro de `PROGRESO.md` te da el número.
@@ -169,27 +169,16 @@ Lo que creaste a mano en AWS pasa a archivos versionados, revisables y repetible
 
 **Recursos:** los tutoriales *Get Started* de HashiCorp para AWS y los objetivos del Terraform Associate (004), en el apéndice de la clase 101.
 
-### Fase 9 — Kubernetes · 55–75 h
+### Fase 9 — Kubernetes · 55–75 h · clases 102–115 ✍️
 
-Kubernetes orquesta contenedores en varios servidores: los reinicia, los escala y los actualiza sin cortar el servicio. Es lo más pesado de la ruta, por eso llega después de Docker, AWS y CI/CD.
+Kubernetes orquesta contenedores en varios servidores: los reinicia, los escala y los actualiza sin cortar el servicio. Es lo más pesado de la ruta, por eso llega después de Docker, AWS y CI/CD. Todo corre en tu portátil, con kind. Clases en [`fase-9/`](fase-9/README.md):
+- **Kubernetes desde cero (102–108):** arquitectura, kind y kubectl; pods y etiquetas; Deployments con actualización y vuelta atrás; Services y DNS, con cloud-provider-kind para los balanceadores; ConfigMaps y Secrets; sondas, `requests` y `limits`; Jobs y CronJobs.
+- **Kubernetes para operar (109–113):** volúmenes persistentes y StatefulSets; namespaces, cuotas y RBAC; Ingress y Gateway API (ingress-nginx se retiró en 2026); seis averías reales que diagnosticar; y Helm 4.
+- **Vigía v6 (114–115):** API, PostgreSQL y el chequeo como CronJob en kind, una actualización rota y su vuelta atrás, y qué cambiaría en EKS, con su [`verify.sh`](recursos/vigia/v6/README.md).
 
-**Temario**
-1. Por qué orquestar; arquitectura: control plane, nodos, kubelet y etcd
-2. Cluster local con kind; `kubectl get`, `describe`, `logs`, `exec`, `apply`
-3. Pods, ReplicaSets y Deployments; *rolling update* y *rollback*
-4. Services (ClusterIP, NodePort, LoadBalancer) e Ingress
-5. ConfigMaps y Secrets
-6. Sondas *liveness* y *readiness*; *requests* y *limits*
-7. Jobs y CronJobs
-8. Namespaces y RBAC básico
-9. Volúmenes persistentes
-10. Helm: usar un chart y escribir uno sencillo
-11. Depurar: CrashLoopBackOff, ImagePullBackOff y Pending
-12. EKS: qué cambia en la nube (concepto, sin dejarlo encendido)
+**Criterios de salida:** Vigía en kind con Deployment, Service, ConfigMap, Secret y un CronJob · una actualización y un *rollback* con `kubectl rollout` · diagnosticar un pod en CrashLoopBackOff y otro en ImagePullBackOff con `describe` y `logs` · explicar la diferencia entre una sonda *liveness* y una *readiness*.
 
-**Vigía v6.** **Criterios de salida:** Vigía en kind con Deployment, Service, ConfigMap, Secret y un CronJob · una actualización y un *rollback* con `kubectl rollout` · diagnosticar un pod en CrashLoopBackOff y otro en ImagePullBackOff con `describe` y `logs` · explicar la diferencia entre una sonda *liveness* y una *readiness*.
-
-**Recursos:** *Learn Kubernetes Basics* (tutorial oficial, también en español) y la documentación de kind.
+**Recursos:** *Learn Kubernetes Basics* (tutorial oficial) y la documentación de kind.
 
 ### Fase 10 — Observabilidad · 25–35 h
 
