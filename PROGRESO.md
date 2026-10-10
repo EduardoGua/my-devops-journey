@@ -201,6 +201,40 @@ Puntuaciones en las preguntas oficiales de práctica (fecha · %):
 
 ---
 
+## Fase 7 — CI/CD con GitHub Actions
+
+### A. Integración continua
+- [ ] 82 · CI/CD y tu primer workflow ·
+- [ ] 83 · Lint y pruebas en cada PR ·
+- [ ] 84 · Comprobaciones obligatorias y leer un job fallido ·
+- [ ] 85 · Secretos, variables y permisos ·
+
+### B. Entrega y despliegue continuos
+- [ ] 86 · OIDC: AWS sin llaves ·
+- [ ] 87 · Construir y publicar la imagen en ECR ·
+- [ ] 88 · Desplegar en EC2 con Session Manager ·
+- [ ] 89 · Estrategias de despliegue y pruebas de humo ·
+
+### C. Proyecto y hito
+- [ ] 90 · Vigía v4: el pipeline completo ·
+- [ ] 91 · ★ El hito: examen de las fases 4 a 7 y empezar a postular ·
+
+Examen de las fases 4 a 7 (fecha · %):
+
+### Criterios de salida de la fase 7 (sin mirar)
+- [ ] Un PR con una prueba rota no se puede unir a `main`
+- [ ] Al unir a `main`, la imagen se construye, se publica y se despliega sola
+- [ ] Ninguna credencial de AWS en el repositorio ni en su historial
+- [ ] Explico la diferencia entre integración, entrega y despliegue continuos
+
+### ★ Hito: empezar a postular
+- [ ] CV de una página, en inglés y en español
+- [ ] LinkedIn y GitHub al día, con Vigía fijado
+- [ ] Tres historias STAR escritas y grabadas
+- [ ] Primeras postulaciones registradas en `notas/empleo/postulaciones.md`
+
+---
+
 ## Vigía
 
 | Versión | Fase | Estado | Etiqueta |
@@ -222,8 +256,7 @@ Puntuaciones en las preguntas oficiales de práctica (fecha · %):
 
 | Fase | Horas (Ruta 2.0) | Estado |
 |------|------------------|--------|
-| 7 · CI/CD | 25–35 h | se escribe a continuación · **hito: empezar a postular** |
-| 8 · Terraform | 35–45 h | — |
+| 8 · Terraform | 35–45 h | se escribe a continuación |
 | 9 · Kubernetes | 55–75 h | — |
 | 10 · Observabilidad | 25–35 h | — |
 

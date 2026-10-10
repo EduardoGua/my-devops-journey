@@ -45,7 +45,7 @@ Las fases, su orden, sus horas y sus criterios de salida son **los mismos** en l
 | 4 · Python | 50–70 h | [clases 39–55](fase-4/README.md) | v1 |
 | 5 · Docker | 30–40 h | [clases 56–66](fase-5/README.md) | v2 |
 | 6 · AWS + Cloud Practitioner | 60–80 h | [clases 67–81](fase-6/README.md), con el CLF-C02 | v3 |
-| 7 · CI/CD con GitHub Actions | 25–35 h | ídem | v4 |
+| 7 · CI/CD con GitHub Actions | 25–35 h | [clases 82–91](fase-7/README.md), con el examen de las fases 4 a 7 | v4 |
 | ★ **Hito: empezar a postular** | 242–326 h acumuladas | | |
 | 8 · Terraform | 35–45 h | ídem | v5 |
 | 9 · Kubernetes | 55–75 h | ídem | v6 |
@@ -142,23 +142,15 @@ Llevas a la nube lo que ya sabes de Linux, redes y Docker, primero con la consol
 
 **Criterios de salida:** una VPC con subred pública y privada, y explicar por qué la base de datos va en la privada · Vigía en EC2 con un rol IAM, sin llaves guardadas en el servidor · MFA en el raíz y trabajo diario con un usuario administrador · 80 % o más en las preguntas oficiales de práctica · **CLF-C02 aprobado**.
 
-### Fase 7 — CI/CD con GitHub Actions · 25–35 h
+### Fase 7 — CI/CD con GitHub Actions · 25–35 h · clases 82–91 ✍️
 
-Automatizar pruebas y despliegues es el centro del trabajo DevOps: cada cambio pasa por el mismo camino, sin pasos manuales.
+Automatizar pruebas y despliegues es el centro del trabajo DevOps: cada cambio pasa por el mismo camino, sin pasos manuales. Clases en [`fase-7/`](fase-7/README.md):
+- **Integración continua (82–85),** sobre una aplicación de prácticas: workflows, lint, pruebas y la imagen en cada PR; `main` protegida con un ruleset; secretos, variables y permisos mínimos.
+- **Entrega y despliegue continuos (86–89):** OIDC con AWS, la imagen en ECR, el despliegue en EC2 con Session Manager y las estrategias de despliegue, con vuelta atrás automática.
+- **Vigía v4 (90),** con su [`verify.sh`](recursos/vigia/v4/README.md).
+- **El examen de las fases 4 a 7 y el plan para postular (91).**
 
-**Temario**
-1. Integración continua, entrega continua y despliegue continuo: qué problema resuelve cada una
-2. Workflows: eventos (`push`, `pull_request`), jobs, steps y runners
-3. Lint y pruebas en cada pull request (`pytest`, `shellcheck`)
-4. Secrets, variables y permisos mínimos (`permissions:`)
-5. Construir y publicar la imagen Docker desde el pipeline
-6. OIDC con AWS: entrar sin guardar llaves en GitHub
-7. Despliegue automático a EC2
-8. Proteger `main`: nada se une sin pruebas en verde
-9. Leer un job fallido y arreglarlo
-10. Estrategias de despliegue: *rolling*, *blue/green* y *canary* (concepto)
-
-**Vigía v4.** **Criterios de salida:** un PR con una prueba rota no se puede unir a `main` · al unir a `main`, la imagen se construye, se publica y se despliega sola · ninguna credencial de AWS en el repo ni en su historial · explicar la diferencia entre integración, entrega y despliegue continuos.
+**Criterios de salida:** un PR con una prueba rota no se puede unir a `main` · al unir a `main`, la imagen se construye, se publica y se despliega sola · ninguna credencial de AWS en el repo ni en su historial · explicar la diferencia entre integración, entrega y despliegue continuos.
 
 Deja Vigía público: GitHub Actions es gratis en repositorios públicos con los runners estándar.
 
