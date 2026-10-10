@@ -44,7 +44,7 @@ Las fases, su orden, sus horas y sus criterios de salida son **los mismos** en l
 | 3 · Redes | 30–40 h | [clases 26–38](fase-3/README.md), con P1, P2 y el examen de fundamentos | v0.2 |
 | 4 · Python | 50–70 h | [clases 39–55](fase-4/README.md) | v1 |
 | 5 · Docker | 30–40 h | [clases 56–66](fase-5/README.md) | v2 |
-| 6 · AWS + Cloud Practitioner | 60–80 h | ídem | v3 |
+| 6 · AWS + Cloud Practitioner | 60–80 h | [clases 67–81](fase-6/README.md), con el CLF-C02 | v3 |
 | 7 · CI/CD con GitHub Actions | 25–35 h | ídem | v4 |
 | ★ **Hito: empezar a postular** | 242–326 h acumuladas | | |
 | 8 · Terraform | 35–45 h | ídem | v5 |
@@ -125,38 +125,22 @@ Un contenedor empaqueta la aplicación con todo lo que necesita y corre igual en
 
 **Criterios de salida:** explicar imagen, contenedor y volumen · un Dockerfile multi-stage que corre como usuario no root · Vigía se levanta con `docker compose up` desde un clon limpio · encontrar con `docker logs` y `docker inspect` por qué un contenedor se reinicia en bucle.
 
-### Fase 6 — AWS + Cloud Practitioner · 60–80 h
+### Fase 6 — AWS + Cloud Practitioner · 60–80 h · clases 67–81 ✍️
 
-Llevas a la nube lo que ya sabes de Linux, redes y Docker, primero con la consola y la CLI, entendiendo cada pieza (escribir como código algo que nunca hiciste a mano produce archivos copiados sin entender). Cierras con tu primera certificación.
+Llevas a la nube lo que ya sabes de Linux, redes y Docker, primero con la consola y la CLI, entendiendo cada pieza (escribir como código algo que nunca hiciste a mano produce archivos copiados sin entender). Clases en [`fase-6/`](fase-6/README.md):
+- **La cuenta, los costos y la identidad (67–70):** la víspera, la factura, IAM, roles y `aws login`.
+- **Los servicios básicos (71–77):** VPC, EC2 con Session Manager y NAT Gateway, security groups y NACLs, S3, ECR y CloudWatch; RDS, balanceadores, Auto Scaling y Lambda, como concepto.
+- **Vigía v3 (78–79):** en EC2 con un rol IAM, informe diario en S3 y logs en CloudWatch, con su [`verify-aws.sh`](recursos/vigia/v3/README.md).
+- **La preparación del CLF-C02 (80–81).**
 
-**Víspera: una sesión antes de empezar**
+> ⏳ **Cuándo crear la cuenta.** Una cuenta nueva de AWS empieza en el plan gratuito:
+> - **Créditos:** 100 USD al registrarte y hasta 100 USD más con actividades.
+> - **Duración:** 6 meses, o hasta que se acaben los créditos.
+> - **Al terminar:** la cuenta se cierra, y hay 90 días para pasar al plan de pago y recuperarla.
+>
+> Las fases 6, 7 y 8 (AWS, CI/CD y Terraform) son las que usan AWS y suman 120–160 h: a 7 h por semana, unos 4 a 5,5 meses. **Ábrela en la clase 67 y haz esas tres fases seguidas**, y los créditos te cubrirán. Kubernetes (kind) y la observabilidad corren en tu portátil. Las condiciones cambian: la tabla "Datos que caducan" de la fase 6 dice cuándo se comprobaron.
 
-> ⏳ **Cuándo crear la cuenta.** Una cuenta nueva de AWS empieza con un plan gratuito: hasta 200 USD en créditos durante **6 meses**, o hasta que se acaben los créditos. Al terminar, la cuenta se suspende salvo que pases al plan de pago. Las fases 6, 7 y 8 (AWS, CI/CD y Terraform) son las que usan AWS y suman 120–160 h: a 7 h por semana, unos 4 a 5,5 meses. **Ábrela al empezar la fase 6 y haz esas tres fases seguidas**, y los créditos te cubrirán. Kubernetes (kind) y la observabilidad corren en tu portátil. Las condiciones cambian: léelas el día que la crees (la Ruta 2.0 las resume en "AWS sin sorpresas").
-
-- [ ] Cuenta creada, MFA en el usuario raíz (AWS lo exige) y contraseña en un gestor
-- [ ] Ninguna llave de acceso para el usuario raíz
-- [ ] Usuario administrador para el día a día, con MFA
-- [ ] Fecha de fin del plan gratuito anotada, y el saldo de créditos a la vista
-- [ ] Región única escrita en el README (sugerida: `us-east-1`)
-- [ ] AWS CLI configurada con un perfil
-
-**Temario**
-1. Modelo de responsabilidad compartida, regiones y zonas de disponibilidad
-2. Precios y facturación: cómo se cobra cada servicio, créditos y dónde ver el gasto
-3. IAM: usuarios, grupos, roles, políticas, MFA y mínimo privilegio
-4. VPC: subredes públicas y privadas, tablas de rutas, Internet Gateway y NAT Gateway (aplica la fase 3; el NAT Gateway se crea, se prueba y se borra el mismo día)
-5. Security groups frente a NACLs
-6. EC2: tipos de instancia, AMI, *user-data* (tu P2), llaves y Session Manager
-7. S3: buckets, políticas, bloqueo de acceso público, versionado y clases de almacenamiento
-8. ECR: tu registro de imágenes
-9. CloudWatch: métricas, logs y alarmas
-10. AWS CLI con perfiles
-11. RDS, balanceadores, Auto Scaling y Lambda a nivel de concepto
-12. Preparación del CLF-C02: la guía oficial del examen como lista de control y las preguntas de práctica de Skill Builder
-
-**Vigía v3.** **Criterios de salida:** una VPC con subred pública y privada, y explicar por qué la base de datos va en la privada · Vigía en EC2 con un rol IAM, sin llaves guardadas en el servidor · MFA en el raíz y trabajo diario con un usuario administrador · 80 % o más en las preguntas oficiales de práctica · **CLF-C02 aprobado**.
-
-**Recursos:** AWS Skill Builder ("Cloud Practitioner Essentials" y el plan oficial del CLF-C02), la guía oficial del examen y la documentación de AWS.
+**Criterios de salida:** una VPC con subred pública y privada, y explicar por qué la base de datos va en la privada · Vigía en EC2 con un rol IAM, sin llaves guardadas en el servidor · MFA en el raíz y trabajo diario con un usuario administrador · 80 % o más en las preguntas oficiales de práctica · **CLF-C02 aprobado**.
 
 ### Fase 7 — CI/CD con GitHub Actions · 25–35 h
 

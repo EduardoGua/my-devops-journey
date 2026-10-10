@@ -157,6 +157,50 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 
 ---
 
+## Fase 6 — AWS y Cloud Practitioner
+
+### La víspera (clases 67 y 70)
+- [ ] Cuenta creada, MFA en el usuario raíz y contraseña en un gestor
+- [ ] Ninguna llave de acceso para el usuario raíz
+- [ ] Usuario administrador para el día a día, con MFA
+- [ ] Fecha de fin del plan gratuito anotada, y el saldo de créditos a la vista
+- [ ] Región única escrita en el README: `us-east-1`
+- [ ] AWS CLI configurada con un perfil (`aws login`)
+
+### A. Cuenta, costos e identidad
+- [ ] 67 · La víspera: tu cuenta sin sorpresas ·
+- [ ] 68 · La nube y su factura: regiones, zonas, precios y créditos ·
+- [ ] 69 · IAM I: usuarios, grupos y políticas ·
+- [ ] 70 · IAM II: roles y la AWS CLI sin llaves ·
+
+### B. Los servicios básicos
+- [ ] 71 · VPC desde cero ·
+- [ ] 72 · EC2, user-data y Session Manager ·
+- [ ] 73 · Security groups y NACLs ·
+- [ ] 74 · S3: buckets, versiones y acceso ·
+- [ ] 75 · ECR: tu registro de imágenes ·
+- [ ] 76 · CloudWatch: métricas, logs y alarmas ·
+- [ ] 77 · RDS, balanceadores, Auto Scaling y Lambda ·
+
+### C. Proyecto
+- [ ] 78 · Vigía v3 (I): en EC2 con un rol IAM ·
+- [ ] 79 · Vigía v3 (II): informe en S3, logs en CloudWatch y destrucción ·
+
+### D. Certificación
+- [ ] 80 · CLF-C02 (I): la guía del examen como lista de control ·
+- [ ] 81 · CLF-C02 (II): simulacros, logística y el día del examen ·
+
+Puntuaciones en las preguntas oficiales de práctica (fecha · %):
+
+### Criterios de salida de la fase 6 (sin mirar)
+- [ ] Creo una VPC con una subred pública y otra privada, y explico por qué la base de datos va en la privada
+- [ ] Vigía corre en EC2 con un rol IAM, sin llaves guardadas en el servidor
+- [ ] El usuario raíz tiene MFA y trabajo a diario con un usuario administrador
+- [ ] Saco un 80 % o más en las preguntas oficiales de práctica
+- [ ] **CLF-C02 aprobado** (fecha y puntuación: )
+
+---
+
 ## Vigía
 
 | Versión | Fase | Estado | Etiqueta |
@@ -178,13 +222,12 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 
 | Fase | Horas (Ruta 2.0) | Estado |
 |------|------------------|--------|
-| 6 · AWS + Cloud Practitioner | 60–80 h | se escribe a continuación (la cuenta de AWS se abre al empezar esta fase) |
-| 7 · CI/CD | 25–35 h | — · **hito: empezar a postular** |
+| 7 · CI/CD | 25–35 h | se escribe a continuación · **hito: empezar a postular** |
 | 8 · Terraform | 35–45 h | — |
 | 9 · Kubernetes | 55–75 h | — |
 | 10 · Observabilidad | 25–35 h | — |
 
-Cuando una fase se abra, me pides: `escribe la fase N`. El temario de cada fase ya está en [`PLAN.md`](PLAN.md).
+El temario de cada fase está en [`PLAN.md`](PLAN.md). Antes de empezar cada fase, pídeme `revisa la fase N`.
 
 ---
 
