@@ -1,18 +1,18 @@
-# Clase 29 — P2: Servidor reproducible con cloud-init
+# Clase 37 — P2: Servidor reproducible con cloud-init
 
-**Dónde:** tu PC + VMs que crearás y destruirás · **Tiempo:** 3–4 sesiones · **Bloque:** E. Proyectos · **Proyecto de portfolio**
+**Dónde:** tu PC + VMs que crearás y destruirás · **Tiempo:** 2 bloques largos (unas 4–6 h) · **Bloque:** B. Proyectos y examen · **Laboratorio integrador**
 
 ## Objetivo
 
 Escribir **un único archivo** que convierta un Ubuntu recién creado en un servidor web **endurecido y verificado**, sin tocarlo a mano: usuario con llave, SSH sin contraseñas ni root, firewall, nginx con health check y actualizaciones automáticas. Después, demostrar que es **reproducible**: destruir el servidor y recrearlo idéntico en minutos.
 
-Este proyecto junta toda la fase 1 y es el puente directo a AWS: el mismo archivo funciona como **user-data** de una EC2.
+Este proyecto junta las fases 1 a 3 y es el puente directo a AWS: el mismo archivo funciona como **user-data** de una EC2.
 
 ## Por qué importa
 
 > *"Treat servers like cattle, not pets."*
 
-Un servidor configurado a mano (una **mascota**) es irrepetible: nadie recuerda los 40 comandos que se le aplicaron, y si muere, se pierde. Un servidor definido en código (**ganado**) se recrea igual cuantas veces haga falta: para escalar, para recuperarse de un desastre o para tener staging igual a producción. Esa es la idea central de DevOps, y la que llevarás a Terraform (fase 6), Docker (fase 3) y Kubernetes (fase 7).
+Un servidor configurado a mano (una **mascota**) es irrepetible: nadie recuerda los 40 comandos que se le aplicaron, y si muere, se pierde. Un servidor definido en código (**ganado**) se recrea igual cuantas veces haga falta: para escalar, para recuperarse de un desastre o para tener staging igual a producción. Esa es la idea central de DevOps, y la que llevarás a Docker (fase 5), Terraform (fase 8) y Kubernetes (fase 9).
 
 ## Teoría: cloud-init
 
@@ -56,11 +56,11 @@ El servidor `web-01` debe cumplir **todo** esto nada más arrancar, sin interven
 | R1 | Usuario `deploy` con tu llave pública, sin contraseña utilizable | 09, 15 |
 | R2 | SSH: sin contraseñas, sin root y con `MaxAuthTries 3` | 15 |
 | R3 | Paquetes actualizados y `unattended-upgrades` activo | 10 |
-| R4 | nginx sirve una página propia y `GET /health` → `200 ok` | 12, 22 |
-| R5 | Firewall: solo entran 22 y 80. Todo lo demás, descartado | 23 |
+| R4 | nginx sirve una página propia y `GET /health` → `200 ok` | 12, 32 |
+| R5 | Firewall: solo entran 22 y 80. Todo lo demás, descartado | 33 |
 | R6 | `fail2ban` activo (banea IPs tras intentos de SSH fallidos) | 13, 15 |
 | R7 | La configuración se puede recrear **idéntica** en < 5 minutos | 08 |
-| R8 | Un script `verify.sh` comprueba R1–R6 **desde fuera** y sale con código 0 solo si todo está bien | 04, 16, 19 |
+| R8 | Un script `verify.sh` comprueba R1–R6 **desde fuera** y sale con código 0 solo si todo está bien | 04, 19, 26, 29 |
 
 ## Práctica guiada
 
@@ -204,12 +204,12 @@ Súbelo con rama y PR. Actualiza `projects/README.md`: P2 → ✅.
 
 ## Cierre
 
-En `notas/fase-1/clase-29.md`:
+En `notas/fase-3/clase-37.md`:
 
 1. ¿Qué significa *cattle, not pets*? ¿Qué ganas al definir un servidor en un archivo?
 2. ¿Qué equivalencia hay entre este proyecto y lanzar una EC2? ¿Qué partes cambiarían en AWS (piensa en el firewall y en las llaves)?
 3. ¿Por qué `verify.sh` comprueba desde **fuera** y no con comandos dentro de la VM?
-4. **Repaso (clase 28, sin mirar):** cuenta en 4 líneas tu incidente favorito del P1 con el formato STAR.
+4. **Repaso (clase 36, sin mirar):** cuenta en 4 líneas tu incidente favorito del P1 con el formato STAR.
 
 ## Autocorrección
 
@@ -336,4 +336,4 @@ Este script se probó contra un servidor endurecido (11 ✅, código 0) y contra
 
 ## Siguiente
 
-[Clase 30 — Examen de la fase 1](clase-30-examen.md)
+[Clase 38 — Examen de fundamentos](clase-38-examen.md)

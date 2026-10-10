@@ -295,7 +295,7 @@ Encuentra cuál fue (CPU, memoria, disco lleno o disco saturado de escrituras) c
 
 ## Reto
 
-1. Escribe un **one-liner** de salud que imprima en una línea: carga del 1.er minuto, memoria `available` en MB y % de uso del disco `/`. (Pistas: `cut -d' ' -f1 /proc/loadavg`, `free -m | awk '/Mem/ {print $7}'`, `df --output=pcent / | tail -1`.) Será el embrión de tu proyecto P3.
+1. Escribe un **one-liner** de salud que imprima en una línea: carga del 1.er minuto, memoria `available` en MB y % de uso del disco `/`. (Pistas: `cut -d' ' -f1 /proc/loadavg`, `free -m | awk '/Mem/ {print $7}'`, `df --output=pcent / | tail -1`.) Lo convertirás en un script de verdad en el bloque C.
 2. ¿Qué tamaño tienen los 5 archivos más grandes de todo el sistema? (`sudo find / -xdev -type f -size +50M -exec ls -lh {} + 2>/dev/null | sort -k5 -h | tail -5`)
 3. ¿Cuánto swap tiene la VM? Busca qué es `vm.swappiness` (`cat /proc/sys/vm/swappiness`).
 4. Crea un archivo, hazle un enlace duro y un enlace simbólico, y borra el original. ¿Cuál de los dos sigue funcionando? Explícalo con `ls -li`.

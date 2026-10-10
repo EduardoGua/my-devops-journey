@@ -1,6 +1,6 @@
-# Clase 16 — Cómo viaja una petición: el modelo de capas
+# Clase 26 — Cómo viaja una petición: el modelo de capas
 
-**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 75 min · **Bloque:** C. Redes
+**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 75 min · **Bloque:** A. Redes
 
 ## Objetivo
 
@@ -64,7 +64,7 @@ En entrevistas te hablarán de "capa 7" o "capa 4". Eso viene del modelo **OSI**
  5. Cierre: FIN / ACK en ambos sentidos
 ```
 
-(Si fuese un nombre como `ejemplo.com`, antes de todo habría una consulta **DNS**: clase 21. Si fuese a otra red, el paso 1 buscaría la MAC del **router**: clase 20.)
+(Si fuese un nombre como `ejemplo.com`, antes de todo habría una consulta **DNS**: clase 31. Si fuese a otra red, el paso 1 buscaría la MAC del **router**: clase 30.)
 
 ### Diagnóstico de abajo arriba
 
@@ -133,7 +133,7 @@ Para con `Ctrl+C`. Ahora mira el **contenido** (HTTP va en texto claro):
 ```bash
 sudo tcpdump -i any -nn -A port 80
 ```
-Repite el `curl` desde tu PC. Verás `GET / HTTP/1.1`, las cabeceras y el HTML. **Cualquiera en el camino puede leer HTTP**: por eso existe HTTPS (clase 22).
+Repite el `curl` desde tu PC. Verás `GET / HTTP/1.1`, las cabeceras y el HTML. **Cualquiera en el camino puede leer HTTP**: por eso existe HTTPS (clase 32).
 
 ### 4. Cada capa con su herramienta
 
@@ -189,7 +189,7 @@ En AWS, un **timeout** al conectar a una EC2 es casi siempre un **security group
 
 ## Cierre
 
-En `notas/fase-1/clase-16.md`:
+En `notas/fase-3/clase-26.md`:
 
 1. Explica las 4 capas de TCP/IP con la analogía que prefieras. ¿Qué dirección usa cada una?
 2. Cuenta el *handshake* TCP y qué viste en `tcpdump`.
@@ -205,7 +205,7 @@ En `notas/fase-1/clase-16.md`:
 
 **2.** El cliente envía **SYN** (quiere conectar), el servidor responde **SYN-ACK** (acepta) y el cliente confirma con **ACK**. En `tcpdump`: `[S]`, `[S.]`, `[.]`. Después, paquetes `[P.]` con la petición y la respuesta, y el cierre con `[F.]`.
 
-**3.** **Refused**: el paquete llegó y el kernel respondió con RST porque nadie escucha en ese puerto. Hay que mirar el **servicio**: ¿está activo? ¿en qué puerto y en qué IP escucha? (`ss -tlnp`, clase 19). **Timeout**: no llegó respuesta. Algo **descarta** el paquete o no hay camino: en AWS se revisa el **security group** (regla de entrada para ese puerto y origen), la **NACL**, la **tabla de rutas** (¿hay Internet Gateway?), si la instancia tiene IP pública y si está encendida.
+**3.** **Refused**: el paquete llegó y el kernel respondió con RST porque nadie escucha en ese puerto. Hay que mirar el **servicio**: ¿está activo? ¿en qué puerto y en qué IP escucha? (`ss -tlnp`, clase 29). **Timeout**: no llegó respuesta. Algo **descarta** el paquete o no hay camino: en AWS se revisa el **security group** (regla de entrada para ese puerto y origen), la **NACL**, la **tabla de rutas** (¿hay Internet Gateway?), si la instancia tiene IP pública y si está encendida.
 
 **4.** Porque si la configuración nueva tiene un error, se cierra la puerta para las conexiones **nuevas**, pero la sesión que ya está abierta sigue funcionando y permite deshacer el cambio. Sin ella, puedes perder el acceso al servidor.
 
@@ -226,4 +226,4 @@ En `notas/fase-1/clase-16.md`:
 
 ## Siguiente
 
-[Clase 17 — Direcciones IP y CIDR](clase-17-ip-y-cidr.md)
+[Clase 27 — Direcciones IP y CIDR](clase-27-ip-y-cidr.md)

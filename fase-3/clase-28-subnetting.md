@@ -1,13 +1,13 @@
-# Clase 18 — Subnetting: diseñar redes como en una VPC
+# Clase 28 — Subnetting: diseñar redes como en una VPC
 
-**Dónde:** papel + tu PC (Python para comprobar) · **Tiempo:** 90 min · **Bloque:** C. Redes
+**Dónde:** papel + tu PC (Python para comprobar) · **Tiempo:** 90 min · **Bloque:** A. Redes
 
 ## Objetivo
 
 - **Dividir** un bloque CIDR en subredes iguales sin solapes.
 - Diseñar el direccionamiento de una **VPC de AWS real**: subredes públicas, privadas y de base de datos en varias zonas de disponibilidad, con margen para crecer.
 - Detectar **solapamientos** y entender por qué impiden conectar redes.
-- Dejar escrito tu primer **documento de diseño de red**, que reutilizarás en el proyecto P6.
+- Dejar escrito tu primer **documento de diseño de red**, que reutilizarás cuando despliegues Vigía en AWS (fase 6).
 
 ## Por qué importa
 
@@ -60,7 +60,7 @@ VPC 10.0.0.0/16  (región us-east-1)
 
 Qué hay detrás de cada decisión:
 - **Una subred vive en una sola AZ.** Para alta disponibilidad, se repite cada capa en al menos **2 AZs**.
-- **Pública** = su tabla de rutas tiene salida a un **Internet Gateway**. **Privada** = no la tiene (clase 20). "Pública" no la decide el nombre: la decide **la ruta**.
+- **Pública** = su tabla de rutas tiene salida a un **Internet Gateway**. **Privada** = no la tiene (clase 30). "Pública" no la decide el nombre: la decide **la ruta**.
 - **Capas separadas** (web, app, datos): cada capa tiene su security group, y la base de datos no es alcanzable desde internet.
 - **Numeración con patrón** (`10.0.0.x` públicas, `10.0.1x.x` app, `10.0.2x.x` datos): cualquiera entiende una IP de un vistazo durante un incidente.
 - **Margen**: no gastes el `/16` entero el primer día. Una AZ nueva, una capa nueva o **Kubernetes** (en EKS, **cada pod consume una IP de la VPC**) pueden necesitar muchas IPs.
@@ -100,7 +100,7 @@ print([str(s) for s in i.ip_network('172.31.0.0/16').subnets(new_prefix=20)][:3]
 
 ### 3. Una herramienta tuya
 
-Crea `~/my-devops-journey/labs/clase-18/subredes.py`:
+Crea `~/my-devops-journey/labs/clase-28/subredes.py`:
 
 ```python
 #!/usr/bin/env python3
@@ -115,7 +115,7 @@ for s in red.subnets(new_prefix=nuevo):
 ```
 
 ```bash
-cd ~/my-devops-journey/labs/clase-18
+cd ~/my-devops-journey/labs/clase-28
 chmod +x subredes.py
 ./subredes.py 10.0.0.0/24 26
 ./subredes.py 10.0.0.0/16 20 | head
@@ -138,7 +138,7 @@ Resuelve en papel. Comprueba con tu script.
 
 ## Proyecto de la clase: tu VPC
 
-Diseña la red de **"TiendaOnline"** en AWS y guárdala en `notas/fase-1/clase-18-diseno-vpc.md`:
+Diseña la red de **"TiendaOnline"** en AWS y guárdala en `notas/fase-3/clase-28-diseno-vpc.md`:
 - Una VPC para producción, con margen para staging y dev en el futuro **sin solapes**.
 - 3 zonas de disponibilidad.
 - 3 capas: pública (ALB y NAT), app (contenedores) y datos (RDS).
@@ -153,12 +153,12 @@ Entrega:
 
 ## Cierre
 
-En `notas/fase-1/clase-18.md`:
+En `notas/fase-3/clase-28.md`:
 
 1. ¿Cuántas subredes `/24` caben en un `/20`? Explica el cálculo.
 2. ¿Por qué se repite cada capa de subredes en al menos dos AZs?
 3. ¿Por qué es grave que dos VPCs tengan rangos solapados? Pon un ejemplo de cuándo te daría problemas.
-4. **Repaso (clase 17, sin mirar):** calcula red y broadcast de `10.0.0.200/28`.
+4. **Repaso (clase 27, sin mirar):** calcula red y broadcast de `10.0.0.200/28`.
 
 ## Autocorrección
 
@@ -211,4 +211,4 @@ Todo cabe por debajo de `10.0.127.255`: la mitad superior (`10.0.128.0/17`) qued
 
 ## Siguiente
 
-[Clase 19 — Puertos, TCP y UDP](clase-19-puertos-tcp-udp.md)
+[Clase 29 — Puertos, TCP y UDP](clase-29-puertos-tcp-udp.md)

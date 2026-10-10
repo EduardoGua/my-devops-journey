@@ -10,17 +10,34 @@ Las clases son archivos Markdown con partes plegables (la autocorrección). Para
 
 Con `cat`, `less` o `nano` las respuestas de la autocorrección se ven **sin plegar**: no uses esas herramientas para leer las clases.
 
-## Tu rutina
+## Tu semana (7 horas)
+
+Es la rutina de la Ruta 2.0, adaptada a las clases:
+
+| Cuándo | Qué | Tiempo |
+|--------|-----|--------|
+| Todos los días | Anki: tu mazo de DevOps y tu mazo de inglés | 10 min |
+| 4 días entre semana | Sesión corta: 5 min para releer tu última nota, 35 min de clase y 5 min para anotar dónde te quedaste | 45 min |
+| Tu día libre | Bloque largo: la versión de Vigía que toca o, si no toca ninguna, la clase más pesada de la semana | 3 h |
+| Una vez al mes | Sumar tus horas, apuntarlas en la Ruta 2.0 y recalcular la fecha del hito | 20 min |
+
+**Una clase ocupa casi siempre dos sesiones cortas:**
+1. Sesión 1: Objetivo, Teoría y Práctica guiada.
+2. Sesión 2: Rómpelo, Reto, Cierre y Autocorrección.
+
+Si una clase dura 90 minutos o más, o es de VM (arrancar la máquina y retomar el contexto cuesta tiempo), llévala al bloque largo. Si te quedas a mitad, anota el apartado exacto y empieza por ahí la próxima vez. Media clase bien hecha vale más que una clase entera a medias.
+
+**Ritmo esperado:** unas 3 clases por semana mientras el bloque largo es para clases (fase 1 hasta la clase 20), y 2 cuando el bloque largo es para Vigía. Con 5 h por semana: tres sesiones cortas y un bloque de 2 h. Con 10 h: cinco o seis sesiones cortas y un bloque de 4 h.
+
+## Tu rutina en cada clase
 
 1. Abre [`PROGRESO.md`](PROGRESO.md). Ahí está la clase que toca.
 2. Haz la clase **con la terminal abierta al lado**, escribiendo tú cada comando. No los copies y pegues: escribirlos es parte del aprendizaje.
-3. Escribe tu cierre en `notas/fase-N/clase-XX.md`.
+3. Escribe tu cierre en `notas/fase-N/clase-XX.md` (la plantilla está en [`notas/Notas.md`](notas/Notas.md)).
 4. **Corrígete** con la sección "Autocorrección" de la clase.
-5. Marca la clase en `PROGRESO.md` y guarda en GitHub (ver más abajo).
-
-**Duración:** cada clase lleva entre 60 y 90 minutos. Si un día tienes menos tiempo, haz hasta donde llegues y continúa al día siguiente desde ese punto. Media clase bien hecha vale más que una clase entera a medias.
-
-**Ritmo recomendado:** 4–5 clases por semana. Si puedes estudiar 15 h semanales, añade los retos opcionales y Bandit.
+5. Pasa a Anki: los términos de la sección Inglés y cada pregunta del cierre que tuviste en 🟡 o ❌. Etiquétalas por tema (`tema::Linux`, `tema::Redes`…) para poder suspender las fases que aún no empiezas.
+6. Marca la clase en `PROGRESO.md` con la fecha y anota el tiempo en el registro. Esa columna te da las horas del mes para la Ruta.
+7. Guarda en GitHub (ver más abajo).
 
 ## Cómo está hecha cada clase
 
@@ -35,6 +52,8 @@ Con `cat`, `less` o `nano` las respuestas de la autocorrección se ven **sin ple
 | **Cierre** | 3 preguntas de esta clase + 1 de repaso de una clase anterior |
 | **Autocorrección** | Las respuestas, escondidas. Ábrelas **después** de escribir las tuyas |
 | **Inglés** | Vocabulario y una frase de entrevista |
+
+Las clases de **proyecto** (Vigía y los laboratorios P1 y P2) cambian un poco: requisitos, pistas graduales que abres de una en una, un Rómpelo para probar tu entrega y un entregable.
 
 ### Por qué el 🔮 Predice
 
@@ -60,11 +79,16 @@ Una **deuda** es un 🟡 o ❌ sin corrección escrita, o una parte de la clase 
 - Con **dos deudas abiertas** no se empieza una clase nueva: primero se cierran.
 - Así nada se acumula hasta el examen.
 
-## Repaso: la pregunta 4 del cierre
+## Repaso
 
-La última pregunta de cada cierre es de una clase anterior y se responde **sin mirar tus notas**. Si fallas, esa clase vuelve a ser deuda. Es el repaso espaciado, ya incluido en el curso.
+- **La pregunta 4 del cierre** es de una clase anterior y se responde **sin mirar tus notas**. Si fallas, esa clase vuelve a ser deuda.
+- **Anki, cada día:** las tarjetas que vas creando en el paso 5. En un día pesado, 10 minutos de Anki cuentan como día cumplido.
+- **Antes de cambiar de fase:** una sesión para repasar y marcar los criterios de salida en `PROGRESO.md`, solo los que cumples sin mirar.
 
-**Una vez por semana (15 min):** relee tus cierres de la semana y los términos en inglés.
+## Proyecto, inglés y portafolio
+
+- **Vigía** vive en su propio repositorio (`~/vigia`), fuera de este. Desde la fase 2, sus mensajes de commit y su README van en **inglés**: es práctica diaria sin tiempo extra, y quien revise tu GitHub lo verá.
+- Las notas del curso siguen en español.
 
 ## Guardar en GitHub al terminar cada clase
 
@@ -76,7 +100,7 @@ git commit -m "Clase 03: archivos y directorios"
 git push
 ```
 
-La clase 25 explica qué pasa por dentro. Hasta entonces, usa esta receta tal cual. Tu repo público también es tu portfolio: un historial de commits constante dice mucho de ti.
+La clase 22 explica qué pasa por dentro. Hasta entonces, usa esta receta tal cual. Tu repo público también es tu portafolio: un historial de commits constante dice mucho de ti.
 
 ## ¿Tu Ubuntu o el servidor?
 
@@ -84,29 +108,33 @@ Cada clase indica arriba dónde se practica.
 
 | Dónde | Para qué |
 |-------|----------|
-| **Tu Ubuntu** | Lo que no puede romper el sistema: archivos, texto, Git, scripts, Docker y Terraform |
+| **Tu Ubuntu** | Lo que no puede romper el sistema: archivos, texto, scripts, Git, Docker y Terraform |
 | **`servidor-01` (VM)** | Lo que en tu PC sería peligroso o imposible: usuarios y sudo, servicios, firewall, llenar el disco y configurar SSH. También todo lo que imita un servidor remoto, como una EC2 |
 | **`servidor-01` + `servidor-02`** | Redes de verdad entre dos máquinas |
 
-Regla de oro: **si el comando empieza con `sudo` y cambia la configuración del sistema, va en la VM.**
+Regla de oro: **si el comando empieza con `sudo` y cambia la configuración del sistema, va en la VM.** Instalar una herramienta de desarrollo como `shellcheck` en tu Ubuntu está bien.
 
 ## Cuando te atascas
 
 1. Lee el error **completo** y despacio. La mitad de las veces dice exactamente qué pasa.
 2. Consulta el manual del comando: `man comando` o `comando --help`.
 3. Busca el **mensaje de error exacto** en internet. Eso está bien.
-4. Si llevas **15 minutos** atascado en lo mismo, para. Tráeme el comando, la salida completa y lo que ya probaste.
+4. Si llevas **15 minutos** atascado en lo mismo, para. Tráeme el comando, la salida completa y lo que ya probaste. Si un tema no te entra, pídeme que te guíe con preguntas en lugar de darte la respuesta.
 
 Lo que **no** se hace: buscar la solución del reto o pedirle a una IA que lo resuelva por ti. En la entrevista y en el trabajo estarás solo con el error.
+
+**Reglas para no soltar la ruta** (de la Ruta 2.0): nunca dejes pasar dos semanas sin tocar el proyecto; si pierdes una semana, no dupliques horas para recuperarla, retoma el ritmo normal y recalcula; cada 8 semanas, una semana liviana de solo Anki y lectura; lo difícil va en el bloque largo, y los días cansados son para Anki, lectura y Bandit.
 
 ## Dónde va cada cosa
 
 | Ruta | Qué es |
 |------|--------|
-| [`PLAN.md`](PLAN.md) | El mapa completo: fases, proyectos y puertas |
-| [`PROGRESO.md`](PROGRESO.md) | Dónde vas, qué toca hoy y el registro de clases |
-| [`fase-1/`](fase-1/README.md) | Las clases de la fase actual |
-| `notas/fase-1/` | **Tus** cierres, uno por clase |
+| [`PLAN.md`](PLAN.md) | El mapa: las 10 fases, Vigía, certificaciones y empleo |
+| [`PROGRESO.md`](PROGRESO.md) | Dónde vas, qué toca hoy, criterios de salida y el registro de clases |
+| [`fase-1/`](fase-1/README.md), [`fase-2/`](fase-2/README.md), [`fase-3/`](fase-3/README.md) | Las clases de cada fase. Las siguientes se escriben cuando llegues |
+| `notas/fase-N/` | **Tus** cierres, uno por clase |
 | `labs/` | Lo que creas al practicar en tu Ubuntu |
-| `projects/` | Los proyectos de portfolio (P1, P2…) |
-| `recursos/` | Archivos que usan las clases (logs de ejemplo, configuraciones…) |
+| `projects/` | Los laboratorios integradores P1 y P2 |
+| `recursos/` | Archivos que usan las clases (logs de ejemplo, scripts de averías…) |
+| `~/vigia` | Tu proyecto de portafolio, en su propio repositorio |
+| Ruta Cloud & DevOps 2.0 | El registro mensual de horas y el recálculo de fechas |

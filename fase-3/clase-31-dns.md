@@ -1,6 +1,6 @@
-# Clase 21 — DNS
+# Clase 31 — DNS
 
-**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 90 min · **Bloque:** C. Redes
+**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 90 min · **Bloque:** A. Redes
 
 ## Objetivo
 
@@ -184,16 +184,16 @@ Si aun así no resuelve, restaura el snapshot `pre-dns`.
 1. ¿Qué TTL tiene el registro `A` de `amazon.com`? ¿Y el de `github.com`? ¿Por qué crees que alguien elige un TTL corto?
 2. ¿Qué servidores de correo tiene `outlook.com`? ¿Cuál se usa primero?
 3. Vas a mover `tienda.com` de un servidor viejo a un ALB nuevo. Ahora tiene TTL 86400. Escribe el plan **en orden**, con tiempos, para que el cambio sea rápido y reversible.
-4. Al terminar la clase, **quita** `servidor-01.lab` de tu `/etc/hosts`… o déjalo a propósito y anótalo, porque lo usarás en las clases 22–24. Decide y escríbelo.
+4. Al terminar la clase, **quita** `servidor-01.lab` de tu `/etc/hosts`… o déjalo a propósito y anótalo, porque lo usarás en las clases 32–34. Decide y escríbelo.
 
 ## Cierre
 
-En `notas/fase-1/clase-21.md`:
+En `notas/fase-3/clase-31.md`:
 
 1. Explica el camino de una consulta DNS, del resolutor al autoritativo. ¿Qué papel juega la caché?
 2. ¿Qué es el TTL y por qué se baja **antes** de una migración y no durante?
 3. Una app no conecta a `db.interna`. ¿Cómo distingues si es un problema de DNS o de red? ¿Por qué usarías `getent` y no solo `dig`?
-4. **Repaso (clase 20, sin mirar):** ¿qué hace pública a una subred en AWS?
+4. **Repaso (clase 30, sin mirar):** ¿qué hace pública a una subred en AWS?
 
 ## Autocorrección
 
@@ -233,4 +233,4 @@ En `notas/fase-1/clase-21.md`:
 
 ## Siguiente
 
-[Clase 22 — HTTP y HTTPS](clase-22-http-https.md)
+[Clase 32 — HTTP y HTTPS](clase-32-http-https.md)

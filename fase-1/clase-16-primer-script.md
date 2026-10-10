@@ -1,0 +1,323 @@
+# Clase 16 — Tu primer script: variables, argumentos y comillas
+
+**Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** C. Scripting con Bash
+
+## Objetivo
+
+- Escribir un script ejecutable: el *shebang*, el permiso `x` y las tres formas de lanzarlo.
+- Usar variables, sustitución de comandos y **expansión de parámetros**: valores por defecto y recortes de texto.
+- Recibir argumentos con `$1`, `$#` y `"$@"`, y entender por qué `"$@"` va entre comillas.
+- Separar los datos (stdout) de los mensajes de error (stderr) y terminar con un código de salida propio.
+- Ver qué hace tu script línea a línea con `bash -x`.
+
+## Por qué importa
+
+En DevOps, lo que haces a mano dos veces se escribe en un script: preparar un servidor, hacer un backup, comprobar que una web responde. Verás scripts de Bash en el *user-data* de las EC2, en los pasos de GitHub Actions y en los `entrypoint` de Docker. En las entrevistas junior es habitual que te pidan leer o escribir uno corto. Y tu proyecto de portafolio, **Vigía**, empieza siendo un script de Bash (clase 21).
+
+Las clases 16 a 20 forman el bloque de scripting. Cada una añade una pieza: hoy, la estructura de un script; después, decisiones, bucles, robustez y tareas programadas.
+
+## Teoría
+
+### Anatomía de un script
+
+```bash
+#!/bin/bash                       # shebang: qué programa interpreta el archivo
+# Uso: ./hola.sh [nombre]         # comentario: qué hace y cómo se usa
+NOMBRE="${1:-mundo}"              # variable con valor por defecto
+echo "Hola, $NOMBRE"              # la lógica
+exit 0                            # código de salida (0 = éxito)
+```
+
+El **shebang** (`#!`) tiene que ser la primera línea, desde el primer carácter. Cuando ejecutas `./hola.sh`, el kernel lee esos dos caracteres y lanza `/bin/bash ./hola.sh` por ti.
+
+### Tres formas de ejecutarlo
+
+| Forma | ¿Necesita `x`? | ¿Usa el shebang? | ¿Dónde corre? |
+|-------|----------------|------------------|---------------|
+| `./hola.sh` | sí | sí | en un proceso hijo |
+| `bash hola.sh` | no | no: eliges tú el intérprete | en un proceso hijo |
+| `source hola.sh` | no | no | **en tu shell actual** (clase 07) |
+
+Lo normal es `./hola.sh`. `source` solo se usa para cargar variables o funciones en tu shell.
+
+### Argumentos
+
+| Variable | Contiene |
+|----------|----------|
+| `$0` | el nombre con el que se llamó al script |
+| `$1` … `$9`, `${10}` | los argumentos, por posición |
+| `$#` | cuántos argumentos llegaron |
+| `"$@"` | todos, **cada uno como un argumento separado** (respeta los espacios) |
+| `$?` | código de salida del último comando (clase 04) |
+
+### Expansión de parámetros
+
+Bash puede transformar el valor de una variable sin llamar a otro programa. Con `URL="https://ejemplo.com/salud"` y `ARCHIVO="backup-2026-10-12.tar.gz"`:
+
+| Expresión | Resultado | Para qué |
+|-----------|-----------|----------|
+| `${URL}` | `https://ejemplo.com/salud` | el valor; las llaves delimitan el nombre |
+| `${#ARCHIVO}` | `24` | longitud |
+| `${VAR:-defecto}` | `defecto` si `VAR` está vacía o no existe | opciones con valor por defecto |
+| `${1:?mensaje}` | si falta `$1`: imprime el mensaje en stderr y **sale con error** | argumentos obligatorios |
+| `${URL#*://}` | `ejemplo.com/salud` | quitar por la **izquierda** lo más corto que coincida |
+| `${URL%/*}` | `https://ejemplo.com` | quitar por la **derecha** lo más corto que coincida |
+| `${ARCHIVO%.tar.gz}` | `backup-2026-10-12` | quitar una extensión conocida |
+| `${ARCHIVO##*.}` | `gz` | doble = lo más **largo**: todo hasta el último punto |
+
+Truco para recordarlo: en el teclado, `#` está a la izquierda de `$` y `%` a la derecha. Un símbolo quita lo más corto; dos, lo más largo.
+
+### Datos, mensajes y código de salida
+
+```bash
+echo "resultado"                 # stdout: los datos que otro programa puede usar
+echo "Error: falta X" >&2        # stderr: mensajes para humanos y errores
+exit 2                           # convención: 0 = bien, 1 = fallo, 2 = uso incorrecto
+```
+
+`>&2` significa "manda esta salida al flujo 2" (clase 04). Así, si alguien hace `./script.sh > datos.txt`, los errores siguen apareciendo en pantalla y no ensucian los datos.
+
+## Práctica guiada
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-16 && cd ~/my-devops-journey/labs/clase-16
+```
+
+### 1. El primer script
+
+```bash
+cat > hola.sh <<'EOF'
+#!/bin/bash
+# Uso: ./hola.sh [nombre]
+NOMBRE="${1:-mundo}"
+echo "Hola, $NOMBRE. Hoy es $(date +%F) y estás en $(hostname)."
+EOF
+```
+
+🔮 **Predice:** ¿qué pasará con `./hola.sh` justo ahora?
+
+```bash
+./hola.sh
+chmod +x hola.sh
+./hola.sh
+./hola.sh Eduardo
+bash hola.sh Ana
+```
+
+El primer intento da `Permiso denegado`: el archivo aún no tenía `x` (clase 06).
+
+### 2. Argumentos y `"$@"`
+
+```bash
+cat > args.sh <<'EOF'
+#!/bin/bash
+echo "Me llamaron como: $0"
+echo "Recibí $# argumentos"
+echo "El primero es: ${1:-<ninguno>}"
+printf '  → [%s]\n' "$@"
+EOF
+chmod +x args.sh
+```
+
+`printf` repite su formato una vez por cada argumento, así que imprime cada uno entre corchetes en su propia línea.
+
+🔮 **Predice:** ¿cuántos argumentos cuenta en cada caso?
+
+```bash
+./args.sh uno dos
+./args.sh "mi informe.txt" otro
+./args.sh
+```
+
+Las comillas al llamar al script deciden qué es **un** argumento: `"mi informe.txt"` llega como uno solo. Sin argumentos, `printf` usa su formato una vez con el hueco vacío, y por eso ves `→ []`.
+
+### 3. Recortar texto con la expansión de parámetros
+
+🔮 **Predice** cada resultado antes de ejecutarlo. Usa la tabla de la teoría.
+
+```bash
+URL="https://ejemplo.com/salud"
+echo "${URL#*://}"
+echo "${URL%/*}"
+echo "${URL%%/*}"
+HOST="${URL#*://}"; HOST="${HOST%%/*}"; echo "$HOST"
+ARCHIVO="backup-2026-10-12.tar.gz"
+echo "${ARCHIVO%.tar.gz}"
+echo "${ARCHIVO#*.}"
+echo "${ARCHIVO##*.}"
+echo "${#ARCHIVO}"
+```
+
+Sacar el host de una URL en dos pasos es justo lo que hará Vigía para medir el DNS (clase 35).
+
+### 4. Un script con argumento obligatorio
+
+```bash
+cat > tamano.sh <<'EOF'
+#!/bin/bash
+# Uso: ./tamano.sh <ruta>
+# Imprime cuánto ocupa una ruta.
+RUTA="${1:?Uso: $0 <ruta>}"
+TAMANO="$(du -sh "$RUTA" 2>/dev/null | cut -f1)"
+echo "$RUTA ocupa ${TAMANO:-?}"
+EOF
+chmod +x tamano.sh
+```
+
+🔮 **Predice** el código de salida de cada llamada:
+
+```bash
+./tamano.sh ~/my-devops-journey ; echo "código: $?"
+./tamano.sh ; echo "código: $?"
+./tamano.sh /no-existe ; echo "código: $?"
+```
+
+- Sin argumento, `${1:?...}` imprime `./tamano.sh: línea 4: 1: Uso: ./tamano.sh <ruta>` y el script **sale con 1** antes de hacer nada. Así se declara un argumento obligatorio.
+- Con `/no-existe`, el script dice `/no-existe ocupa ?` y **devuelve 0**. Miente: falló, pero informa de éxito. Un pipeline de CI lo daría por bueno. Lo arreglas en la clase 17 con `if`.
+
+### 5. Separar datos y mensajes
+
+```bash
+cat > avisa.sh <<'EOF'
+#!/bin/bash
+echo "dato útil"
+echo "aviso: esto es un mensaje para humanos" >&2
+exit 3
+EOF
+chmod +x avisa.sh
+```
+
+🔮 **Predice:** ¿qué verás en pantalla en cada línea y qué quedará en `datos.txt`?
+
+```bash
+./avisa.sh > datos.txt ; echo "código: $?"
+cat datos.txt
+./avisa.sh 2>/dev/null
+```
+
+### 6. Ver el script por dentro con `bash -x`
+
+```bash
+bash -x tamano.sh ~/my-devops-journey/labs
+```
+
+Cada línea que empieza por `+` es un comando **ya expandido**, tal como lo ejecuta bash: ves el valor real de cada variable. Es la primera herramienta cuando un script "hace algo raro". Dentro de un script, `set -x` activa lo mismo a partir de esa línea y `set +x` lo desactiva.
+
+## Rómpelo
+
+**1. Espacios alrededor del `=`:**
+```bash
+NOMBRE = Eduardo
+```
+`NOMBRE: orden no encontrada`. Bash entiende "ejecuta el programa `NOMBRE` con los argumentos `=` y `Eduardo`". En una asignación no puede haber espacios: `NOMBRE=Eduardo`.
+
+**2. `$@` sin comillas:**
+```bash
+cat > sin-comillas.sh <<'EOF'
+#!/bin/bash
+printf '  → [%s]\n' $@
+EOF
+chmod +x sin-comillas.sh
+./sin-comillas.sh "mi informe.txt" otro
+./args.sh "mi informe.txt" otro
+```
+Sin comillas, bash vuelve a partir los argumentos por los espacios: `mi informe.txt` se convierte en dos. Con rutas reales, el script trabajaría sobre archivos que no existen… o sobre otros que sí existen.
+
+**3. Un script con finales de línea de Windows:**
+```bash
+printf '#!/bin/bash\r\necho "hola"\r\n' > windows.sh
+chmod +x windows.sh
+./windows.sh
+```
+`/bin/bash^M: intérprete erróneo`. Windows termina las líneas con `\r\n` y Linux con `\n`, así que el shebang pide un programa llamado `/bin/bash\r`, que no existe. Pasa cuando un script se edita en Windows o se copia de ciertas webs. Diagnóstico y arreglo:
+```bash
+cat -A windows.sh            # los \r aparecen como ^M
+sed -i 's/\r$//' windows.sh
+./windows.sh
+```
+
+**4. Una variable mal escrita:**
+```bash
+cat > typo.sh <<'EOF'
+#!/bin/bash
+DIRECTORIO="/tmp/prueba-clase16"
+mkdir -p "$DIRECTORIO"
+touch "$DIRECTORIO/a.txt" "$DIRECTORIO/b.txt"
+echo "Archivos en $DIRETORIO:"
+ls "$DIRETORIO"
+EOF
+chmod +x typo.sh && ./typo.sh
+```
+`$DIRETORIO` (falta una C) no existe, así que vale vacío **sin ningún aviso**, y `ls` recibe `''`. Aquí solo falla un `ls`. Imagina `rm -rf "$DIRETORIO"/*`: se convertiría en `rm -rf /*`. En 2015, un script de Steam para Linux hizo exactamente eso y borró los archivos de algunos usuarios. En la clase 19 activarás `set -u`, que convierte este error en una parada inmediata, y `shellcheck` te avisará de la errata (`Possible misspelling: DIRETORIO`) antes de ejecutar nada.
+
+## Reto
+
+1. Escribe `info.sh`, que imprima en cuatro líneas el nombre del equipo, la versión del kernel (`uname -r`), cuánto tiempo lleva encendido (`uptime -p`) y el porcentaje de uso del disco `/` (`df -h /` y `awk`). Guarda cada valor en una variable antes de imprimirlo.
+2. Escribe `extension.sh <archivo>`, que imprima el nombre sin extensión y la extensión, usando solo expansión de parámetros (sin `cut`): `./extension.sh informe.final.pdf` → `nombre: informe.final · extensión: pdf`.
+3. Haz que `tamano.sh` acepte un segundo argumento **opcional**: la etiqueta que se muestra. `./tamano.sh ~/Descargas "Mis descargas"` → `Mis descargas ocupa 1,2G`. Sin segundo argumento, muestra la ruta como hasta ahora.
+4. Ejecuta `./tamano.sh /no-existe; echo $?` y explica en tus notas por qué ese resultado es un problema.
+
+## Cierre
+
+En `notas/fase-1/clase-16.md`:
+
+1. ¿Qué es el shebang? ¿Qué pasa si lo olvidas y el script lo lanza `cron`, que usa `/bin/sh`?
+2. ¿Qué diferencia hay entre `"$@"` y `$@`? ¿Cuándo se nota?
+3. ¿Por qué los mensajes de error van a stderr y los datos a stdout?
+4. **Repaso (clase 15, sin mirar):** ¿qué guardas en `~/.ssh/config` y qué te ahorra?
+
+## Autocorrección
+
+<details>
+<summary>Ábrelo solo después de escribir tus respuestas</summary>
+
+**1.** Es la primera línea, `#!/bin/bash`: le dice al kernel con qué programa interpretar el archivo cuando lo ejecutas directamente. Sin ella, el resultado depende de quién lo lance: desde bash funciona por casualidad (bash lo ejecuta él mismo), pero cron lanza los comandos con `/bin/sh` (dash), que lo interpretaría como un script de `sh`, y fallaría en lo que es propio de bash, como `[[ ]]`. Un programa que no es un shell daría `Exec format error`. Con `bash script.sh` el shebang se ignora.
+
+**2.** `"$@"` entrega cada argumento tal como llegó, aunque tenga espacios. `$@` sin comillas los vuelve a partir por los espacios (y además expande comodines). Se nota en cuanto un argumento tiene espacios, como una ruta `"mi informe.txt"`, que se convierte en dos argumentos.
+
+**3.** Para que la salida normal contenga solo datos y se pueda redirigir, encadenar con `|` o capturar con `$(...)` sin que se cuele un mensaje. Los errores siguen viéndose en pantalla, o se guardan aparte (`2> errores.log`). En cron y en CI se pueden registrar por separado.
+
+**4.** Alias de conexión: un bloque `Host` con `HostName` (IP o nombre), `User`, `IdentityFile` y, si hace falta, `Port`. Te permite escribir `ssh servidor-01` en lugar de `ssh -i ~/.ssh/lab_ed25519 ubuntu@10.x.x.x`, y lo usan también `scp`, `rsync` y `git`.
+
+**Reto (soluciones posibles):**
+```bash
+cat > info.sh <<'EOF'
+#!/bin/bash
+# Uso: ./info.sh — resumen del equipo
+HOST="$(hostname)"
+KERNEL="$(uname -r)"
+ENCENDIDO="$(uptime -p)"
+DISCO="$(df -h / | awk 'NR==2 {print $5}')"
+echo "Equipo:    $HOST"
+echo "Kernel:    $KERNEL"
+echo "Encendido: $ENCENDIDO"
+echo "Disco /:   $DISCO usado"
+EOF
+
+cat > extension.sh <<'EOF'
+#!/bin/bash
+# Uso: ./extension.sh <archivo>
+ARCHIVO="${1:?Uso: $0 <archivo>}"
+echo "nombre: ${ARCHIVO%.*} · extensión: ${ARCHIVO##*.}"
+EOF
+```
+En `tamano.sh`, añade `ETIQUETA="${2:-$RUTA}"` y cambia el `echo` por `echo "$ETIQUETA ocupa ${TAMANO:-?}"`. Fíjate en que tu Ubuntu está en español: `du` escribe `1,2G`, con coma.
+
+**Reto 4:** devuelve 0 aunque la ruta no existe, así que quien lo use (otro script, cron, un pipeline) cree que todo fue bien. Un script debe devolver un código distinto de 0 cuando falla.
+</details>
+
+## Inglés
+
+| Término | Significado |
+|---------|-------------|
+| shebang | la línea `#!` del principio |
+| positional parameters | argumentos posicionales (`$1`, `$2`…) |
+| parameter expansion | expansión de parámetros |
+| exit status | código de salida |
+| to trace a script | trazar un script (`bash -x`) |
+
+🎙️ *"I keep my scripts readable: a usage line at the top, quoted variables, errors to stderr and a meaningful exit code."*
+
+## Siguiente
+
+[Clase 17 — Decisiones: if, test y case](clase-17-decisiones.md)

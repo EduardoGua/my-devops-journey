@@ -1,6 +1,6 @@
-# Clase 28 — P1: Runbook de incidentes
+# Clase 36 — P1: Runbook de incidentes
 
-**Dónde:** VM nueva `incidentes` + tu PC · **Tiempo:** 3–4 sesiones · **Bloque:** E. Proyectos · **Proyecto de portfolio**
+**Dónde:** VM nueva `incidentes` + tu PC · **Tiempo:** 2 bloques largos (unas 4–6 h) · **Bloque:** B. Proyectos y examen · **Laboratorio integrador**
 
 ## Objetivo
 
@@ -33,7 +33,7 @@ Un **runbook** es la guía que usa la persona de guardia cuando salta una alerta
 Desde tu PC:
 ```bash
 multipass launch lts --name incidentes --cpus 1 --memory 1G --disk 8G
-multipass transfer ~/my-devops-journey/recursos/clase-28/incidentes.sh incidentes:/home/ubuntu/
+multipass transfer ~/my-devops-journey/recursos/clase-36/incidentes.sh incidentes:/home/ubuntu/
 multipass exec incidentes -- chmod +x /home/ubuntu/incidentes.sh
 multipass exec incidentes -- sudo /home/ubuntu/incidentes.sh preparar
 ```
@@ -49,7 +49,7 @@ IPI=$(multipass info incidentes | awk '/IPv4/ {print $2}')
 curl -s http://$IPI/ ; curl -s http://$IPI/api/
 ```
 
-Añade la llave y una entrada `incidentes` en tu `~/.ssh/config` (como en la clase 24) para trabajar con `ssh incidentes`.
+Añade la llave y una entrada `incidentes` en tu `~/.ssh/config` (como en la clase 34) para trabajar con `ssh incidentes`.
 
 > 🙈 **Regla de honor:** no leas `incidentes.sh` más allá de su cabecera hasta terminar el proyecto. Si lo lees, el ejercicio se convierte en seguir instrucciones, y en una entrevista se notará.
 
@@ -62,7 +62,7 @@ ssh incidentes sudo ./incidentes.sh romper 1          # provoca el incidente 1 s
 
 Después:
 1. **Empieza desde fuera, como el usuario:** `curl -sv http://$IPI/` y `/api/`. Anota el síntoma exacto (código, tiempo, mensaje).
-2. **Sigue tu checklist de la clase 24**, capa a capa. Anota **cada comando** y lo que te enseñó.
+2. **Sigue tu checklist de la clase 34**, capa a capa. Anota **cada comando** y lo que te enseñó.
 3. Formula una hipótesis, compruébala y **arréglalo tú**, a mano. El script no lo arregla por ti.
 4. Verifica: `ssh incidentes sudo ./incidentes.sh comprobar` → `✅`. **Y además desde tu PC con `curl`**: algunos fallos solo se ven desde fuera.
 5. Escribe la entrada del runbook (plantilla más abajo).
@@ -154,12 +154,12 @@ Una app que de repente devuelve 500 al **escribir**… Lee su log (`journalctl -
 
 <details><summary>Incidente 5 — pista</summary>
 
-Si nginx no arranca, ¿por qué? `systemctl status nginx`, `nginx -t`. ¿Cómo encuentra nginx a `api.shop.internal`? (clase 21: `getent hosts`).
+Si nginx no arranca, ¿por qué? `systemctl status nginx`, `nginx -t`. ¿Cómo encuentra nginx a `api.shop.internal`? (clase 31: `getent hosts`).
 </details>
 
 <details><summary>Incidente 6 — pista</summary>
 
-¿Refused o timeout desde tu PC? ¿Funciona `curl 127.0.0.1` **dentro** de la VM? Si dentro funciona y fuera no, ¿qué hay en medio? (clase 23)
+¿Refused o timeout desde tu PC? ¿Funciona `curl 127.0.0.1` **dentro** de la VM? Si dentro funciona y fuera no, ¿qué hay en medio? (clase 33)
 </details>
 
 <details><summary>Incidente 7 — pista</summary>
@@ -169,12 +169,12 @@ Si nginx no arranca, ¿por qué? `systemctl status nginx`, `nginx -t`. ¿Cómo e
 
 ## Cierre
 
-En `notas/fase-1/clase-28.md`:
+En `notas/fase-3/clase-36.md`:
 
 1. ¿Qué incidente te costó más y por qué? ¿Qué harías distinto la próxima vez?
 2. ¿En cuántos incidentes la causa estaba en una capa distinta de donde se veía el síntoma? Pon un ejemplo.
 3. Prepara la historia de **un** incidente con el formato **STAR** (Situación, Tarea, Acción, Resultado) en inglés, para contarla en una entrevista en 2 minutos.
-4. **Repaso (clase 27, sin mirar):** ¿por qué no se hace `git push --force` a una rama compartida?
+4. **Repaso (clase 24, sin mirar):** ¿por qué no se hace `git push --force` a una rama compartida?
 
 ## Autocorrección
 
@@ -199,9 +199,9 @@ En `notas/fase-1/clase-28.md`:
 ## Al terminar
 
 - `multipass stop incidentes` (o bórrala: `multipass delete --purge incidentes`; los snapshots se van con ella).
-- Sube el proyecto: ramita, PR y merge, como en la clase 27.
+- Sube el proyecto: ramita, PR y merge, como en la clase 24.
 - Actualiza `projects/README.md`: estado de P1 → ✅.
 
 ## Siguiente
 
-[Clase 29 — P2: Servidor reproducible con cloud-init](clase-29-p2-cloud-init.md)
+[Clase 37 — P2: Servidor reproducible con cloud-init](clase-37-p2-cloud-init.md)

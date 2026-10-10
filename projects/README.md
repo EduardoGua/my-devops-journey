@@ -1,15 +1,25 @@
 # Projects
 
-Portfolio projects. Each one has its own README in English.
+My portfolio project, **Vigía**, lives in its own repository. Each version adds a layer of the DevOps stack:
 
-| Project | Phase | Folder | Status |
-|---------|-------|--------|--------|
-| P1 — Incident runbook | F1 | `p1-incident-runbook/` | — |
-| P2 — Reproducible hardened server (cloud-init) | F1 | `p2-cloud-init-server/` | — |
-| P3 — Server monitor (Bash + Python) | F2 | — | — |
-| P4 — Containerized app (Docker Compose) | F3 | — | — |
-| P5 — CI/CD pipeline (GitHub Actions) | F4 | — | — |
-| P6 — Three-tier app on AWS | F5 | — | — |
-| P7 — AWS infrastructure in Terraform | F6 | — | — |
-| P8 — App on Kubernetes (kind) | F7 | — | — |
-| Capstone | F8 | — | — |
+| Version | Phase | What it adds | Status |
+|---------|-------|--------------|--------|
+| v0 | 1 | Bash script + cron | — |
+| v0.1 | 2 | GitHub, branches and pull requests | — |
+| v0.2 | 3 | DNS lookup time and TLS certificate expiry | — |
+| v1 | 4 | Python rewrite, SQLite, minimal JSON API, pytest | — |
+| v2 | 5 | Dockerfile and Docker Compose | — |
+| v3 | 6 | Deployment on AWS (EC2, IAM role, S3, CloudWatch) | — |
+| v4 | 7 | CI/CD pipeline with GitHub Actions | — |
+| v5 | 8 | Infrastructure in Terraform | — |
+| v6 | 9 | Kubernetes (kind): Deployment and CronJob | — |
+| v7 | 10 | Metrics, Prometheus, Grafana and alerts | — |
+
+## Course labs
+
+Integration labs that live in this repository. Each one has its own README in English.
+
+| Lab | Phase | Folder | Status |
+|-----|-------|--------|--------|
+| P1 — Incident runbook | 3 | `p1-incident-runbook/` | — |
+| P2 — Reproducible hardened server (cloud-init) | 3 | `p2-cloud-init-server/` | — |

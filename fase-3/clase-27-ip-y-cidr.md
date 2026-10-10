@@ -1,6 +1,6 @@
-# Clase 17 — Direcciones IP y CIDR
+# Clase 27 — Direcciones IP y CIDR
 
-**Dónde:** papel y lápiz + tu PC + VM · **Tiempo:** 90 min · **Bloque:** C. Redes
+**Dónde:** papel y lápiz + tu PC + VM · **Tiempo:** 90 min · **Bloque:** A. Redes
 
 > Esta es probablemente **la clase más importante del bloque de redes**. Hazla con papel. No avances hasta poder calcular una subred sin herramientas.
 
@@ -167,7 +167,7 @@ python3 -c "import ipaddress as i; n=i.ip_interface('192.168.1.130/26').network;
 
 ### 4. Metadatos de una instancia
 
-Cuando estés en AWS (fase 5), dentro de una EC2:
+Cuando estés en AWS (fase 6), dentro de una EC2:
 ```bash
 curl http://169.254.169.254/latest/meta-data/      # (requiere token con IMDSv2)
 ```
@@ -200,12 +200,12 @@ Resuelve **sin calculadora**. Después comprueba con `ipcalc` o Python. Escribe 
 
 ## Cierre
 
-En `notas/fase-1/clase-17.md`:
+En `notas/fase-3/clase-27.md`:
 
 1. Explica con tus palabras qué significa el `/24` de `10.0.1.0/24`. ¿Qué parte es fija y qué parte varía?
 2. Describe paso a paso el método del tamaño de bloque con `10.0.0.200/28`.
 3. ¿Por qué `0.0.0.0/0` en un security group es peligroso en el puerto 22, pero normal en el 443 de una web pública?
-4. **Repaso (clase 16, sin mirar):** ¿qué significa `Connection refused` frente a un `timeout`?
+4. **Repaso (clase 26, sin mirar):** ¿qué significa `Connection refused` frente a un `timeout`?
 
 ## Autocorrección
 
@@ -251,4 +251,4 @@ En `notas/fase-1/clase-17.md`:
 
 ## Siguiente
 
-[Clase 18 — Subnetting: diseñar redes como en una VPC](clase-18-subnetting.md)
+[Clase 28 — Subnetting: diseñar redes como en una VPC](clase-28-subnetting.md)

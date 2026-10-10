@@ -296,7 +296,7 @@ En `notas/fase-1/clase-12.md`:
 
 **1.** `start` lo arranca **ahora**. `enable` hace que arranque **en cada inicio del sistema**, pero no lo arranca en el momento. El incidente: alguien arranca un servicio a mano, comprueba que funciona y se va. Semanas después la instancia se reinicia (mantenimiento de AWS, un parche del kernel) y el servicio no vuelve. La web cae "sin que nadie tocara nada". Por eso: `enable --now` y comprobar `is-enabled`.
 
-**2.** (a) `systemctl status x`: si está activo o failed, el código de salida, el PID y las últimas líneas de log. (b) `journalctl -u x -n 50 --no-pager` (o `-xeu x`): el error completo, por ejemplo un ejecutable inexistente, un permiso denegado o un puerto ocupado. (c) `systemctl cat x`: la unit efectiva, para revisar rutas, usuario y variables. Después, comprobar con una petición real (`curl`) o con `ss -tlnp` (clase 19).
+**2.** (a) `systemctl status x`: si está activo o failed, el código de salida, el PID y las últimas líneas de log. (b) `journalctl -u x -n 50 --no-pager` (o `-xeu x`): el error completo, por ejemplo un ejecutable inexistente, un permiso denegado o un puerto ocupado. (c) `systemctl cat x`: la unit efectiva, para revisar rutas, usuario y variables. Después, comprobar con una petición real (`curl`) o con `ss -tlnp` (clase 29).
 
 **3.** Por mínimo privilegio: si la app tiene una vulnerabilidad y alguien la explota, el atacante obtiene los permisos de `appsvc` (solo puede tocar `/srv/miapp`), no los de root, que le darían la máquina entera. Además, un error de la propia app no puede borrar el sistema.
 

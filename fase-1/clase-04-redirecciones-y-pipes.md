@@ -147,7 +147,7 @@ El error salió por pantalla. En el momento de `2>&1`, stdout todavía apuntaba 
 ```bash
 cat /no-existe | wc -l ; echo "código: $?"
 ```
-El código es 0 aunque `cat` falló: `$?` es el código del **último** comando del pipe (`wc`). En la fase 2 lo arreglarás con `set -o pipefail`. Por ahora, recuérdalo: un pipeline en verde no garantiza que todo haya ido bien.
+El código es 0 aunque `cat` falló: `$?` es el código del **último** comando del pipe (`wc`). En la clase 19 lo arreglarás con `set -o pipefail`. Por ahora, recuérdalo: un pipeline en verde no garantiza que todo haya ido bien.
 
 ## Reto
 

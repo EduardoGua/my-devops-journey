@@ -1,7 +1,7 @@
-# Fase 1 — Fundamentos: Linux, Redes y Git
+# Fase 1 — Linux y Bash
 
-**Duración estimada:** 9–11 semanas a 10–15 h por semana.
-**Al terminar:** administras un servidor Linux por SSH, entiendes una red lo bastante para diseñar una VPC y diagnosticar por qué "no conecta", y trabajas con Git como en un equipo real.
+**Horas (Ruta 2.0):** 35–45 h · unas 5–7 semanas a 7 h por semana.
+**Al terminar:** administras un servidor Linux por SSH, automatizas tareas con scripts de Bash que se ejecutan solos con cron, y Vigía v0 vigila tus sitios web desde tu equipo.
 
 ## Clases
 
@@ -24,32 +24,40 @@
 | 13 | [Logs y journalctl](clase-13-logs.md) | VM | 75 min |
 | 14 | [Recursos: CPU, memoria y disco](clase-14-recursos.md) | VM | 120 min |
 | 15 | [SSH a fondo](clase-15-ssh.md) | Ubuntu + VM | 90 min |
-| | **C. Redes** | | |
-| 16 | [Cómo viaja una petición: el modelo de capas](clase-16-modelo-de-capas.md) | VM | 75 min |
-| 17 | [Direcciones IP y CIDR](clase-17-ip-y-cidr.md) | papel + VM | 90 min |
-| 18 | [Subnetting: diseñar redes como en una VPC](clase-18-subnetting.md) | papel | 90 min |
-| 19 | [Puertos, TCP y UDP](clase-19-puertos-tcp-udp.md) | Ubuntu + VM | 90 min |
-| 20 | [Rutas, gateway y NAT](clase-20-rutas-y-nat.md) | VM | 75 min |
-| 21 | [DNS](clase-21-dns.md) | Ubuntu + VM | 90 min |
-| 22 | [HTTP y HTTPS](clase-22-http-https.md) | Ubuntu + VM | 90 min |
-| 23 | [Firewall](clase-23-firewall.md) | VM | 90 min |
-| 24 | [Dos servidores: tu primera red](clase-24-dos-servidores.md) | 2 VMs | 120 min |
-| | **D. Git y GitHub** | | |
-| 25 | [Git por dentro](clase-25-git-por-dentro.md) | Ubuntu | 90 min |
-| 26 | [Ramas, merge y conflictos](clase-26-ramas-y-conflictos.md) | Ubuntu | 90 min |
-| 27 | [GitHub y pull requests](clase-27-github-y-pull-requests.md) | Ubuntu + GitHub | 75 min |
-| | **E. Proyectos y examen** | | |
-| 28 | [P1 — Runbook de incidentes](clase-28-p1-incidentes.md) | VM | 3–4 sesiones |
-| 29 | [P2 — Servidor reproducible con cloud-init](clase-29-p2-cloud-init.md) | VM | 3–4 sesiones |
-| 30 | [Examen de la fase 1](clase-30-examen.md) | sin apuntes | 2 h |
+| | **C. Scripting con Bash** | | |
+| 16 | [Tu primer script: variables, argumentos y comillas](clase-16-primer-script.md) | Ubuntu | 75 min |
+| 17 | [Decisiones: if, test y case](clase-17-decisiones.md) | Ubuntu | 75 min |
+| 18 | [Bucles: for, while y leer archivos](clase-18-bucles.md) | Ubuntu | 75 min |
+| 19 | [Funciones y scripts robustos: set -euo pipefail, trap y logs](clase-19-scripts-robustos.md) | Ubuntu | 90 min |
+| 20 | [Tareas programadas: cron y un backup con rotación](clase-20-cron-y-backups.md) | Ubuntu | 90 min |
+| | **D. Proyecto** | | |
+| 21 | [Vigía v0: Bash + cron](clase-21-vigia-v0.md) | Ubuntu | 2 bloques largos |
 
-**En paralelo desde la clase 05:** [Bandit](bandit.md), un juego de seguridad por SSH. 20–30 minutos los días que te sobre tiempo.
+**En paralelo desde la clase 05:** [Bandit](bandit.md), un juego de seguridad por SSH. 20 minutos los días cansados.
+
+Las clases de 90 o 120 minutos y las de VM rinden más en tu bloque largo de la semana. Las demás caben en dos sesiones cortas (ver [`COMO-ESTUDIAR.md`](../COMO-ESTUDIAR.md)).
 
 ## Cómo encajan los bloques
 
 ```
-A. Linux en tu PC ──► B. Un servidor de verdad ──► C. Redes entre servidores ──► D. Git ──► E. Proyectos
-   (comandos)            (administrar)                (conectar)                    (colaborar)  (demostrarlo)
+A. Linux en tu PC ──► B. Un servidor de verdad ──► C. Automatizar con Bash ──► D. Vigía v0
+   (comandos)            (administrar)                (scripts y cron)           (tu proyecto)
 ```
 
-Cada bloque usa el anterior. Las redes no se entienden sin procesos y puertos, y el proyecto P2 junta todo lo de la fase.
+Cada bloque usa el anterior: los scripts automatizan lo que ya sabes hacer a mano, y Vigía junta todo el bloque C en tu primera pieza de portafolio.
+
+## Criterios de salida
+
+Son los de la Ruta 2.0. Se marcan en [`PROGRESO.md`](../PROGRESO.md), y solo cuando los cumples **sin mirar**:
+
+- Escribes sin mirar un script que reciba una carpeta como argumento, la comprima con la fecha en el nombre y borre las copias de más de 7 días (clase 20)
+- Explicas qué hace `set -euo pipefail` y qué guarda `$?` (clases 04 y 19)
+- Encuentras con `journalctl` por qué no arrancó un servicio (clases 12 y 13)
+- Entras por SSH con llave, sin contraseña, a otra máquina o VM (clase 15)
+- Vigía v0 corre con cron y deja log (clase 21)
+
+Y, como en todo el curso: clases cerradas y ninguna deuda abierta.
+
+## Siguiente fase
+
+[Fase 2 — Git y GitHub](../fase-2/README.md)

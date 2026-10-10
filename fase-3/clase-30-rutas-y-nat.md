@@ -1,6 +1,6 @@
-# Clase 20 — Rutas, gateway y NAT
+# Clase 30 — Rutas, gateway y NAT
 
-**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 75 min · **Bloque:** C. Redes
+**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 75 min · **Bloque:** A. Redes
 
 ## Objetivo
 
@@ -191,12 +191,12 @@ La `/32` gana a `default` (`/0`) solo para esa IP. Una ruta demasiado amplia o m
 
 ## Cierre
 
-En `notas/fase-1/clase-20.md`:
+En `notas/fase-3/clase-30.md`:
 
 1. ¿Qué es el gateway por defecto y cuándo se usa?
 2. Explica la regla del prefijo más largo con un ejemplo de tu propia tabla de rutas.
 3. ¿Qué diferencia hay entre un Internet Gateway y un NAT Gateway? ¿Qué hace "pública" a una subred en AWS?
-4. **Repaso (clase 19, sin mirar):** ¿qué diferencia hay entre escuchar en `127.0.0.1` y en `0.0.0.0`?
+4. **Repaso (clase 29, sin mirar):** ¿qué diferencia hay entre escuchar en `127.0.0.1` y en `0.0.0.0`?
 
 ## Autocorrección
 
@@ -229,4 +229,4 @@ En `notas/fase-1/clase-20.md`:
 
 ## Siguiente
 
-[Clase 21 — DNS](clase-21-dns.md)
+[Clase 31 — DNS](clase-31-dns.md)

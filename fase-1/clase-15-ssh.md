@@ -283,8 +283,8 @@ sudo journalctl -u ssh --since "-7 days" --no-pager | grep "Accepted publickey f
 
 ## Fin del bloque B
 
-Ya administras un servidor: usuarios, paquetes, procesos, servicios, logs, recursos y acceso seguro. El bloque C conecta servidores entre sí: **redes**.
+Ya administras un servidor: usuarios, paquetes, procesos, servicios, logs, recursos y acceso seguro. El bloque C te enseña a **automatizar** todo eso con scripts de Bash.
 
 ## Siguiente
 
-[Clase 16 — Cómo viaja una petición](clase-16-modelo-de-capas.md)
+[Clase 16 — Tu primer script](clase-16-primer-script.md)

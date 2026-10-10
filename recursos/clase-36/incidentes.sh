@@ -1,5 +1,5 @@
 #!/bin/bash
-# Laboratorio de incidentes del proyecto P1 (clase 28).
+# Laboratorio de incidentes del proyecto P1 (clase 36).
 # Se ejecuta DENTRO de la VM "incidentes", con sudo.
 #
 #   sudo ./incidentes.sh preparar     → instala la tienda (nginx + app) en estado sano

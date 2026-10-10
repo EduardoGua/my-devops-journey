@@ -1,6 +1,6 @@
-# Clase 27 — GitHub y pull requests
+# Clase 24 — GitHub y pull requests
 
-**Dónde:** tu Ubuntu + GitHub · **Tiempo:** 75 min · **Bloque:** D. Git y GitHub
+**Dónde:** tu Ubuntu + GitHub · **Tiempo:** 75 min · **Bloque:** A. Git y GitHub
 
 ## Objetivo
 
@@ -11,7 +11,7 @@
 
 ## Por qué importa
 
-Así se trabaja en cualquier equipo. Y en DevOps, el pull request es además la **puerta del despliegue**: en el PR se ejecutan los tests y el `terraform plan`, alguien revisa, y al fusionar en `main` el pipeline despliega (fases 4 y 6). Tu GitHub también es tu **CV técnico**: los reclutadores miran tus repos, tus README y tu historial de commits.
+Así se trabaja en cualquier equipo. Y en DevOps, el pull request es además la **puerta del despliegue**: en el PR se ejecutan los tests y el `terraform plan`, alguien revisa, y al fusionar en `main` el pipeline despliega (fases 7 y 8). Tu GitHub también es tu **CV técnico**: los reclutadores miran tus repos, tus README y tu historial de commits.
 
 ## Teoría
 
@@ -198,7 +198,7 @@ Crea dos ramas desde el mismo `main` que cambien **la misma línea** del README 
 ```bash
 git switch <segunda-rama>
 git pull origin main          # trae main y fusiona: aparece el conflicto
-# resuelve como en la clase 26, después:
+# resuelve como en la clase 23, después:
 git add README.md && git commit --no-edit && git push
 ```
 El PR se actualiza solo y vuelve a poder fusionarse.
@@ -210,7 +210,7 @@ echo "aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" > secret
 git add secret.txt && git commit -m "Add config"
 git push -u origin test/secret
 ```
-GitHub puede **bloquear el push** si detecta algo con forma de credencial (*push protection*, activada por defecto en repos públicos). Aunque te deje, la lección de las clases 15 y 25 sigue en pie: si un secreto real llega a un remoto, se rota. Limpia:
+GitHub puede **bloquear el push** si detecta algo con forma de credencial (*push protection*, activada por defecto en repos públicos). Aunque te deje, la lección de las clases 15 y 22 sigue en pie: si un secreto real llega a un remoto, se rota. Limpia:
 ```bash
 git switch main && git branch -D test/secret
 git push origin --delete test/secret 2>/dev/null || true
@@ -221,9 +221,9 @@ git push origin --delete test/secret 2>/dev/null || true
 A partir de ahora, si quieres, guarda tus cierres con ramas y PRs en `my-devops-journey` (no es obligatorio, pero es buena práctica y deja un historial excelente):
 ```bash
 git switch main && git pull
-git switch -c clase-28
+git switch -c clase-25
 # … trabajas, haces commits …
-git push -u origin clase-28
+git push -u origin clase-25
 gh pr create --fill && gh pr merge --squash --delete-branch
 git switch main && git pull
 ```
@@ -236,12 +236,12 @@ git switch main && git pull
 
 ## Cierre
 
-En `notas/fase-1/clase-27.md`:
+En `notas/fase-2/clase-24.md`:
 
 1. Describe el flujo completo de un cambio con pull request, del `switch -c` a la limpieza.
 2. ¿Qué es `origin/main` y por qué no se actualiza solo?
 3. Tu push a `main` es rechazado porque el remoto tiene commits nuevos. ¿Qué haces y qué **no** debes hacer?
-4. **Repaso (clase 26, sin mirar):** ¿cuál es la regla de oro del rebase?
+4. **Repaso (clase 23, sin mirar):** ¿cuál es la regla de oro del rebase?
 
 ## Autocorrección
 
@@ -272,10 +272,10 @@ En `notas/fase-1/clase-27.md`:
 
 🎙️ *"Nothing goes straight to main. Every change goes through a pull request with a description, automated checks and at least one review."*
 
-## Fin del bloque D
+## Fin de las clases de Git
 
-Ya trabajas con Git como en un equipo. Solo quedan los proyectos que demuestran todo lo aprendido y el examen.
+Ya trabajas con Git como en un equipo. Ahora lo aplicas a tu propio proyecto: publicas Vigía.
 
 ## Siguiente
 
-[Clase 28 — P1: Runbook de incidentes](clase-28-p1-incidentes.md)
+[Clase 25 — Proyecto: Vigía v0.1](clase-25-vigia-v0.1.md)

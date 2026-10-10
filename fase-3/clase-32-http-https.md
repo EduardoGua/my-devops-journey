@@ -1,6 +1,6 @@
-# Clase 22 — HTTP y HTTPS
+# Clase 32 — HTTP y HTTPS
 
-**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 120 min (puedes partirla en dos sesiones) · **Bloque:** C. Redes
+**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 120 min (puedes partirla en dos sesiones) · **Bloque:** A. Redes
 
 ## Objetivo
 
@@ -28,7 +28,7 @@ Accept: application/json                       Cache-Control: max-age=60
 (cuerpo vacío en un GET)                       {"id":7,"nombre":"Taza","precio":9.5}
 ```
 
-Es **texto** (en HTTP/1.1) sobre TCP, como viste con `nc` en la clase 19.
+Es **texto** (en HTTP/1.1) sobre TCP, como viste con `nc` en la clase 29.
 
 ### Métodos
 
@@ -86,7 +86,7 @@ Los 5xx de un ALB te dicen **dónde** buscar: 502 → la app está caída o cier
 ### HTTPS = HTTP dentro de TLS
 
 TLS aporta tres cosas:
-1. **Cifrado**: nadie en el camino puede leer el contenido (recuerda el `tcpdump -A` de la clase 16).
+1. **Cifrado**: nadie en el camino puede leer el contenido (recuerda el `tcpdump -A` de la clase 26).
 2. **Integridad**: nadie puede modificarlo sin que se note.
 3. **Autenticidad**: el servidor demuestra que **es** `tienda.com` con un **certificado**.
 
@@ -301,12 +301,12 @@ Mira el emisor (una CA real) y la fecha `notAfter`. Esta línea es la base de cu
 
 ## Cierre
 
-En `notas/fase-1/clase-22.md`:
+En `notas/fase-3/clase-32.md`:
 
 1. Diferencia entre 401 y 403, y entre 502, 503 y 504. ¿Dónde mirarías primero en cada uno?
 2. ¿Cómo sabe nginx qué sitio servir si `tienda.lab` y `blog.lab` comparten IP y puerto?
 3. ¿Qué comprueba un cliente al conectar por HTTPS? ¿Por qué `curl -k` es peligroso fuera de un laboratorio?
-4. **Repaso (clase 21, sin mirar):** ¿por qué `dig` y `getent` pueden dar respuestas distintas para el mismo nombre?
+4. **Repaso (clase 31, sin mirar):** ¿por qué `dig` y `getent` pueden dar respuestas distintas para el mismo nombre?
 
 ## Autocorrección
 
@@ -340,4 +340,4 @@ En `notas/fase-1/clase-22.md`:
 
 ## Siguiente
 
-[Clase 23 — Firewall](clase-23-firewall.md)
+[Clase 33 — Firewall](clase-33-firewall.md)

@@ -76,7 +76,7 @@ IP cliente          fecha y hora              método ruta          estado bytes
 
 (Campos separados por espacios, como los cuenta `awk`.)
 
-**Códigos de estado HTTP:** 2xx éxito · 3xx redirección · 4xx error del cliente (404 no existe, 401 sin autenticar) · 5xx error del servidor (500 error interno, 502 el servidor de detrás no respondió). Se ven a fondo en la clase 22.
+**Códigos de estado HTTP:** 2xx éxito · 3xx redirección · 4xx error del cliente (404 no existe, 401 sin autenticar) · 5xx error del servidor (500 error interno, 502 el servidor de detrás no respondió). Se ven a fondo en la clase 32.
 
 ## Práctica guiada
 

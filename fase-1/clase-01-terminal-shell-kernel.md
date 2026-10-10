@@ -198,7 +198,7 @@ Sin mirar la práctica, responde con comandos (escribe en tu cierre el comando q
 
 ## Cierre
 
-Crea `notas/fase-1/clase-01.md` (plantilla en [`../notas/README.md`](../notas/README.md)) y responde **con tus palabras**:
+Crea `notas/fase-1/clase-01.md` (plantilla en [`../notas/Notas.md`](../notas/Notas.md)) y responde **con tus palabras**:
 
 1. ¿Qué diferencia hay entre terminal, shell y kernel? Usa tu propia analogía.
 2. Escribes `ls -l /etc` y pulsas Enter. Cuenta en 3–5 pasos qué ocurre hasta que ves la lista.

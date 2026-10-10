@@ -1,7 +1,7 @@
 # Bandit — práctica paralela
 
 **Cuándo:** desde la clase 05, los días que te sobren 20–30 minutos. **Nunca en lugar de la clase del día.**
-**Objetivo:** niveles 0–20 antes del examen de la fase 1.
+**Objetivo:** niveles 0–20 antes del examen de fundamentos (clase 38).
 
 ## Qué es
 
@@ -35,7 +35,7 @@ Crea `notas/bandit.md`:
 |---------|--------------|
 | 0–6 | Clases 02, 03 (rutas, archivos raros, ocultos), 05 (`find` por tamaño y dueño) |
 | 7–12 | Clase 05 (`grep`, `sort`, `uniq`, `strings`, `base64`, `tr`), 03 (archivos comprimidos) |
-| 13–17 | Clase 15 (llaves SSH), 19 (`nc`, puertos, `openssl s_client`) |
+| 13–17 | Clases 15 (llaves SSH) y 29 (`nc`, puertos, `openssl s_client`) |
 | 18–20 | Clase 07 (shell), 06 (setuid) |
 
 Actualiza en `PROGRESO.md` el nivel en el que vas.

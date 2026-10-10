@@ -1,6 +1,6 @@
-# Clase 25 — Git por dentro
+# Clase 22 — Git por dentro
 
-**Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** D. Git y GitHub
+**Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** A. Git y GitHub
 
 ## Objetivo
 
@@ -226,12 +226,12 @@ Estabas mirando el pasado sin rama. Si haces commits ahí y te vas, quedan huér
 
 ## Cierre
 
-En `notas/fase-1/clase-25.md`:
+En `notas/fase-2/clase-22.md`:
 
 1. Explica las tres zonas de Git y qué comando mueve cambios entre ellas.
 2. ¿Qué es una rama, físicamente? ¿Y `HEAD`?
 3. ¿Por qué `git rm` de un secreto no lo elimina? ¿Qué hay que hacer?
-4. **Repaso (clase 24, sin mirar):** a través de un proxy, ¿qué te indica un error rápido (refused) frente a uno lento (timeout)?
+4. **Repaso (clase 21, sin mirar):** en Vigía, ¿por qué una URL caída no detiene el script, aunque uses `set -e`?
 
 ## Autocorrección
 
@@ -244,7 +244,7 @@ En `notas/fase-1/clase-25.md`:
 
 **3.** Porque `git rm` crea un commit **nuevo** sin el archivo, pero los commits anteriores (inmutables) lo siguen conteniendo, y ya pueden estar en clones, forks o en caché de GitHub. Hay que **rotar** el secreto (invalidarlo y emitir uno nuevo), revisar si se usó, y después limpiar la historia (`git filter-repo` o BFG) y forzar el push, avisando al equipo.
 
-**4.** Refused (rápido): se llegó a la máquina del backend, pero nadie escucha en ese puerto e IP (servicio parado, escucha en 127.0.0.1, puerto equivocado). Timeout (lento): algo descarta los paquetes (firewall o security group), no hay ruta o la máquina está apagada.
+**4.** Porque el fallo se trata de forma explícita: el resultado de `curl` se captura con `|| true` (o dentro de un `if`), y la función que revisa cada URL se llama a la izquierda de `||` o en la condición de un `if`. En esas posiciones `set -e` no actúa, así que la caída queda registrada como `DOWN` y el script sigue con las demás URLs.
 
 **Reto 2:** el hash cambia porque `--amend` **no modifica** el commit: crea uno nuevo con otro mensaje y otro contenido, y el hash depende de todo eso. Por eso no se hace `--amend` de algo ya publicado.
 </details>
@@ -263,4 +263,4 @@ En `notas/fase-1/clase-25.md`:
 
 ## Siguiente
 
-[Clase 26 — Ramas, merge y conflictos](clase-26-ramas-y-conflictos.md)
+[Clase 23 — Ramas, merge y conflictos](clase-23-ramas-y-conflictos.md)

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Averías aleatorias para la clase 24. Se ejecuta en servidor-02 con sudo.
+# Averías aleatorias para la clase 34. Se ejecuta en servidor-02 con sudo.
 #   sudo ./averia.sh           → provoca UNA avería al azar (sin decir cuál)
 #   sudo ./averia.sh --reset   → deja el backend como al terminar la práctica guiada
 #   sudo ./averia.sh --solucion → muestra qué avería se provocó (solo después de intentarlo)
@@ -7,10 +7,10 @@
 set -euo pipefail
 
 UNIT=/etc/systemd/system/backend.service
-ESTADO=/root/.averia-clase24
+ESTADO=/root/.averia-clase34
 
 [ "$(id -u)" -eq 0 ] || { echo "Ejecútalo con sudo"; exit 1; }
-[ -f "$UNIT" ] || { echo "No existe $UNIT: termina antes la práctica guiada de la clase 24"; exit 1; }
+[ -f "$UNIT" ] || { echo "No existe $UNIT: termina antes la práctica guiada de la clase 34"; exit 1; }
 
 reset() {
   sed -i -E 's/--bind [0-9.]+/--bind 0.0.0.0/; s/http\.server [0-9]+/http.server 8080/' "$UNIT"

@@ -1,16 +1,16 @@
-# Clase 30 — Examen de la fase 1
+# Clase 38 — Examen de fundamentos (fases 1 a 3)
 
 **Tiempo:** 2 h (teoría y cálculo) + 1 h (práctica en VM) · **Sin apuntes, sin internet, sin IA** · **Aprobado: ≥ 80 %**
 
 ## Reglas
 
-- Responde en `notas/fase-1/examen-<fecha>.md`.
+- Responde en `notas/fase-3/examen-<fecha>.md`.
 - Puedes usar `man` y `--help` **solo** en la parte D (práctica). En la vida real también los tienes.
 - Cronometra. Si te pasas de tiempo, anótalo: es información, no un suspenso.
 - Corrígete al terminar con [`examen-respuestas.md`](examen-respuestas.md) y la rúbrica. Sé exigente: puntúa como lo haría un entrevistador.
 - Si no llegas al 80 %: anota qué clases fallaste, repásalas (clase + reto) y repite el examen **una semana después**. No antes: así compruebas lo que recuerdas, no lo que acabas de leer.
 
-Si quieres una segunda opinión, escríbeme `revisa examen F1`.
+Si quieres una segunda opinión, escríbeme `revisa examen fundamentos`.
 
 ---
 
@@ -26,7 +26,7 @@ Respuestas de 2–4 frases, con un ejemplo cuando sea posible.
 
 **A4.** Un compañero propone `chmod -R 777` para arreglar un "Permission denied" de nginx. ¿Qué le respondes y qué harías?
 
-**A5.** ¿Por qué un script funciona en tu terminal y falla en un cron o un servicio con "command not found"?
+**A5.** Un script funciona en tu terminal, pero programado en cron falla o no hace nada. Da tres causas distintas y cómo evitas cada una.
 
 **A6.** Diferencia entre `SIGTERM` y `SIGKILL`. ¿Qué pasa al parar un contenedor en Kubernetes?
 
@@ -110,14 +110,14 @@ Responde **en inglés**, en voz alta (grábate si puedes) y por escrito, en 4–
 
 | Total | Resultado |
 |-------|-----------|
-| ≥ 80 | ✅ Fase 1 superada: abre la fase 2 (`escribe la fase 2`) |
+| ≥ 80 | ✅ Fundamentos superados: abre la fase 4 (`escribe la fase 4`) |
 | 65–79 | Repasa las clases de las preguntas falladas y repite en una semana |
 | < 65 | Repite los retos de los bloques flojos antes de volver a intentarlo |
 
 ## Al aprobar
 
-1. Marca la clase 30 en `PROGRESO.md` y escribe la fecha.
-2. Revisa la **puerta** de la fase 1 en [`../PLAN.md`](../PLAN.md): P1 y P2 en GitHub, CIDR a mano, explicar `curl https://…` de memoria.
+1. Marca la clase 38 en `PROGRESO.md` y escribe la fecha.
+2. Revisa los **criterios de salida de la fase 3** en [`../PROGRESO.md`](../PROGRESO.md): subredes a mano, explicar `curl https://…` de memoria, diagnosticar con `dig`, `curl -v` y `ss`.
 3. Actualiza el `README.md` del repo (en inglés) con lo que ya sabes hacer: tu portfolio empieza a hablar por ti.
 4. Celébralo. Has hecho la parte más larga y más difícil del camino.
-5. Pídeme: `escribe la fase 2`.
+5. Pídeme: `escribe la fase 4`.

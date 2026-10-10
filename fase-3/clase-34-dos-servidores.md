@@ -1,6 +1,6 @@
-# Clase 24 — Dos servidores: tu primera red
+# Clase 34 — Dos servidores: tu primera red
 
-**Dónde:** tu PC + VMs `servidor-01` y `servidor-02` · **Tiempo:** 120 min · **Bloque:** C. Redes
+**Dónde:** tu PC + VMs `servidor-01` y `servidor-02` · **Tiempo:** 120 min · **Bloque:** A. Redes
 
 > Esta clase cierra el bloque de redes. Junta todo: capas, IPs, puertos, rutas, DNS, HTTP y firewall, en una arquitectura de **dos niveles** como las de AWS.
 
@@ -43,7 +43,7 @@ IP2=$(multipass info servidor-02 | awk '/IPv4/ {print $2}')
 echo "servidor-01=$IP1  servidor-02=$IP2"
 ```
 
-Antes de seguir, calcula **en papel** (clase 17): ¿están en la misma subred? ¿Necesitan un router para hablar entre ellas?
+Antes de seguir, calcula **en papel** (clase 27): ¿están en la misma subred? ¿Necesitan un router para hablar entre ellas?
 
 Comprueba que se ven: `multipass exec servidor-01 -- ping -c 2 $IP2`. Si no hay respuesta, aplica el arreglo de Docker del apartado 3b de la clase 08.
 
@@ -75,7 +75,7 @@ sudo chown -R appsvc:appsvc /srv/backend
 
 sudo tee /etc/systemd/system/backend.service <<'EOF'
 [Unit]
-Description=Backend de la clase 24
+Description=Backend de la clase 34
 After=network-online.target
 
 [Service]
@@ -126,7 +126,7 @@ Desde servidor-01 funciona; desde tu PC, **timeout**. Es lo que haría un `sg-ba
 
 ### 5. La web hace de proxy
 
-En servidor-01, sustituye el sitio de la API (clase 22) para que apunte al backend:
+En servidor-01, sustituye el sitio de la API (clase 32) para que apunte al backend:
 ```bash
 sudo tee /etc/nginx/sites-available/api <<'EOF'
 server {
@@ -161,7 +161,7 @@ ssh servidor-02 sudo journalctl -u backend -n 3 --no-pager
 
 ### 6. Tu checklist de diagnóstico
 
-Escribe esto en `notas/fase-1/clase-24-checklist.md`. Lo usarás en el proyecto P1 y en todo tu trabajo. Para "el cliente recibe un error de `api.lab`":
+Escribe esto en `notas/fase-3/clase-34-checklist.md`. Lo usarás en Vigía v0.2, en el P1 y en todo tu trabajo. Para "el cliente recibe un error de `api.lab`":
 
 ```
 DESDE EL CLIENTE
@@ -186,7 +186,7 @@ EN LA CAPA BACKEND (servidor-02)
 
 Copia el generador de averías a servidor-02, **sin leerlo**:
 ```bash
-scp ~/my-devops-journey/recursos/clase-24/averia.sh servidor-02:
+scp ~/my-devops-journey/recursos/clase-34/averia.sh servidor-02:
 ```
 
 Para cada ronda:
@@ -216,12 +216,12 @@ Provócalas tú y resuélvelas, o pide a alguien que las provoque:
 
 ## Cierre
 
-En `notas/fase-1/clase-24.md`:
+En `notas/fase-3/clase-34.md`:
 
 1. Dibuja la arquitectura con IPs, puertos y reglas de firewall reales, y su equivalente en AWS (subredes, SGs).
 2. Para cada una de las 4 averías del script: síntoma visto desde el cliente y pista decisiva.
 3. ¿Por qué es mejor que el backend acepte el 8080 solo de servidor-01, en lugar de "de toda la red"? ¿Qué ataque evita?
-4. **Repaso (clase 23, sin mirar):** ¿qué diferencia hay entre DROP y REJECT, y qué síntoma da cada uno?
+4. **Repaso (clase 33, sin mirar):** ¿qué diferencia hay entre DROP y REJECT, y qué síntoma da cada uno?
 
 ## Autocorrección
 
@@ -268,10 +268,10 @@ nginx reparte las peticiones (round robin) y, si un backend falla al conectar, r
 
 🎙️ *"When a request fails through a proxy, I check hop by hop: the error code at the client, the proxy's error log, DNS resolution of the backend, the port, and finally the backend service itself."*
 
-## Fin del bloque C
+## Fin del bloque de redes
 
-Ya sabes cómo viaja una petición, cómo se direcciona y enruta, cómo se resuelve, se cifra y se filtra, y cómo diagnosticarla salto a salto. Esa es la base de cualquier VPC.
+Ya sabes cómo viaja una petición, cómo se direcciona y enruta, cómo se resuelve, se cifra y se filtra, y cómo diagnosticarla salto a salto. Esa es la base de cualquier VPC. Ahora lo aplicas a Vigía (v0.2) y a los dos laboratorios integradores.
 
 ## Siguiente
 
-[Clase 25 — Git por dentro](clase-25-git-por-dentro.md)
+[Clase 35 — Proyecto: Vigía v0.2](clase-35-vigia-v0.2.md)

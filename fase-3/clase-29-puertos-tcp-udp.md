@@ -1,6 +1,6 @@
-# Clase 19 — Puertos, TCP y UDP
+# Clase 29 — Puertos, TCP y UDP
 
-**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 90 min · **Bloque:** C. Redes
+**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 90 min · **Bloque:** A. Redes
 
 ## Objetivo
 
@@ -124,7 +124,7 @@ python3 -m http.server 8000 --bind 0.0.0.0 --directory /tmp/web19 &
 ss -tlnp | grep 8000
 ```
 
-Desde tu PC: `curl -s http://$IP:8000`. Ahora sí funciona. **Es el mismo programa con otra dirección de escucha.** Así se comportan Flask, Node o Postgres según cómo se configuren. Y dentro de un contenedor, una app que escucha en `127.0.0.1` no recibe nada aunque publiques el puerto (fase 3).
+Desde tu PC: `curl -s http://$IP:8000`. Ahora sí funciona. **Es el mismo programa con otra dirección de escucha.** Así se comportan Flask, Node o Postgres según cómo se configuren. Y dentro de un contenedor, una app que escucha en `127.0.0.1` no recibe nada aunque publiques el puerto (fase 5).
 
 `kill %1` al terminar.
 
@@ -195,7 +195,7 @@ Después de un despliegue que falla al arrancar, este es el primer sospechoso: l
 Desde tu PC, `curl -s -m 3 http://$IP:8081`. Refused. Comprueba en la VM con `ss -tlnp` **en qué puerto** escucha de verdad la app. Muchos "no funciona" son una errata en el número de puerto de la configuración, del security group o del health check.
 
 **3. Lo que ve el destino:**
-En la VM: `nc -l 9000`. Desde tu PC: `nc $IP 9000`. En la VM, en otra sesión: `ss -tn | grep 9000`. Observa que el servidor ve **tu** IP y tu puerto efímero. Los security groups son *stateful*: si permites la entrada al 9000, la respuesta hacia tu puerto efímero sale sola. Las NACLs de AWS **no** lo son: hay que permitir los efímeros de forma explícita (clase 23).
+En la VM: `nc -l 9000`. Desde tu PC: `nc $IP 9000`. En la VM, en otra sesión: `ss -tn | grep 9000`. Observa que el servidor ve **tu** IP y tu puerto efímero. Los security groups son *stateful*: si permites la entrada al 9000, la respuesta hacia tu puerto efímero sale sola. Las NACLs de AWS **no** lo son: hay que permitir los efímeros de forma explícita (clase 33).
 
 ## Reto
 
@@ -206,12 +206,12 @@ En la VM: `nc -l 9000`. Desde tu PC: `nc $IP 9000`. En la VM, en otra sesión: `
 
 ## Cierre
 
-En `notas/fase-1/clase-19.md`:
+En `notas/fase-3/clase-29.md`:
 
 1. ¿Qué es un puerto? ¿Qué diferencia hay entre el puerto del servidor y el puerto efímero del cliente?
 2. Una API responde con `curl localhost:5000` dentro de la EC2, pero no desde fuera, y el security group permite el 5000. ¿Qué sospechas primero y con qué comando lo confirmas?
 3. TCP frente a UDP: diferencias y dos ejemplos de uso de cada uno.
-4. **Repaso (clase 18, sin mirar):** ¿por qué cada capa de subredes se repite en al menos dos AZs?
+4. **Repaso (clase 28, sin mirar):** ¿por qué cada capa de subredes se repite en al menos dos AZs?
 
 ## Autocorrección
 
@@ -243,4 +243,4 @@ En `notas/fase-1/clase-19.md`:
 
 ## Siguiente
 
-[Clase 20 — Rutas, gateway y NAT](clase-20-rutas-y-nat.md)
+[Clase 30 — Rutas, gateway y NAT](clase-30-rutas-y-nat.md)

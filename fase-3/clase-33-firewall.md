@@ -1,6 +1,6 @@
-# Clase 23 — Firewall
+# Clase 33 — Firewall
 
-**Dónde:** VM `servidor-01` + tu PC · **Tiempo:** 90 min · **Bloque:** C. Redes
+**Dónde:** VM `servidor-01` + tu PC · **Tiempo:** 90 min · **Bloque:** A. Redes
 
 ## Objetivo
 
@@ -31,7 +31,7 @@ En AWS no hay un servidor sin firewall: cada instancia, base de datos y balancea
 
 ### DROP frente a REJECT
 
-| Acción | Qué ve el cliente | Síntoma (clase 16) |
+| Acción | Qué ve el cliente | Síntoma (clase 26) |
 |--------|-------------------|--------------------|
 | **DROP / deny** | nada: el paquete desaparece | **timeout** |
 | **REJECT** | un rechazo inmediato | **connection refused** |
@@ -210,18 +210,18 @@ Después de restaurar, **vuelve a aplicar** la configuración buena de los pasos
 
 ## Reto
 
-1. **Diseño de security groups** para la VPC de la clase 18. Escribe las reglas de entrada de: `sg-alb` (internet → 443), `sg-app` (desde el ALB → 8080) y `sg-db` (desde la app → 5432). Usa SGs como origen cuando puedas. ¿Qué regla de entrada **no** debe existir nunca en `sg-db`?
+1. **Diseño de security groups** para la VPC de la clase 28. Escribe las reglas de entrada de: `sg-alb` (internet → 443), `sg-app` (desde el ALB → 8080) y `sg-db` (desde la app → 5432). Usa SGs como origen cuando puedas. ¿Qué regla de entrada **no** debe existir nunca en `sg-db`?
 2. **Diseño de una NACL** (sin estado) para la subred pública: permite HTTPS desde internet y que las respuestas vuelvan. ¿Qué regla de **salida** necesitas que con un SG no harías falta?
 3. En la VM, permite el 8080 solo desde tu PC y **rechaza** (no descartes) el resto de intentos al 8080. ¿Importa el orden de las reglas? Pruébalo.
 
 ## Cierre
 
-En `notas/fase-1/clase-23.md`:
+En `notas/fase-3/clase-33.md`:
 
 1. Diferencia entre DROP y REJECT. ¿Cuál usan los security groups y qué síntoma produce?
 2. ¿Qué significa que un firewall tenga estado? ¿Por qué las NACLs necesitan reglas para los puertos efímeros?
 3. ¿Por qué es mejor "permitir el 5432 desde `sg-app`" que "permitir el 5432 desde `10.0.10.0/24`"?
-4. **Repaso (clase 22, sin mirar):** ¿qué significan 502, 503 y 504 en un ALB?
+4. **Repaso (clase 32, sin mirar):** ¿qué significan 502, 503 y 504 en un ALB?
 
 ## Autocorrección
 
@@ -265,4 +265,4 @@ Nunca en `sg-db`: `5432` (ni ningún puerto) desde `0.0.0.0/0`.
 
 ## Siguiente
 
-[Clase 24 — Dos servidores: tu primera red](clase-24-dos-servidores.md)
+[Clase 34 — Dos servidores: tu primera red](clase-34-dos-servidores.md)

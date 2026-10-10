@@ -21,7 +21,7 @@ En AWS lanzarás instancias EC2: servidores Linux que no ves, que administras po
 | `multipass stop` / `start` | Stop / Start instance |
 | `multipass delete --purge` | Terminate instance |
 | `multipass snapshot` | EBS snapshot |
-| `--cloud-init archivo.yaml` | *User data* (clase 29) |
+| `--cloud-init archivo.yaml` | *User data* (clase 37) |
 | `multipass shell` | SSH / Session Manager |
 
 ## Teoría
@@ -43,7 +43,7 @@ En AWS lanzarás instancias EC2: servidores Linux que no ves, que administras po
 
 El **hipervisor** (en tu caso, KVM, que viene en el propio kernel Linux) reparte el hardware real entre máquinas virtuales. Cada VM cree que es un ordenador completo. **AWS EC2 funciona igual**: tu instancia es una VM sobre un hipervisor (*Nitro*) en un servidor físico de Amazon.
 
-Un **contenedor** (Docker, fase 3) es otra cosa: comparte el kernel del host. Por eso una VM aísla más y pesa más. Lo compararás bien en la fase 3.
+Un **contenedor** (Docker, fase 5) es otra cosa: comparte el kernel del host. Por eso una VM aísla más y pesa más. Lo compararás bien en la fase 5.
 
 Ya comprobé que tu equipo soporta virtualización por hardware (`/dev/kvm` existe y la CPU tiene las extensiones). Con 7 GB de RAM puedes mantener **dos VMs de 1 GB** encendidas a la vez sin problema.
 
@@ -108,7 +108,7 @@ multipass exec servidor-01 -- curl -sI -m 10 http://archive.ubuntu.com/ubuntu/ |
 
 Si ves una línea `HTTP/1.1 200 OK` (o un `30x`), todo está bien: **sáltate el resto de este apartado**.
 
-Si no sale nada o da error, es casi seguro un choque conocido entre **Docker y Multipass**. En tu PC está instalado Docker, que pone la regla de "reenvío" del firewall en `DROP` (lo comprobé: `FORWARD DROP`). Esa regla puede bloquear el tráfico que tu PC reenvía desde las VMs hacia internet. Lo entenderás del todo en las clases 20 (NAT) y 23 (firewall). Por ahora, el arreglo:
+Si no sale nada o da error, es casi seguro un choque conocido entre **Docker y Multipass**. En tu PC está instalado Docker, que pone la regla de "reenvío" del firewall en `DROP` (lo comprobé: `FORWARD DROP`). Esa regla puede bloquear el tráfico que tu PC reenvía desde las VMs hacia internet. Lo entenderás del todo en las clases 30 (NAT) y 33 (firewall). Por ahora, el arreglo:
 
 ```bash
 sudo iptables -I DOCKER-USER -i mpqemubr0 -j ACCEPT

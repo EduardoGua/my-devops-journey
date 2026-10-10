@@ -1,4 +1,4 @@
-# Examen de la fase 1 — Respuestas
+# Examen de fundamentos — Respuestas
 
 > ⛔ Ábrelo **solo** después de haber terminado el examen completo. Si lo lees antes, el examen deja de medir lo que sabes.
 
@@ -12,7 +12,7 @@
 
 **A4.** `777` da escritura a cualquier usuario y proceso: un riesgo de seguridad grave. Lo correcto es ver con qué usuario corre nginx (`www-data`), qué permiso falta y en qué tramo de la ruta (`namei -l`), y dar el mínimo: archivos `644`, directorios `755` y el grupo adecuado si hace falta. *(Clases 06, 11)*
 
-**A5.** Porque cron y systemd arrancan con un entorno mínimo: un PATH reducido, sin `~/.bashrc` ni alias ni variables exportadas. Se arregla con rutas absolutas o definiendo el PATH y las variables en el script o en la unit. *(Clase 07)*
+**A5.** Tres de estas: (1) el PATH de cron es solo `/usr/bin:/bin`, así que no encuentra programas de `~/bin` o `/usr/local/bin` → rutas absolutas o PATH definido en el script; (2) el directorio de trabajo es el HOME, así que las rutas relativas apuntan a otro sitio → rutas absolutas o calcular la carpeta del script; (3) no carga `~/.bashrc`, ni alias ni variables exportadas → definir en el script lo que necesite; (4) la línea la ejecuta `/bin/sh` y un `%` sin escapar la corta → la lógica en un script con su shebang, y `\%` si hace falta; (5) la salida se descarta → redirigirla a un log para poder ver el error. *(Clases 07, 20)*
 
 **A6.** `SIGTERM` pide terminar y se puede atrapar para cerrar ordenadamente. `SIGKILL` lo mata el kernel sin opción de limpieza. Kubernetes envía `SIGTERM`, espera el *grace period* (30 s por defecto) y después `SIGKILL`. *(Clase 11)*
 
@@ -22,17 +22,17 @@
 
 **A9.** (1) Un archivo borrado que un proceso mantiene abierto: `sudo lsof +L1`. (2) Datos escondidos bajo un punto de montaje. Además, si el error es "No space left" con espacio libre, los inodos: `df -i`. *(Clase 14)*
 
-**A10.** Quien tiene la privada puede autenticarse como tú en cualquier servidor que tenga tu pública. Si se filtra: quitar la pública de todos los `authorized_keys` (y de GitHub o AWS), generar un par nuevo, revisar los logs de acceso por si se usó y limpiar donde se publicó. Borrarla del repo no basta. *(Clases 15, 25)*
+**A10.** Quien tiene la privada puede autenticarse como tú en cualquier servidor que tenga tu pública. Si se filtra: quitar la pública de todos los `authorized_keys` (y de GitHub o AWS), generar un par nuevo, revisar los logs de acceso por si se usó y limpiar donde se publicó. Borrarla del repo no basta. *(Clases 15, 22)*
 
-**A11.** SYN → SYN-ACK → ACK. *Refused*: se llegó a la máquina, pero ningún proceso escucha en ese puerto (respuesta RST inmediata). *Timeout*: no hubo respuesta: firewall o security group que descarta, sin ruta o máquina apagada. *(Clase 16)*
+**A11.** SYN → SYN-ACK → ACK. *Refused*: se llegó a la máquina, pero ningún proceso escucha en ese puerto (respuesta RST inmediata). *Timeout*: no hubo respuesta: firewall o security group que descarta, sin ruta o máquina apagada. *(Clase 26)*
 
-**A12.** Una ruta `0.0.0.0/0 → Internet Gateway` en su tabla de rutas. El NAT Gateway permite que las instancias de subredes privadas inicien conexiones a internet (actualizaciones, APIs) sin que nadie de fuera pueda iniciar conexiones hacia ellas. *(Clase 20)*
+**A12.** Una ruta `0.0.0.0/0 → Internet Gateway` en su tabla de rutas. El NAT Gateway permite que las instancias de subredes privadas inicien conexiones a internet (actualizaciones, APIs) sin que nadie de fuera pueda iniciar conexiones hacia ellas. *(Clase 30)*
 
-**A13.** El tiempo que una respuesta DNS puede guardarse en caché. Se baja con antelación (al menos un TTL viejo antes) para que, al hacer el cambio, las cachés caduquen rápido y el cambio y una posible vuelta atrás surtan efecto en minutos. *(Clase 21)*
+**A13.** El tiempo que una respuesta DNS puede guardarse en caché. Se baja con antelación (al menos un TTL viejo antes) para que, al hacer el cambio, las cachés caduquen rápido y el cambio y una posible vuelta atrás surtan efecto en minutos. *(Clase 31)*
 
-**A14.** 502: el backend falló o rechazó la conexión. 503: no hay destinos sanos o disponibles. 504: el backend tardó demasiado en responder. *(Clase 22)*
+**A14.** 502: el backend falló o rechazó la conexión. 503: no hay destinos sanos o disponibles. 504: el backend tardó demasiado en responder. *(Clase 32)*
 
-**A15.** Dos de: los SG son *stateful* y las NACLs *stateless*; los SG solo tienen *allow* y las NACLs *allow* y *deny* con orden numérico; los SG se aplican a la interfaz (instancia) y las NACLs a la subred; los SG pueden usar otro SG como origen. *(Clase 23)*
+**A15.** Dos de: los SG son *stateful* y las NACLs *stateless*; los SG solo tienen *allow* y las NACLs *allow* y *deny* con orden numérico; los SG se aplican a la interfaz (instancia) y las NACLs a la subred; los SG pueden usar otro SG como origen. *(Clase 33)*
 
 ## Parte B
 

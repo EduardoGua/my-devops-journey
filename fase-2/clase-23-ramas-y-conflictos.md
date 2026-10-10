@@ -1,6 +1,6 @@
-# Clase 26 — Ramas, merge y conflictos
+# Clase 23 — Ramas, merge y conflictos
 
-**Dónde:** tu Ubuntu (`~/git-lab`) · **Tiempo:** 90 min · **Bloque:** D. Git y GitHub
+**Dónde:** tu Ubuntu (`~/git-lab`) · **Tiempo:** 90 min · **Bloque:** A. Git y GitHub
 
 ## Objetivo
 
@@ -11,7 +11,7 @@
 
 ## Por qué importa
 
-En un equipo, nadie trabaja directamente en `main`: cada cambio va en una rama, pasa por revisión (pull request, clase 27) y se fusiona. En los equipos de plataforma, muchas personas tocan los mismos archivos (un `main.tf`, un `values.yaml`, el pipeline), así que los **conflictos son rutina**. Resolverlos bien, sin pánico y sin borrar el trabajo de otros, es una habilidad muy valorada.
+En un equipo, nadie trabaja directamente en `main`: cada cambio va en una rama, pasa por revisión (pull request, clase 24) y se fusiona. En los equipos de plataforma, muchas personas tocan los mismos archivos (un `main.tf`, un `values.yaml`, el pipeline), así que los **conflictos son rutina**. Resolverlos bien, sin pánico y sin borrar el trabajo de otros, es una habilidad muy valorada.
 
 ## Teoría
 
@@ -226,12 +226,12 @@ Resuélvelo como siempre (editar, `git add`), pero en lugar de `commit` se usa `
 
 ## Cierre
 
-En `notas/fase-1/clase-26.md`:
+En `notas/fase-2/clase-23.md`:
 
 1. ¿Cuándo hace Git un fast-forward y cuándo un merge de tres vías?
 2. Describe tu método para resolver un conflicto. ¿Qué compruebas al final?
 3. ¿Qué diferencia hay entre merge y rebase? ¿Cuál es la regla de oro del rebase?
-4. **Repaso (clase 25, sin mirar):** ¿qué es `git reflog` y cuándo te salva?
+4. **Repaso (clase 22, sin mirar):** ¿qué es `git reflog` y cuándo te salva?
 
 ## Autocorrección
 
@@ -264,4 +264,4 @@ En `notas/fase-1/clase-26.md`:
 
 ## Siguiente
 
-[Clase 27 — GitHub y pull requests](clase-27-github-y-pull-requests.md)
+[Clase 24 — GitHub y pull requests](clase-24-github-y-pull-requests.md)
