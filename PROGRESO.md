@@ -132,6 +132,31 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 
 ---
 
+## Fase 5 — Docker
+
+### A. Contenedores
+- [ ] 56 · Qué es un contenedor de verdad ·
+- [ ] 57 · Imágenes y contenedores: run, ps, logs, exec, inspect ·
+- [ ] 58 · Tu primer Dockerfile: capas, caché y .dockerignore ·
+- [ ] 59 · Imágenes pequeñas y seguras ·
+- [ ] 60 · Volúmenes y persistencia ·
+- [ ] 61 · Redes de Docker ·
+- [ ] 62 · Docker Compose ·
+- [ ] 63 · Depurar contenedores ·
+- [ ] 64 · Registros: publicar en Docker Hub ·
+
+### B. Proyecto
+- [ ] 65 · Vigía v2 (I): PostgreSQL y el Dockerfile ·
+- [ ] 66 · Vigía v2 (II): Compose con API, chequeo y base de datos ·
+
+### Criterios de salida de la fase 5 (sin mirar)
+- [ ] Explico la diferencia entre imagen, contenedor y volumen
+- [ ] Escribo un Dockerfile multi-stage que corre como usuario no root
+- [ ] Levanto Vigía con `docker compose up` desde un clon limpio del repo
+- [ ] Encuentro con `docker logs` y `docker inspect` por qué un contenedor se reinicia en bucle
+
+---
+
 ## Vigía
 
 | Versión | Fase | Estado | Etiqueta |
@@ -153,8 +178,7 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 
 | Fase | Horas (Ruta 2.0) | Estado |
 |------|------------------|--------|
-| 5 · Docker | 30–40 h | se escribe a continuación |
-| 6 · AWS + Cloud Practitioner | 60–80 h | — (la cuenta de AWS se abre al empezar esta fase) |
+| 6 · AWS + Cloud Practitioner | 60–80 h | se escribe a continuación (la cuenta de AWS se abre al empezar esta fase) |
 | 7 · CI/CD | 25–35 h | — · **hito: empezar a postular** |
 | 8 · Terraform | 35–45 h | — |
 | 9 · Kubernetes | 55–75 h | — |

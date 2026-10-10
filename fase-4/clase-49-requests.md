@@ -33,6 +33,8 @@ r.elapsed.total_seconds()       # cuánto tardó la respuesta
 
 `params={"per_page": 5}` añade `?per_page=5` a la URL, ya codificado. Para enviar datos, `requests.post(url, json={...})`. Repasa en la clase 32 los métodos y los códigos de estado.
 
+Un programa educado **se identifica**: la cabecera `User-Agent` dice quién hace la petición. La de `requests` es genérica (`python-requests/2.34.2`), y algunos sitios la bloquean para frenar robots (Rómpelo 6). Para un programa tuyo, usa una propia: `headers={"User-Agent": "Vigia/1.0 (+https://github.com/TU_USUARIO/vigia)"}`.
+
 ### Siempre con `timeout`
 
 Sin `timeout`, `requests` espera **indefinidamente** a que el servidor responda. Un servidor colgado colgaría tu programa (y tu cron, y tu pipeline). La regla no tiene excepciones: **toda petición lleva `timeout`**. Puede ser un número (`timeout=10`) o una pareja `(conectar, leer)`: `timeout=(3, 10)`.
@@ -288,6 +290,17 @@ python -c 'import requests; requests.get("https://example.com", timeout=10).json
 python -c 'import requests; print(requests.get("https://expired.badssl.com/", timeout=10, verify=False).status_code)'
 ```
 Funciona, pero con un aviso `InsecureRequestWarning`: con `verify=False` aceptas cualquier certificado, también el de un atacante en medio (clase 32). Sin `verify=False`, `requests` rechaza el certificado vencido con `SSLError`. En producción, `verify=False` es un error grave, no un arreglo.
+
+**6. El `User-Agent` que algunos sitios bloquean:**
+```bash
+python -c '
+import requests
+print("por defecto:", requests.get("https://www.wikipedia.org", timeout=10).status_code)
+agente = {"User-Agent": "Vigia/1.0 (+https://github.com/TU_USUARIO/vigia)"}
+print("identificado:", requests.get("https://www.wikipedia.org", timeout=10, headers=agente).status_code)
+'
+```
+Comprobado en octubre de 2026: **403** con el `User-Agent` de `requests` y **200** con uno propio (con `curl`, también 200). Wikipedia exige que los programas se identifiquen. Para un monitor, un 403 así sería una falsa alarma: Vigía v1 enviará su propio `User-Agent`.
 
 ## Reto
 

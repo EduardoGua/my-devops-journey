@@ -23,7 +23,7 @@ Las **pruebas de aceptación** del curso (`~/my-devops-journey/recursos/vigia/v1
 | R3 | La configuración es YAML: `urls` (lista no vacía; cada URL empieza por `http://` o `https://`), `timeout` (número mayor que 0, por defecto 10) y `database` (ruta del archivo SQLite, por defecto `vigia.db`) | 47 |
 | R4 | Si `database` es una ruta **relativa**, se interpreta desde la carpeta del archivo de configuración, no desde la carpeta actual (así funciona igual desde cron) | 43 |
 | R5 | Una configuración que no se puede usar (no existe, YAML roto, sin `urls`, lista vacía, URL sin esquema, `timeout` no positivo) termina con código **2** y un mensaje claro en stderr, **sin traza** | 44 |
-| R6 | Cada URL se revisa con `GET`, **sin seguir redirecciones** y con el `timeout` de la configuración. Un 3xx cuenta como UP, igual que en la v0 | 49 |
+| R6 | Cada URL se revisa con `GET`, **sin seguir redirecciones**, con el `timeout` de la configuración y con un `User-Agent` propio que empiece por `Vigia/` (por ejemplo, `Vigia/1.0 (+https://github.com/TU_USUARIO/vigia)`). Un 3xx cuenta como UP, igual que en la v0 | 49 |
 | R7 | Cada revisión añade **una fila** a la tabla `checks` (abajo), en el orden de la configuración. Las filas se acumulan: nunca se borran ni se reemplazan | 51 |
 | R8 | `status_code`: el código HTTP, o `0` si no hubo respuesta · `seconds`: lo que tardó, también si falló · `up`: `1` si el código está entre 200 y 399 · `error`: `NULL` si hubo respuesta HTTP y un texto corto si no (`timeout`, `connection`…) · `checked_at`: fecha ISO 8601 **con zona horaria** (UTC) | 45, 49 |
 | R9 | Código de salida: 0 si todas están arriba, 1 si alguna está caída | 44 |
@@ -101,7 +101,7 @@ pip install -r requirements-dev.txt
 pytest ~/my-devops-journey/recursos/vigia/v1 -v -m "not api"
 ```
 
-`-m "not api"` deja fuera las 4 pruebas de la API (llegan en la clase 55). Las otras 21 arrancan un servidor HTTP falso en `127.0.0.1` que responde 200, 301, 404, 500 o tarda 3 segundos, y añaden un nombre que no existe. Cada prueba que falla explica qué esperaba y qué encontró.
+`-m "not api"` deja fuera las 4 pruebas de la API (llegan en la clase 55). Las otras 22 arrancan un servidor HTTP falso en `127.0.0.1` que responde 200, 301, 404, 500 o tarda 3 segundos, y añaden un nombre que no existe. Cada prueba que falla explica qué esperaba y qué encontró.
 
 ## Pistas
 
@@ -153,6 +153,11 @@ R5: captura `OSError` al leer el archivo y `yaml.YAMLError` al interpretarlo, y 
 Es el Rómpelo 2 de la clase 49: `ConnectTimeout` es a la vez `Timeout` y `ConnectionError`. Captura `Timeout` antes.
 </details>
 
+<details><summary>Pista 5b — Wikipedia sale DOWN con un 403</summary>
+
+Es el Rómpelo 6 de la clase 49: algunos sitios bloquean el `User-Agent` genérico de `requests`. Pásale a `requests.get` `headers={"User-Agent": "Vigia/1.0 (+https://github.com/TU_USUARIO/vigia)"}`. Una de las pruebas de aceptación comprueba que te identificas.
+</details>
+
 <details><summary>Pista 6 — <code>checked_at</code> no tiene zona horaria</summary>
 
 `datetime.now(timezone.utc).isoformat(timespec="seconds")` da `2026-10-20T02:05:01+00:00`. Sin `timezone.utc`, la fecha no lleva zona y la prueba lo detecta (clase 45).
@@ -187,10 +192,10 @@ En `notas/fase-4/clase-54.md`:
 ## Autocorrección
 
 <details>
-<summary>Ábrelo cuando las 21 pruebas del chequeo pasen</summary>
+<summary>Ábrelo cuando las 22 pruebas del chequeo pasen</summary>
 
 **Comprueba tu entrega:**
-- [ ] `pytest ~/my-devops-journey/recursos/vigia/v1 -m "not api"` → `21 passed`.
+- [ ] `pytest ~/my-devops-journey/recursos/vigia/v1 -m "not api"` → `22 passed`.
 - [ ] `ruff check vigia/` no da avisos.
 - [ ] Con la red cortada: todo DOWN, código 1 y ninguna traza.
 - [ ] Cron ejecuta la v1 cada 5 minutos y la tabla `checks` crece.

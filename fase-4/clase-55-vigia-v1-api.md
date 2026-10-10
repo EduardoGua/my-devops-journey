@@ -33,7 +33,7 @@ Terminar Vigía v1: una API mínima con FastAPI (`python -m vigia serve`) que de
 | # | Requisito | Clases |
 |---|-----------|--------|
 | R15 | Al menos **5 pruebas tuyas** en `tests/`, que pasan con `pytest`: de la configuración, del chequeo (con un servidor falso), del almacenamiento y de la API (con `TestClient`) | 52, 53 |
-| R16 | Las 25 pruebas de aceptación pasan y `ruff check` no da avisos | 46, 52 |
+| R16 | Las 26 pruebas de aceptación pasan y `ruff check` no da avisos | 46, 52 |
 | R17 | README en inglés: qué hace, cómo se instala desde cero, la configuración, `check` y `serve` con ejemplos de `curl`, la línea de cron, *What broke and how I found it* de esta versión y sus límites | — |
 | R18 | PR fusionado, etiqueta `v1` y su release en GitHub | 25 |
 
@@ -149,7 +149,7 @@ En `notas/fase-4/clase-55.md`:
 <summary>Ábrelo cuando todas las pruebas pasen</summary>
 
 **Comprueba tu entrega:**
-- [ ] `pytest ~/my-devops-journey/recursos/vigia/v1` → `25 passed`.
+- [ ] `pytest ~/my-devops-journey/recursos/vigia/v1` → `26 passed`.
 - [ ] `pytest tests/` → al menos 5 pruebas, todas en verde.
 - [ ] `ruff check vigia tests` sin avisos.
 - [ ] `curl -s localhost:8000/status | jq` muestra un sitio por URL, con `up` booleano.

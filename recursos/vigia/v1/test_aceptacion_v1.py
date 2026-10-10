@@ -42,8 +42,10 @@ class ServidorFalso(BaseHTTPRequestHandler):
     """Responde según la ruta: así probamos cada caso sin depender de internet."""
 
     alternancia = 0
+    agentes = {}
 
     def do_GET(self):
+        ServidorFalso.agentes[self.path] = self.headers.get("User-Agent", "")
         if self.path == "/ok":
             self._responder(200)
         elif self.path == "/redir":
@@ -186,6 +188,12 @@ def test_el_timeout_se_respeta(primera_revision, servidor):
     lenta = next(d for d in filas(primera_revision["db"]) if d["url"] == servidor + "/slow")
     assert 0.8 <= lenta["seconds"] < 2.5, f"con timeout 1, /slow debe cortarse en ~1 s: {lenta}"
     assert primera_revision["duracion"] < 20, "la revisión completa tardó demasiado"
+
+
+def test_se_identifica_con_su_user_agent(primera_revision):
+    agente = ServidorFalso.agentes.get("/ok", "")
+    assert agente.lower().startswith("vigia"), \
+        f"cada petición debe llevar un User-Agent propio que empiece por 'Vigia/', no {agente!r}"
 
 
 def test_tiempos_y_fechas_validos(primera_revision):

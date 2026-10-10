@@ -43,7 +43,7 @@ Las fases, su orden, sus horas y sus criterios de salida son **los mismos** en l
 | 2 · Git y GitHub | 12–16 h | [clases 22–25](fase-2/README.md) | v0.1 |
 | 3 · Redes | 30–40 h | [clases 26–38](fase-3/README.md), con P1, P2 y el examen de fundamentos | v0.2 |
 | 4 · Python | 50–70 h | [clases 39–55](fase-4/README.md) | v1 |
-| 5 · Docker | 30–40 h | se escribe al cerrar la fase anterior | v2 |
+| 5 · Docker | 30–40 h | [clases 56–66](fase-5/README.md) | v2 |
 | 6 · AWS + Cloud Practitioner | 60–80 h | ídem | v3 |
 | 7 · CI/CD con GitHub Actions | 25–35 h | ídem | v4 |
 | ★ **Hito: empezar a postular** | 242–326 h acumuladas | | |
@@ -119,23 +119,11 @@ Bash sirve para tareas cortas; Python, para automatizaciones que crecen, para co
 
 **Criterios de salida:** un script que lee un JSON, filtra datos y escribe un CSV, con manejo de errores · una llamada a una API pública con `requests` que sobrevive a un error de red · `venv`, `requirements.txt` y al menos 5 pruebas con `pytest` · Vigía v1 devuelve el estado en JSON.
 
-### Fase 5 — Docker · 30–40 h
+### Fase 5 — Docker · 30–40 h · clases 56–66 ✍️
 
-Un contenedor empaqueta la aplicación con todo lo que necesita y corre igual en tu portátil, en la nube o en Kubernetes.
+Un contenedor empaqueta la aplicación con todo lo que necesita y corre igual en tu portátil, en la nube o en Kubernetes. Clases en [`fase-5/`](fase-5/README.md): qué es un contenedor por dentro, imágenes, Dockerfiles pequeños y seguros (multi-stage, sin root, `trivy`), volúmenes, redes, Compose, depuración con averías reales y Docker Hub (56–64), y Vigía v2 con PostgreSQL y Compose (65–66), con su [`verify.sh`](recursos/vigia/v2/README.md).
 
-**Temario**
-1. Qué es un contenedor de verdad: *namespaces* y *cgroups* (enlaza con la fase 1)
-2. Imagen, contenedor, registro y volumen: qué es cada cosa
-3. `docker run`, `ps`, `logs`, `exec`, `inspect`
-4. Dockerfile: instrucciones, capas, caché y `.dockerignore`
-5. *Multi-stage builds*, imágenes pequeñas y usuario no root
-6. Seguridad: sin secretos en la imagen; escaneo con `trivy`
-7. Redes de Docker y persistencia de datos
-8. Docker Compose: varios servicios, *healthchecks* y variables
-9. Depurar un contenedor que no arranca o que se reinicia en bucle
-10. Publicar imágenes en Docker Hub
-
-**Vigía v2.** **Criterios de salida:** explicar imagen, contenedor y volumen · un Dockerfile multi-stage que corre como usuario no root · Vigía se levanta con `docker compose up` desde un clon limpio · encontrar con `docker logs` y `docker inspect` por qué un contenedor se reinicia en bucle.
+**Criterios de salida:** explicar imagen, contenedor y volumen · un Dockerfile multi-stage que corre como usuario no root · Vigía se levanta con `docker compose up` desde un clon limpio · encontrar con `docker logs` y `docker inspect` por qué un contenedor se reinicia en bucle.
 
 ### Fase 6 — AWS + Cloud Practitioner · 60–80 h
 
