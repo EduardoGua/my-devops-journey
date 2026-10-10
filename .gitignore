@@ -13,6 +13,13 @@ bandit-claves*
 *.tfstate.*
 .terraform/
 
+# Python (fase 4): entornos virtuales y cachés
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.db
+
 # Logs que generes practicando (los de recursos/ sí se versionan)
 *.log
 !recursos/**/*.log

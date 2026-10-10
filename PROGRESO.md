@@ -99,6 +99,39 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 
 ---
 
+## Fase 4 — Python para automatizar
+
+### A. Python desde cero
+- [ ] 39 · Tu primer programa: el intérprete, tipos y f-strings ·
+- [ ] 40 · Decisiones y bucles ·
+- [ ] 41 · Listas, diccionarios y compañía ·
+- [ ] 42 · Funciones ·
+- [ ] 43 · Texto, archivos y rutas ·
+- [ ] 44 · Errores y excepciones ·
+- [ ] 45 · Módulos, paquetes y la biblioteca estándar ·
+
+### B. Python para operaciones
+- [ ] 46 · Entornos virtuales y dependencias ·
+- [ ] 47 · JSON, CSV y YAML ·
+- [ ] 48 · Programas de línea de comandos: argparse y logging ·
+- [ ] 49 · Consumir APIs con requests ·
+- [ ] 50 · Automatizar el sistema: subprocess, shutil y variables de entorno ·
+- [ ] 51 · SQLite desde Python ·
+- [ ] 52 · Pruebas con pytest ·
+- [ ] 53 · Una API mínima con FastAPI ·
+
+### C. Proyecto
+- [ ] 54 · Vigía v1 (I): el chequeo en Python ·
+- [ ] 55 · Vigía v1 (II): la API, tus pruebas y la versión ·
+
+### Criterios de salida de la fase 4 (sin mirar)
+- [ ] Escribo un script que lee un JSON, filtra datos y escribe un CSV, con manejo de errores
+- [ ] Llamo a una API pública con `requests` y manejo un error de red sin que el script se caiga
+- [ ] Mi proyecto tiene `venv`, `requirements.txt` y al menos 5 pruebas con `pytest`
+- [ ] Vigía v1 devuelve el estado en JSON
+
+---
+
 ## Vigía
 
 | Versión | Fase | Estado | Etiqueta |
@@ -120,8 +153,7 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 
 | Fase | Horas (Ruta 2.0) | Estado |
 |------|------------------|--------|
-| 4 · Python | 50–70 h | se escribe al aprobar el examen de fundamentos |
-| 5 · Docker | 30–40 h | — |
+| 5 · Docker | 30–40 h | se escribe a continuación |
 | 6 · AWS + Cloud Practitioner | 60–80 h | — (la cuenta de AWS se abre al empezar esta fase) |
 | 7 · CI/CD | 25–35 h | — · **hito: empezar a postular** |
 | 8 · Terraform | 35–45 h | — |

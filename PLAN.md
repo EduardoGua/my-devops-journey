@@ -42,7 +42,7 @@ Las fases, su orden, sus horas y sus criterios de salida son **los mismos** en l
 | 1 · Linux y Bash | 35–45 h | [clases 01–21](fase-1/README.md) | v0 |
 | 2 · Git y GitHub | 12–16 h | [clases 22–25](fase-2/README.md) | v0.1 |
 | 3 · Redes | 30–40 h | [clases 26–38](fase-3/README.md), con P1, P2 y el examen de fundamentos | v0.2 |
-| 4 · Python | 50–70 h | se escribe al aprobar el examen de fundamentos | v1 |
+| 4 · Python | 50–70 h | [clases 39–55](fase-4/README.md) | v1 |
 | 5 · Docker | 30–40 h | se escribe al cerrar la fase anterior | v2 |
 | 6 · AWS + Cloud Practitioner | 60–80 h | ídem | v3 |
 | 7 · CI/CD con GitHub Actions | 25–35 h | ídem | v4 |
@@ -113,25 +113,11 @@ Casi todo lo que falla en la nube es red. Nueve clases de redes (capas, IP y CID
 
 Desde esta fase ya puedes postular a soporte técnico, mesa de ayuda o NOC (ver Empleo).
 
-### Fase 4 — Python para automatizar · 50–70 h
+### Fase 4 — Python para automatizar · 50–70 h · clases 39–55 ✍️
 
-Bash sirve para tareas cortas; Python, para automatizaciones que crecen, para consumir APIs y para manejar AWS desde código.
+Bash sirve para tareas cortas; Python, para automatizaciones que crecen, para consumir APIs y para manejar AWS desde código. Clases en [`fase-4/`](fase-4/README.md): el lenguaje desde cero (39–45), las herramientas de operaciones (46–53: entornos virtuales, JSON/YAML, `argparse`, `requests`, `subprocess`, SQLite, `pytest` y FastAPI) y Vigía v1 (54–55), con [pruebas de aceptación](recursos/vigia/v1/README.md).
 
-**Temario**
-1. Tipos, listas, diccionarios, condicionales, bucles y funciones
-2. Módulos, archivos, JSON y YAML
-3. Errores con `try` / `except` y `logging`
-4. `venv`, `pip` y `requirements.txt`
-5. Argumentos con `argparse`
-6. `requests`: consumir APIs, *timeouts* y errores de red
-7. Python para operaciones: `pathlib` y `subprocess`
-8. SQLite desde Python
-9. Pruebas con `pytest`
-10. Una API mínima con FastAPI o Flask
-
-**Vigía v1.** **Criterios de salida:** un script que lee un JSON, filtra datos y escribe un CSV, con manejo de errores · una llamada a una API pública con `requests` que sobrevive a un error de red · `venv`, `requirements.txt` y al menos 5 pruebas con `pytest` · Vigía v1 devuelve el estado en JSON.
-
-**Recursos de apoyo:** *Hello-Python* de MoureDev (en español, desde cero) y el tutorial oficial de Python como consulta.
+**Criterios de salida:** un script que lee un JSON, filtra datos y escribe un CSV, con manejo de errores · una llamada a una API pública con `requests` que sobrevive a un error de red · `venv`, `requirements.txt` y al menos 5 pruebas con `pytest` · Vigía v1 devuelve el estado en JSON.
 
 ### Fase 5 — Docker · 30–40 h
 
