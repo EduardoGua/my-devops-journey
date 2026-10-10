@@ -82,6 +82,12 @@ volumes:
 
 `${…:?…}` hace que Compose se niegue a arrancar si falta la variable, en lugar de arrancar con una contraseña vacía (clase 65).
 
+Las carpetas del *provisioning*:
+
+```bash
+mkdir -p grafana/provisioning/datasources grafana/provisioning/dashboards grafana/dashboards
+```
+
 La fuente de datos, `grafana/provisioning/datasources/prometheus.yml`:
 
 ```yaml
@@ -99,7 +105,6 @@ datasources:
 `access: proxy` significa que Grafana, desde su contenedor, hace las consultas a `prometheus:9090`. Tu navegador solo habla con Grafana.
 
 ```bash
-mkdir -p grafana/dashboards grafana/provisioning/dashboards
 docker compose up -d
 ```
 
