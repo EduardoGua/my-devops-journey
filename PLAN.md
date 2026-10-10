@@ -47,7 +47,7 @@ Las fases, su orden, sus horas y sus criterios de salida son **los mismos** en l
 | 6 · AWS + Cloud Practitioner | 60–80 h | [clases 67–81](fase-6/README.md), con el CLF-C02 | v3 |
 | 7 · CI/CD con GitHub Actions | 25–35 h | [clases 82–91](fase-7/README.md), con el examen de las fases 4 a 7 | v4 |
 | ★ **Hito: empezar a postular** | 242–326 h acumuladas | | |
-| 8 · Terraform | 35–45 h | ídem | v5 |
+| 8 · Terraform | 35–45 h | [clases 92–101](fase-8/README.md) | v5 |
 | 9 · Kubernetes | 55–75 h | ídem | v6 |
 | 10 · Observabilidad | 25–35 h | ídem | v7 |
 
@@ -158,24 +158,16 @@ Deja Vigía público: GitHub Actions es gratis en repositorios públicos con los
 
 Al cerrar la fase 7 tienes Linux, Git, redes, Python, Docker, AWS con el CLF y un pipeline real en un proyecto público. Desde aquí actualizas CV y LinkedIn y postulas a roles de entrada mientras sigues con las fases 8 a 10 (ver Empleo).
 
-### Fase 8 — Terraform · 35–45 h
+### Fase 8 — Terraform · 35–45 h · clases 92–101 ✍️
 
-Lo que creaste a mano en AWS pasa a archivos versionados, revisables y repetibles: se crea y se destruye con un comando.
+Lo que creaste a mano en AWS pasa a archivos versionados, revisables y repetibles: se crea y se destruye con un comando. Clases en [`fase-8/`](fase-8/README.md):
+- **Terraform desde cero (92–96):** el ciclo `init`/`plan`/`apply`, providers y `data`, variables y tipos, dependencias y ciclo de vida, y el estado en S3 con `use_lockfile` (el bloqueo con DynamoDB está obsoleto).
+- **Vigía en código (97–100):** importar lo que ya existía, un módulo propio para la red con bloques `moved`, secretos y *drift*, y el `plan` en cada PR.
+- **Vigía v5 (101),** con su [`verify.sh`](recursos/vigia/v5/README.md) y la prueba de destruir y recrear desde cero.
 
-**Temario**
-1. Infraestructura como código; el flujo `init`, `fmt`, `validate`, `plan`, `apply`, `destroy`
-2. Providers y sus versiones; bloques `resource` y `data`
-3. Variables, outputs, locals y tipos
-4. Dependencias: implícitas, `depends_on` y `create_before_destroy`
-5. El estado: qué es, por qué no va a Git y por qué no se edita a mano; backend en S3 con `use_lockfile = true` y versionado del bucket (el bloqueo con DynamoDB está obsoleto)
-6. Módulos propios y versiones de módulos
-7. Secretos fuera del código
-8. `terraform import` y *drift* (cambios hechos a mano fuera de Terraform)
-9. Terraform en CI: `fmt`, `validate` y `plan` en cada PR
+**Criterios de salida:** recrear desde cero la infraestructura de Vigía con `terraform apply` y borrarla con `terraform destroy` · estado en S3 con versionado y `use_lockfile = true` · al menos un módulo propio con variables y outputs · explicar qué pasa si alguien cambia a mano un recurso que maneja Terraform.
 
-**Vigía v5.** **Criterios de salida:** recrear desde cero la infraestructura de Vigía con `terraform apply` y borrarla con `terraform destroy` · estado en S3 con versionado y `use_lockfile = true` · al menos un módulo propio con variables y outputs · explicar qué pasa si alguien cambia a mano un recurso que maneja Terraform.
-
-**Recursos:** los tutoriales *Get Started* de HashiCorp para AWS y los objetivos del Terraform Associate (004) como lista de temas.
+**Recursos:** los tutoriales *Get Started* de HashiCorp para AWS y los objetivos del Terraform Associate (004), en el apéndice de la clase 101.
 
 ### Fase 9 — Kubernetes · 55–75 h
 

@@ -235,6 +235,34 @@ Examen de las fases 4 a 7 (fecha · %):
 
 ---
 
+## Fase 8 — Terraform
+
+### A. Terraform desde cero
+- [ ] 92 · Instalar Terraform y tu primer recurso ·
+- [ ] 93 · Providers, versiones, resources y data ·
+- [ ] 94 · Variables, outputs, locals y tipos ·
+- [ ] 95 · Dependencias y ciclo de vida ·
+- [ ] 96 · El estado: backend S3 con bloqueo ·
+
+### B. Vigía en código
+- [ ] 97 · La infraestructura de Vigía en código ·
+- [ ] 98 · Módulos ·
+- [ ] 99 · Secretos, import y drift ·
+- [ ] 100 · Terraform en CI ·
+
+### C. Proyecto
+- [ ] 101 · Vigía v5: toda la infraestructura en Terraform ·
+
+Recreación desde cero (fecha · minutos):
+
+### Criterios de salida de la fase 8 (sin mirar)
+- [ ] Recreo desde cero la infraestructura de Vigía con `terraform apply` y la borro con `terraform destroy`
+- [ ] El estado está en S3, con versionado y `use_lockfile = true`
+- [ ] Tengo al menos un módulo propio con variables y outputs
+- [ ] Explico qué pasa si alguien cambia a mano un recurso que maneja Terraform
+
+---
+
 ## Vigía
 
 | Versión | Fase | Estado | Etiqueta |
@@ -256,8 +284,7 @@ Examen de las fases 4 a 7 (fecha · %):
 
 | Fase | Horas (Ruta 2.0) | Estado |
 |------|------------------|--------|
-| 8 · Terraform | 35–45 h | se escribe a continuación |
-| 9 · Kubernetes | 55–75 h | — |
+| 9 · Kubernetes | 55–75 h | se escribe a continuación |
 | 10 · Observabilidad | 25–35 h | — |
 
 El temario de cada fase está en [`PLAN.md`](PLAN.md). Antes de empezar cada fase, pídeme `revisa la fase N`.
