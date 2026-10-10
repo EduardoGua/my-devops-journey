@@ -49,7 +49,7 @@ Las fases, su orden, sus horas y sus criterios de salida son **los mismos** en l
 | ★ **Hito: empezar a postular** | 242–326 h acumuladas | | |
 | 8 · Terraform | 35–45 h | [clases 92–101](fase-8/README.md) | v5 |
 | 9 · Kubernetes | 55–75 h | [clases 102–115](fase-9/README.md) | v6 |
-| 10 · Observabilidad | 25–35 h | ídem | v7 |
+| 10 · Observabilidad | 25–35 h | [clases 116–125](fase-10/README.md), con el examen final y la defensa | v7 |
 
 Las horas son estimaciones de la Ruta para alguien que empieza de cero, con práctica y proyecto incluidos. A 7 h por semana, desde el 12 de octubre de 2026, el hito llega entre junio y septiembre de 2027. La Ruta explica cómo recalcularlo cada mes con tus horas reales; la columna *Tiempo* del registro de `PROGRESO.md` te da el número.
 
@@ -180,21 +180,16 @@ Kubernetes orquesta contenedores en varios servidores: los reinicia, los escala 
 
 **Recursos:** *Learn Kubernetes Basics* (tutorial oficial) y la documentación de kind.
 
-### Fase 10 — Observabilidad · 25–35 h
+### Fase 10 — Observabilidad · 25–35 h · clases 116–125 ✍️
 
-En producción no basta con que algo funcione: hay que saber cuándo deja de funcionar antes que los usuarios.
+En producción no basta con que algo funcione: hay que saber cuándo deja de funcionar antes que los usuarios. Todo corre en tu portátil, con Compose. Clases en [`fase-10/`](fase-10/README.md):
+- **Medir (116–118):** métricas, logs y trazas; instrumentar una aplicación de Python con `prometheus_client` y su `/metrics`; Prometheus y PromQL (RED, percentiles, reinicios de contadores), con una tienda de laboratorio que falla a propósito.
+- **Avisar y entender (119–123):** alertas probadas con `promtool` y Alertmanager; Grafana con dashboards como código; SLI, SLO y presupuesto de errores con alertas de dos ventanas; logs JSON con `request_id` y postmortems sin culpables; y CloudWatch como alternativa gestionada.
+- **Vigía v7 (124),** con su [`verify.sh`](recursos/vigia/v7/README.md) y una prueba de la alerta de punta a punta, y **el fin de la ruta (125):** Vigía desde cero con un comando, la defensa de 10 minutos y el examen final de las fases 8 a 10.
 
-**Temario**
-1. Métricas, logs y trazas: qué pregunta responde cada uno
-2. Instrumentar una app de Python con `client_python`: el endpoint `/metrics`
-3. Prometheus: recolección, PromQL básico y reglas de alerta
-4. Grafana: dashboards
-5. Alertas útiles frente a alertas ruidosas
-6. SLI, SLO, SLA y presupuesto de errores
-7. Postmortems sin culpables
-8. CloudWatch como alternativa administrada en AWS
+**Criterios de salida:** Vigía expone `/metrics` y Prometheus lo recoge · un dashboard con disponibilidad y latencia por sitio · una alerta que salta cuando un sitio cae más de 5 minutos, y probada · un SLO para Vigía y cuánto tiempo caído permite al mes · y, como cierre de la ruta: Vigía se levanta desde cero con un comando o un pipeline, se destruye igual, y lo explicas y defiendes en 10 minutos.
 
-**Vigía v7.** **Criterios de salida:** Vigía expone `/metrics` y Prometheus lo recoge · un dashboard con disponibilidad y latencia por sitio · una alerta que salta cuando un sitio cae más de 5 minutos, y probada · un SLO para Vigía y cuánto tiempo caído permite al mes · y, como cierre de la ruta: Vigía se levanta desde cero con un comando o un pipeline, se destruye igual, y lo explicas y defiendes en 10 minutos.
+**Recursos:** la documentación de Prometheus y de Grafana, y los libros de SRE de Google (sre.google/books).
 
 ---
 
@@ -246,3 +241,4 @@ Una segunda nube, Jenkins, Ansible a fondo, *service mesh*, EKS en producción, 
 | 3.x | 2026-09 | Plan por sesiones cortas. Archivado en `~/Documentos/my-devops-journey-v3-respaldo-2026-10-04.tar.gz` |
 | 4.0 | 2026-10-04 | Reinicio. Fase 1 en 30 clases completas con autocorrección, servidor en VM, proyectos P1 y P2. Método en `COMO-ESTUDIAR.md` |
 | 5.0 | 2026-10-09 | Alineado con la *Ruta Cloud & DevOps 2.0*: 10 fases medidas en horas a 7 h por semana; scripting con Bash y cron en la fase 1 (clases 16–20, nuevas); Git (22–24) antes de redes (26–34); Vigía como proyecto único que crece en cada fase (clases 21, 25 y 35, nuevas); AWS antes que CI/CD; Kubernetes casi al final; CLF como criterio de salida de AWS; P1 y P2 pasan a laboratorios integradores |
+| 5.1 | 2026-10-10 | Las fases 4 a 10 escritas completas: clases 39–125, cada fase con su README, criterios de salida y "Datos que caducan"; Vigía v1 a v7 con pruebas de aceptación sin solución (`recursos/vigia/`), probadas contra una implementación de referencia privada; examen del hito (clase 91) y examen final con defensa (clase 125) |

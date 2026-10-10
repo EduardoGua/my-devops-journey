@@ -295,6 +295,37 @@ Averías de la clase 112, cronometradas (fecha · minutos):
 
 ---
 
+## Fase 10 — Observabilidad
+
+### A. Medir
+- [ ] 116 · Métricas, logs y trazas ·
+- [ ] 117 · El endpoint `/metrics` ·
+- [ ] 118 · Prometheus y PromQL ·
+
+### B. Avisar y entender
+- [ ] 119 · Reglas de alerta y Alertmanager ·
+- [ ] 120 · Grafana: dashboards como código ·
+- [ ] 121 · SLI, SLO, SLA y presupuesto de errores ·
+- [ ] 122 · Logs estructurados y postmortems ·
+- [ ] 123 · CloudWatch, la alternativa gestionada ·
+
+### C. Proyecto y cierre de la ruta
+- [ ] 124 · Vigía v7: métricas, alerta y SLO ·
+- [ ] 125 · Fin de la ruta: desde cero, la defensa y el examen final ·
+
+Arranque desde cero (fecha · minutos):
+Defensa de 10 minutos (fecha · nota con la rúbrica):
+Examen final de las fases 8 a 10 (fecha · nota):
+
+### Criterios de salida de la fase 10 (sin mirar)
+- [ ] Vigía expone `/metrics` y Prometheus lo recoge
+- [ ] Un dashboard con disponibilidad y latencia por sitio
+- [ ] Una alerta que salta cuando un sitio cae más de 5 minutos, y probada
+- [ ] Un SLO para Vigía y cuánto tiempo caído permite al mes
+- [ ] Vigía se levanta desde cero con un comando o un pipeline, se destruye igual, y lo explico y defiendo en 10 minutos
+
+---
+
 ## Vigía
 
 | Versión | Fase | Estado | Etiqueta |
@@ -312,13 +343,9 @@ Averías de la clase 112, cronometradas (fecha · minutos):
 
 ---
 
-## Fases siguientes
+## Antes de cada fase
 
-| Fase | Horas (Ruta 2.0) | Estado |
-|------|------------------|--------|
-| 10 · Observabilidad | 25–35 h | se escribe a continuación |
-
-El temario de cada fase está en [`PLAN.md`](PLAN.md). Antes de empezar cada fase, pídeme `revisa la fase N`.
+Las diez fases están escritas. Antes de empezar cada una, pídeme `revisa la fase N`: compruebo que sus versiones, precios y comandos siguen al día. El temario completo y las horas de cada fase están en [`PLAN.md`](PLAN.md).
 
 ---
 
