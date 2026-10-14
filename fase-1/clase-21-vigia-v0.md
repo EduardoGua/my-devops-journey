@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 2 bloques largos (unas 4–6 h) · **Bloque:** D. Proyecto · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** juntas todo el bloque C en una herramienta de verdad: un script que revisa tus webs, anota cada resultado y se ejecuta solo. La meta no es un script perfecto, sino uno **probado**: que aguante los casos difíciles y que sepas explicar en una entrevista.
+
 ## Qué es Vigía
 
 **Vigía** es un monitor de disponibilidad de sitios web: revisa una lista de URLs cada pocos minutos, guarda si respondieron y cuánto tardaron, y avisa cuando algo se cae. Es tu proyecto de portafolio y **crece en cada fase** de la Ruta 2.0:

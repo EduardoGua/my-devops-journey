@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** C. Scripting con Bash
 
+> 💡 **La idea de hoy:** un script de verdad tiene que **fallar de forma segura**. `set -euo pipefail` lo para en el primer error en lugar de seguir a ciegas, `trap` limpia lo que dejó a medias termine como termine, y `shellcheck` lo revisa antes de ejecutarlo, como un corrector ortográfico para Bash.
+
 ## Objetivo
 
 - Organizar un script en **funciones** con variables `local` y códigos de retorno.
@@ -275,13 +277,14 @@ DIR="${1:?Uso: $0 <carpeta>}"
 for F in "$DIR"/*; do
   echo "Archivo: $F"
 done
-cd "$DIR"
 rm -rf "${DIR:?}"/*
 EOF
 shellcheck bueno.sh && echo "shellcheck: sin avisos"
 ```
 
 (No lo ejecutes contra una carpeta que te importe: vacía su contenido.)
+
+¿Y el `cd "$DIR"` de `malo.sh`? Sobraba, y además era un error que shellcheck no ve: después de `cd prueba`, la ruta relativa `prueba/*` apunta a `prueba/prueba/*`. Con una ruta relativa, el `rm` no habría borrado nada… o habría borrado otra cosa. Un analizador encuentra erratas, no errores de lógica.
 
 ## Rómpelo
 

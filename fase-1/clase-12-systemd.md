@@ -2,6 +2,8 @@
 
 **Dónde:** VM `servidor-01` · **Tiempo:** 90 min · **Bloque:** B. Administrar un servidor
 
+> 💡 **La idea de hoy:** `systemd` es el **encargado del edificio**: al encender arranca los servicios en orden, los vigila y los vuelve a levantar si se caen. Tú le dejas las instrucciones en un archivo *unit* (qué ejecutar, con qué usuario, qué hacer si falla) y él se ocupa. Dos preguntas que nunca debes confundir: ¿está funcionando **ahora**? (`start`) y ¿arrancará **después de reiniciar**? (`enable`).
+
 ## Objetivo
 
 - Gestionar servicios con `systemctl`: arrancar, parar, reiniciar, recargar, activar en el arranque.

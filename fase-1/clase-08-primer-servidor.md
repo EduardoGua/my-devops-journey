@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu → VM `servidor-01` · **Tiempo:** 60 min · **Bloque:** B. Administrar un servidor
 
+> 💡 **La idea de hoy:** una **máquina virtual** es un ordenador completo (con su propio kernel, su disco y su IP) que vive dentro del tuyo. Puedes crearla, romperla y volver atrás con un **snapshot** en segundos. Una instancia EC2 de AWS es exactamente eso, solo que el ordenador anfitrión está en un centro de datos de Amazon.
+
 ## Objetivo
 
 - Crear, usar, parar y destruir un servidor Ubuntu virtual con **Multipass**.

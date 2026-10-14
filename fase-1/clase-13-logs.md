@@ -2,6 +2,8 @@
 
 **Dónde:** VM `servidor-01` (y tu PC para generar tráfico) · **Tiempo:** 75 min · **Bloque:** B. Administrar un servidor
 
+> 💡 **La idea de hoy:** los logs son la **caja negra** del servidor: cuando algo falla, son la única forma de saber qué pasó y cuándo. Casi todo acaba en el *journal* de systemd, que consultas con `journalctl` filtrando por servicio, por hora y por gravedad hasta dar con la línea que lo explica.
+
 ## Objetivo
 
 - Saber **dónde** están los logs de un servidor Linux y quién los escribe.

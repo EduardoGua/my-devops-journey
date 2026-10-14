@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** A. Linux en tu equipo
 
+> 💡 **La idea de hoy:** cada programa es como un **grifo con una entrada y dos salidas**. Por una sale lo que pediste (los datos, *stdout*) y por la otra los avisos y errores (*stderr*). Redirigir es decidir a qué cubo va cada salida, y un **pipe** (`|`) es una manguera que lleva la salida de un programa a la entrada del siguiente. Al terminar, cada programa deja además una nota con su resultado: el **código de salida** (0 = todo bien).
+
 ## Objetivo
 
 - Entender los **tres flujos** de todo programa: stdin, stdout y stderr.
@@ -39,6 +41,22 @@ Por defecto, stdout y stderr van a la pantalla, así que **parecen lo mismo**, p
 | `a \| tee f \| b` | copia el flujo en `f` y lo deja pasar |
 
 `2>&1` se lee "manda el 2 a donde apunta el 1 **en este momento**". Por eso el orden importa (lo verás en Rómpelo).
+
+### Cómo leer un mensaje de error
+
+Casi todos los errores siguen el mismo molde: **quién se queja: sobre qué: por qué**.
+
+```
+ls: no se puede acceder a '/no-existe': No existe el archivo o directorio
+└┬┘                       └─────┬────┘  └───────────────┬───────────────┘
+quién                       sobre qué                por qué
+```
+
+El mensaje te dice **dónde buscar**:
+- Si quien se queja es el programa (`ls`, `cp`, `grep`…), es que llegó a ejecutarse: el problema está en **lo que le pediste**.
+- Si quien se queja es `bash`, o el mensaje es `nombre: no se encontró la orden`, el programa ni siquiera arrancó: el problema está en **cómo escribiste la orden** (el nombre, las comillas o el permiso para ejecutarla).
+
+Es lo que viste en la clase 01 con `ls /esto-no-existe` frente a `lsss`, y te servirá en cada incidente del curso.
 
 ### Código de salida
 
@@ -78,6 +96,8 @@ ls /etc/hostname /no-existe 2> /dev/null
 cat salida.txt; echo ---; cat errores.txt; echo ---; cat todo.txt
 ```
 
+Verás errores en español (`ls`: *No existe el archivo o directorio*) y otros en inglés (`cat`: *No such file or directory*). Son las uutils de la clase 01, que aún no traducen todos sus mensajes. El idioma da igual: lo que importa es por qué flujo sale cada mensaje.
+
 ### 2. Códigos de salida
 
 ```bash
@@ -100,12 +120,14 @@ ping -c1 -W1 8.8.8.8 > /dev/null 2>&1 && echo "hay internet" || echo "sin intern
 ### 3. Pipes
 
 ```bash
-cat /etc/passwd | wc -l               # cuántos usuarios hay en el sistema
+cat /etc/passwd | wc -l               # cuántas cuentas de usuario hay en el sistema
 cut -d: -f1 /etc/passwd | head        # solo los nombres (campo 1, separado por :)
 cut -d: -f7 /etc/passwd | sort | uniq -c | sort -rn
 ```
 
 Lee el último pipeline de izquierda a derecha: toma el campo 7 (el shell de cada usuario), ordena, cuenta los repetidos (`uniq -c` solo agrupa líneas **contiguas**, por eso antes se ordena) y ordena por número de mayor a menor.
+
+Gana `/usr/sbin/nologin` con diferencia: la mayoría de las cuentas no son personas, sino servicios que no pueden iniciar sesión (lo verás en la clase 09).
 
 ### 4. `tee`: ver y guardar a la vez
 
@@ -114,7 +136,7 @@ ls -l /etc | tee listado.txt | wc -l
 head -3 listado.txt
 ```
 
-Lo usarás en la clase 09 para escribir archivos del sistema con `sudo`.
+Lo usarás desde la clase 10 para escribir archivos del sistema con `sudo`.
 
 ### 5. Sustitución de comandos
 
@@ -124,7 +146,7 @@ cp listado.txt "listado-$(date +%F).txt"
 ls
 ```
 
-`date +%F` produce `2026-10-05`: nombres con fecha, perfectos para backups.
+`date +%F` produce la fecha como año-mes-día (`2026-10-14`): nombres con fecha que además se ordenan bien con `ls`, perfectos para backups.
 
 ## Rómpelo
 
@@ -137,11 +159,23 @@ cat letras.txt              # ¡vacío!
 El shell aplica `>` (vacía `letras.txt`) **antes** de arrancar `sort`, así que `sort` lee un archivo vacío. Solución: escribir en otro archivo y luego `mv`, o `sort -o letras.txt letras.txt`.
 
 **2. El orden de `2>&1`:**
+
+🔮 **Predice:** ¿acabará el error dentro de `mal.txt`?
+
 ```bash
 ls /etc/hostname /no-existe 2>&1 > mal.txt
 cat mal.txt
 ```
-El error salió por pantalla. En el momento de `2>&1`, stdout todavía apuntaba a la pantalla, así que el 2 se fue ahí. Después, `> mal.txt` solo movió el 1. El orden correcto es `> archivo 2>&1`.
+El error salió por pantalla. El shell aplica las redirecciones **de izquierda a derecha**, como quien recoloca flechas una a una. Sigue las flechas de cada flujo en las dos versiones:
+
+| Paso | `cmd > f 2>&1` (bien) | `cmd 2>&1 > f` (mal) |
+|------|------------------------|-----------------------|
+| Al empezar | 1 → pantalla · 2 → pantalla | 1 → pantalla · 2 → pantalla |
+| 1.ª redirección | `> f`: 1 → **f** | `2>&1`: 2 → a donde apunta el 1 **ahora**: la pantalla |
+| 2.ª redirección | `2>&1`: 2 → a donde apunta el 1 **ahora**: **f** | `> f`: 1 → **f** |
+| Resultado | los dos flujos acaban en el archivo ✅ | los errores siguen en pantalla ❌ |
+
+`2>&1` no crea un enlace permanente entre los dos flujos: copia **el destino que tiene el 1 en ese instante**. El orden correcto es `> archivo 2>&1`.
 
 **3. Un pipe esconde fallos:**
 ```bash
@@ -159,7 +193,11 @@ Con un solo pipeline por pregunta:
 
 ## Cierre
 
-En `notas/fase-1/clase-04.md`:
+Crea tu archivo de notas con las preguntas ya copiadas (lo hace un script; en la clase 19 podrás leerlo entero):
+```bash
+bash ~/my-devops-journey/recursos/nueva-nota.sh 04
+```
+Y responde en `notas/fase-1/clase-04.md`:
 
 1. ¿Qué son stdout y stderr? ¿Por qué conviene que sean flujos separados?
 2. Explica qué hace `comando > log.txt 2>&1` y por qué `comando 2>&1 > log.txt` no hace lo mismo.
@@ -182,7 +220,7 @@ En `notas/fase-1/clase-04.md`:
 **Reto (soluciones posibles):**
 ```bash
 grep -c ':/bin/bash$' /etc/passwd                      # o: cut -d: -f7 /etc/passwd | grep -c '^/bin/bash$'
-ls -lS /etc | head -6                                 # la 1.ª línea es "total"
+ls -lS /etc | grep '^-' | head -5                     # ls -lS también lista directorios: '^-' deja solo las líneas que empiezan por - (archivos)
 find /etc -name "*.conf" 2> errores-find.txt > /dev/null
 mkdir "backup-$(date +%F)" && cp /etc/hostname "backup-$(date +%F)/"
 ```

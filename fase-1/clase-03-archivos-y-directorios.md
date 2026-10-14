@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 60 min · **Bloque:** A. Linux en tu equipo
 
+> 💡 **La idea de hoy:** crear, copiar, mover y borrar son cuatro verbos con una misma trampa: **Linux no pregunta y no tiene papelera**. Por eso el hábito profesional es *mirar antes de tocar*: `pwd` para saber dónde estás, `echo` para ver qué abarca un comodín y una copia `.bak` antes de editar algo importante.
+
 ## Objetivo
 
 - Crear, copiar, mover, renombrar y borrar archivos y directorios **sin miedo y sin accidentes**.

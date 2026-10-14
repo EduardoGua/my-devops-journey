@@ -10,6 +10,14 @@ notas/fase-1/clase-02.md
 
 ## Plantilla
 
+No hace falta copiarla a mano: este comando crea el archivo de la clase con las preguntas del cierre ya puestas.
+
+```bash
+bash ~/my-devops-journey/recursos/nueva-nota.sh 04      # el número de la clase
+```
+
+Así queda una nota cerrada:
+
 ```markdown
 # Clase 01 — La terminal, el shell y el kernel
 Fecha: 2026-10-05

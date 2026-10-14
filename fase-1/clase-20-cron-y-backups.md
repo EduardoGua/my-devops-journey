@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** C. Scripting con Bash
 
+> 💡 **La idea de hoy:** `cron` es un **despertador para comandos**: le dices «a esta hora, ejecuta esto» y lo hace aunque no estés delante. La trampa es que lo ejecuta en un entorno casi vacío (otro PATH, otro shell, otra carpeta y sin pantalla), así que un script que funciona en tu terminal puede fallar en cron **sin decir nada**. Hoy aprendes a escribir scripts que funcionan igual en los dos sitios.
+
 ## Objetivo
 
 - Programar tareas con `cron` y leer y escribir su sintaxis de cinco campos.
@@ -307,8 +309,8 @@ En `notas/fase-1/clase-20.md`:
 
 ## Fin del bloque C
 
-Ya escribes scripts que validan su entrada, fallan de forma segura, dejan rastro y se ejecutan solos. Con eso construyes tu primer proyecto de portafolio.
+Ya escribes scripts que validan su entrada, fallan de forma segura, dejan rastro y se ejecutan solos. Con eso construyes tu primer proyecto de portafolio. Antes, el repaso del bloque, con un pequeño script escrito sin mirar.
 
 ## Siguiente
 
-[Clase 21 — Proyecto: Vigía v0](clase-21-vigia-v0.md)
+[Repaso del bloque C](repaso-bloque-c.md)

@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** A. Linux en tu equipo
 
+> 💡 **La idea de hoy:** `find` busca **archivos** (por nombre, tamaño o fecha) y `grep` busca **texto dentro** de los archivos. Con pipes encadenas filtros pequeños como en una **cadena de montaje**: cada herramienta hace una sola cosa (cortar una columna, ordenar, contar) y pasa el resultado a la siguiente. Así respondes las preguntas de un incidente con datos y no con corazonadas.
+
 ## Objetivo
 
 - Encontrar archivos por nombre, tipo, tamaño o fecha con `find`.
@@ -95,7 +97,7 @@ LOG=~/my-devops-journey/recursos/clase-05/access.log
 find /etc -name "*.conf" -type f 2>/dev/null | head
 find /etc -name "*.conf" -type f 2>/dev/null | wc -l
 find ~ -maxdepth 2 -type d -name ".*"          # directorios ocultos en tu casa
-find /var/log -type f -size +1M 2>/dev/null     # logs grandes
+find /var/log -type f -size +1M 2>/dev/null | head   # logs grandes (casi todos del journal, clase 13)
 find ~/my-devops-journey -type f -mtime -1      # lo que tocaste en las últimas 24 h
 ```
 
@@ -248,8 +250,9 @@ grep -c 'curl/' $LOG                                              # 484
 awk '$9 == 404 {print $7}' $LOG | sort | uniq -c | sort -rn | head -3
 awk '{print $1}' $LOG | sort -u | wc -l                           # sort -u = sort | uniq
 awk '{s += $10} END {print s}' $LOG
-grep -rl "Port" /etc 2>/dev/null       # para limitar profundidad: find /etc -maxdepth 2 -type f -exec grep -l "Port" {} + 2>/dev/null
+find /etc -maxdepth 2 -type f -exec grep -l "Port" {} + 2>/dev/null   # grep -r no tiene límite de profundidad: find lo pone
 ```
+`{} +` pasa a `grep` muchos archivos de golpe en vez de uno por uno (`{} \;`): mucho más rápido. Sin límite de profundidad bastaría `grep -rl "Port" /etc 2>/dev/null`.
 </details>
 
 ## Inglés

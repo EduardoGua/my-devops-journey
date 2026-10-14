@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 60 min · **Bloque:** A. Linux en tu equipo
 
+> 💡 **La idea de hoy:** Linux guarda todo en **un único árbol** que empieza en `/`, y cada cosa vive en su barrio: la configuración en `/etc`, los logs en `/var/log`, tus archivos en `/home`. Una ruta es una dirección: la **absoluta** funciona desde cualquier sitio, como una dirección postal completa; la **relativa** depende de dónde estás, como «la tercera puerta a la derecha».
+
 ## Objetivo
 
 - Conocer el árbol de directorios de Linux y **qué vive en cada sitio** de un servidor.

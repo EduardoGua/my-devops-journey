@@ -2,6 +2,8 @@
 
 **Dónde:** VM `servidor-01` · **Tiempo:** 75 min · **Bloque:** B. Administrar un servidor
 
+> 💡 **La idea de hoy:** un **programa** es una receta guardada en el disco; un **proceso** es esa receta *mientras se cocina*, con su número (PID), su dueño y su padre. Para hablar con un proceso le envías **señales**: primero se le pide por favor que termine (`SIGTERM`) y solo si no hace caso se le fuerza (`SIGKILL`).
+
 ## Objetivo
 
 - Entender qué es un proceso: PID, padre, usuario, estado.
@@ -29,6 +31,8 @@ systemd (1)
 │                         └─ nginx (worker, www-data)
 └── cron
 ```
+
+> 🔁 **Vuelve a la clase 01.** El paso 4 de «Qué pasa cuando pulsas Enter» era «el kernel crea un proceso nuevo». Ese proceso es **hijo de tu shell**. Por dentro, el shell se **clona** (`fork`) y el clon se **convierte** en el programa que pediste (`exec`). Por eso el hijo hereda la mochila de variables de la clase 07. Lo verás en la práctica: `sleep 60 &` y `ps -o pid,ppid,cmd`. El PPID (el padre) del `sleep` es el PID de tu shell (`echo $$`).
 
 ### Estados (columna `STAT` de `ps`)
 

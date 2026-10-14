@@ -2,6 +2,8 @@
 
 **Dónde:** VM `servidor-01` · **Tiempo:** 75 min · **Bloque:** B. Administrar un servidor
 
+> 💡 **La idea de hoy:** en un servidor hay dos preguntas distintas: **¿quién eres?** (autenticación: tu contraseña o tu llave) y **¿qué puedes hacer?** (autorización: tus grupos, tus permisos y las reglas de sudo). Funciona como un hotel: en recepción comprueban tu identidad una vez y te dan una tarjeta que solo abre tu habitación. La regla de oro es el **mínimo privilegio**, la misma que aplicarás con IAM en AWS.
+
 ## Objetivo
 
 - Crear, modificar, bloquear y borrar usuarios y grupos.

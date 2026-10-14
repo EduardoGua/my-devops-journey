@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 60 min · **Bloque:** A. Linux en tu equipo
 
+> 💡 **La idea de hoy:** cuando escribes un comando trabajan tres piezas en cadena: la **terminal** muestra el texto y recoge tus teclas, el **shell** entiende lo que pediste y lanza el programa, y el **kernel** es el único que toca el hardware. Saber qué pieza se queja te dice dónde buscar el fallo.
+
 ## Objetivo
 
 Al terminar sabrás:
@@ -65,6 +67,22 @@ ls   -l -a   /etc
 ```
 
 Opciones largas: `--all` equivale a `-a`. Las largas se leen mejor en scripts. Las cortas son más rápidas de escribir.
+
+### Qué pasa cuando pulsas Enter
+
+```
+ Escribes  ls -l /etc  y pulsas Enter
+   │
+ 1 │ TERMINAL  envía lo que tecleaste al shell
+ 2 │ SHELL     lo parte en palabras:  ls │ -l │ /etc
+ 3 │ SHELL     busca un programa llamado ls en las carpetas del PATH  →  /usr/bin/ls
+ 4 │ KERNEL    a petición del shell, crea un PROCESO nuevo que ejecuta /usr/bin/ls
+ 5 │ ls        pide al kernel el contenido de /etc; el kernel comprueba permisos y lee el disco
+ 6 │ ls        escribe el resultado, la TERMINAL lo dibuja y el proceso termina
+ 7 ▼ SHELL     vuelve a mostrar el prompt
+```
+
+Cada paso puede fallar, y el mensaje de error te dice en cuál estás. `lsss` falla en el paso 3: el shell no encuentra ningún programa con ese nombre. `ls /esto-no-existe` llega hasta el paso 5: el programa existe, pero la ruta no. Volverás a esta cadena con más detalle en la clase 07 (paso 3), en la 11 (paso 4) y en la 16 (cuando el programa es un script tuyo).
 
 ## Práctica guiada
 
@@ -173,7 +191,7 @@ Pruébalos todos ahora, en especial `Ctrl+R`.
 lsss
 ls /esto-no-existe
 ```
-Son dos errores **distintos**. El primero lo da el **shell**: no encontró ningún programa llamado `lsss`. El segundo lo da **`ls`**: el programa sí existe, pero la ruta que le diste no. Lee siempre quién se queja: la primera palabra del error suele decirlo.
+Son dos errores **distintos**. El primero lo da el **shell**: no encontró ningún programa llamado `lsss`. El segundo lo da **`ls`**: el programa sí existe, pero la ruta que le diste no. Lee siempre quién se queja. `ls: no se puede acceder…` empieza por el programa que se ejecutó; `lsss: no se encontró la orden` es el shell diciéndote que no encontró ese nombre.
 
 **2. Un comando que "se cuelga":**
 ```bash

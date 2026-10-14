@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu + VM `servidor-01` · **Tiempo:** 90 min · **Bloque:** B. Administrar un servidor
 
+> 💡 **La idea de hoy:** SSH funciona con un **par de llaves**. La **pública** se puede repartir: la dejas en cada servidor en el que quieres entrar. La **privada** nunca sale de tu PC y es la única que puede demostrar que eres tú. El servidor también se identifica con su propia *huella*, para que sepas que no hablas con un impostor.
+
 ## Objetivo
 
 - Entender cómo funciona SSH: llaves de usuario, llaves del servidor y `known_hosts`.
@@ -283,8 +285,8 @@ sudo journalctl -u ssh --since "-7 days" --no-pager | grep "Accepted publickey f
 
 ## Fin del bloque B
 
-Ya administras un servidor: usuarios, paquetes, procesos, servicios, logs, recursos y acceso seguro. El bloque C te enseña a **automatizar** todo eso con scripts de Bash.
+Ya administras un servidor: usuarios, paquetes, procesos, servicios, logs, recursos y acceso seguro. El bloque C te enseña a **automatizar** todo eso con scripts de Bash. Antes, el repaso del bloque.
 
 ## Siguiente
 
-[Clase 16 — Tu primer script](clase-16-primer-script.md)
+[Repaso del bloque B](repaso-bloque-b.md)

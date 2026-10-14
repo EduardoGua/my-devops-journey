@@ -15,6 +15,7 @@
 | 05 | [Buscar y filtrar: find, grep y compañía](clase-05-buscar-y-filtrar.md) | Ubuntu | 75 min |
 | 06 | [Permisos: usuarios, grupos y rwx](clase-06-permisos.md) | Ubuntu | 75 min |
 | 07 | [Variables de entorno, PATH y el shell](clase-07-entorno-y-path.md) | Ubuntu | 60 min |
+| ↺ | [Repaso del bloque A](repaso-bloque-a.md) | notas | 45 min |
 | | **B. Administrar un servidor** | | |
 | 08 | [Tu primer servidor (Multipass)](clase-08-primer-servidor.md) | VM | 60 min |
 | 09 | [Usuarios, grupos y sudo](clase-09-usuarios-y-sudo.md) | VM | 75 min |
@@ -24,12 +25,14 @@
 | 13 | [Logs y journalctl](clase-13-logs.md) | VM | 75 min |
 | 14 | [Recursos: CPU, memoria y disco](clase-14-recursos.md) | VM | 120 min |
 | 15 | [SSH a fondo](clase-15-ssh.md) | Ubuntu + VM | 90 min |
+| ↺ | [Repaso del bloque B](repaso-bloque-b.md) | notas | 50 min |
 | | **C. Scripting con Bash** | | |
 | 16 | [Tu primer script: variables, argumentos y comillas](clase-16-primer-script.md) | Ubuntu | 75 min |
 | 17 | [Decisiones: if, test y case](clase-17-decisiones.md) | Ubuntu | 75 min |
 | 18 | [Bucles: for, while y leer archivos](clase-18-bucles.md) | Ubuntu | 75 min |
 | 19 | [Funciones y scripts robustos: set -euo pipefail, trap y logs](clase-19-scripts-robustos.md) | Ubuntu | 90 min |
 | 20 | [Tareas programadas: cron y un backup con rotación](clase-20-cron-y-backups.md) | Ubuntu | 90 min |
+| ↺ | [Repaso del bloque C](repaso-bloque-c.md) | notas + Ubuntu | 50 min |
 | | **D. Proyecto** | | |
 | 21 | [Vigía v0: Bash + cron](clase-21-vigia-v0.md) | Ubuntu | 2 bloques largos |
 

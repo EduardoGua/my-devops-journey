@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** C. Scripting con Bash
 
+> 💡 **La idea de hoy:** `if` no entiende de «verdadero» o «falso»: **ejecuta un comando y mira su código de salida**. Si es 0, entra en `then`. Los corchetes `[[ ]]` son solo otro comando que responde 0 o 1. Con eso, tu script comprueba antes de actuar y, si algo no cuadra, **falla pronto y con un mensaje claro** en vez de romper algo a medias.
+
 ## Objetivo
 
 - Entender que `if` **no evalúa expresiones**: ejecuta un comando y mira su código de salida.
@@ -247,7 +249,7 @@ Dentro de `[[ ]]`, `<` compara **texto** en orden alfabético: `"1"` va antes qu
 ```bash
 [[-f /etc/hostname]] && echo ok
 ```
-`[[-f: orden no encontrada`. `[[` es una palabra del shell y necesita espacios a los dos lados, igual que cualquier comando y sus argumentos.
+`[[-f: no se encontró la orden`. `[[` es una palabra del shell y necesita espacios a los dos lados, igual que cualquier comando y sus argumentos.
 
 **4. El corchete que sobra:**
 ```bash

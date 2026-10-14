@@ -2,16 +2,16 @@
 
 ## 👉 Hoy
 
-**Clase 02: El sistema de archivos y las rutas:** [`fase-1/clase-02-sistema-de-archivos.md`](fase-1/clase-02-sistema-de-archivos.md)
+**Tu clase de hoy es la primera sin marcar** de la lista de abajo. Así no hay que actualizar este apartado.
 
 **Fase actual:** 1 · Linux y Bash (35–45 h según la Ruta 2.0)
 **Deudas abiertas:** ninguna (máximo 2)
 
-El curso cambió el 2026-10-09 para seguir la Ruta 2.0: lee el último apartado del [`PLAN.md`](PLAN.md#9-historial) y la sección "Tu semana" de [`COMO-ESTUDIAR.md`](COMO-ESTUDIAR.md) (10 min).
+**Novedades del 2026-10-14** (5 min): cada clase de la fase 1 empieza con **La idea de hoy**; para cerrar una clase, `bash ~/my-devops-journey/recursos/nueva-nota.sh 04` te crea las notas con las preguntas ya copiadas; y al final de cada bloque hay un **repaso** que mezcla temas. Lo explica [`COMO-ESTUDIAR.md`](COMO-ESTUDIAR.md#repaso).
 
 ---
 
-Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando el cierre está escrito y autocorregido. Anota el tiempo en el registro de abajo.
+Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando el cierre está escrito y **calificado** (✅ 🟡 ❌, con la corrección de cada 🟡 y ❌). Anota el tiempo en el registro de abajo.
 
 ## Fase 1 — Linux y Bash
 
@@ -23,6 +23,7 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 - [ ] 05 · Buscar y filtrar: find, grep y compañía ·
 - [ ] 06 · Permisos: usuarios, grupos y rwx ·
 - [ ] 07 · Variables de entorno, PATH y el shell ·
+- [ ] Repaso del bloque A ·
 
 ### B. Administrar un servidor
 - [ ] 08 · Tu primer servidor (Multipass) ·
@@ -33,6 +34,7 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 - [ ] 13 · Logs y journalctl ·
 - [ ] 14 · Recursos: CPU, memoria y disco ·
 - [ ] 15 · SSH a fondo ·
+- [ ] Repaso del bloque B ·
 
 ### C. Scripting con Bash
 - [ ] 16 · Tu primer script: variables, argumentos y comillas ·
@@ -40,6 +42,7 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 - [ ] 18 · Bucles: for, while y leer archivos ·
 - [ ] 19 · Funciones y scripts robustos ·
 - [ ] 20 · Tareas programadas: cron y un backup con rotación ·
+- [ ] Repaso del bloque C ·
 
 ### D. Proyecto
 - [ ] 21 · Vigía v0: Bash + cron ·
@@ -358,3 +361,4 @@ La columna *Tiempo* es tiempo enfocado (clase, proyecto, Anki). Súmala cada mes
 | 2026-10-04 | — | — | Curso v4 creado. Empieza la clase 01. |
 | 2026-10-08 | 01 | 40 min | Cierre: preguntas 2 y 4 en 🟡, corregidas. |
 | 2026-10-09 | — | — | Curso v5: alineado con la Ruta 2.0. Scripting y Vigía v0 en la fase 1 (clases 16–21), Git antes de redes, Vigía como proyecto único. |
+| 2026-10-14 | — | — | Fase 1 revisada y probada en Ubuntu 26.04: *La idea de hoy* en cada clase, `nueva-nota.sh`, repasos de bloque A, B y C. |

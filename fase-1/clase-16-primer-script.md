@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** C. Scripting con Bash
 
+> 💡 **La idea de hoy:** un script es una **receta escrita**: los mismos comandos que escribirías a mano, guardados en un archivo para que se ejecuten igual cada vez. Recibe ingredientes (los **argumentos** `$1`, `$2`…), entrega el resultado por stdout, las quejas por stderr y, al terminar, un **código de salida** que dice si salió bien.
+
 ## Objetivo
 
 - Escribir un script ejecutable: el *shebang*, el permiso `x` y las tres formas de lanzarlo.
@@ -29,6 +31,8 @@ exit 0                            # código de salida (0 = éxito)
 ```
 
 El **shebang** (`#!`) tiene que ser la primera línea, desde el primer carácter. Cuando ejecutas `./hola.sh`, el kernel lee esos dos caracteres y lanza `/bin/bash ./hola.sh` por ti.
+
+> 🔁 **Vuelve a la clase 01.** En el paso 4 de «Qué pasa cuando pulsas Enter», el kernel ejecuta un programa. Un programa compilado, como `ls`, sabe ejecutarlo directamente. Un script, en cambio, es solo texto: el `#!` es la nota que le dice al kernel a qué programa pasárselo. Y si el archivo no tiene `x` (clase 06), el kernel se niega justo en ese paso: `Permiso denegado`.
 
 ### Tres formas de ejecutarlo
 
@@ -209,7 +213,7 @@ Cada línea que empieza por `+` es un comando **ya expandido**, tal como lo ejec
 ```bash
 NOMBRE = Eduardo
 ```
-`NOMBRE: orden no encontrada`. Bash entiende "ejecuta el programa `NOMBRE` con los argumentos `=` y `Eduardo`". En una asignación no puede haber espacios: `NOMBRE=Eduardo`.
+`NOMBRE: no se encontró la orden` (dentro de un script: `NOMBRE: orden no encontrada`). Bash entiende "ejecuta el programa `NOMBRE` con los argumentos `=` y `Eduardo`". En una asignación no puede haber espacios: `NOMBRE=Eduardo`.
 
 **2. `$@` sin comillas:**
 ```bash

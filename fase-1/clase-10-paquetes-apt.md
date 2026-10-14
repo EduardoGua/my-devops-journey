@@ -2,6 +2,8 @@
 
 **Dónde:** VM `servidor-01` · **Tiempo:** 60 min · **Bloque:** B. Administrar un servidor
 
+> 💡 **La idea de hoy:** `apt` funciona como una **tienda de aplicaciones con catálogo**. `apt update` descarga el catálogo al día (qué programas hay y en qué versión) y `apt install` trae el programa junto con todo lo que necesita para funcionar (sus *dependencias*), después de comprobar su firma para saber que viene de la tienda oficial.
+
 ## Objetivo
 
 - Instalar, actualizar, quitar y purgar software con `apt`.

@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** A. Linux en tu equipo
 
+> 💡 **La idea de hoy:** cada archivo tiene un dueño, un grupo y **tres juegos de llaves**: uno para el dueño, otro para los del grupo y otro para el resto. Cada juego dice si se puede leer (`r`), escribir (`w`) o ejecutar (`x`), y el kernel te da **solo el primer juego que te corresponde**. En un directorio, las llaves abren otras cosas: `r` deja ver la lista de nombres, `w` crear o borrar dentro y `x` cruzar la puerta.
+
 ## Objetivo
 
 - Leer cualquier permiso (`rwxr-x---`, `750`) y saber **qué puede hacer cada quien**.
@@ -237,7 +239,7 @@ En `notas/fase-1/clase-06.md`:
 
 **1.** Dueño (`rwx`): listar, crear y borrar archivos dentro, y entrar. Grupo (`r-x`): listar y entrar (y leer los archivos si sus propios permisos lo permiten), pero no crear ni borrar. Otros (`---`): nada, ni siquiera entrar.
 
-**2.** `ls caja` → *Permission denied*: falta `r` para listar. `cat caja/dato.txt` → *Permission denied*: falta `x` para atravesar el directorio. `ls -ld caja` funciona porque no entra en `caja`: lee su información (permisos, dueño) en el directorio **padre**, donde sí tienes permisos.
+**2.** `ls caja` → *Permiso denegado*: falta `r` para listar. `cat caja/dato.txt` → *Permission denied* (las uutils aún no lo traducen): falta `x` para atravesar el directorio. `ls -ld caja` funciona porque no entra en `caja`: lee su información (permisos, dueño) en el directorio **padre**, donde sí tienes permisos.
 
 **3.** No: `777` da escritura a todo el mundo y convierte la web en un punto de entrada para cualquiera que comprometa un proceso de la máquina. Lo correcto: ver qué usuario ejecuta nginx (`ps aux | grep nginx` → `www-data`), qué permiso falta y en qué tramo de la ruta (`namei -l /var/www/html/index.html` lo enseña), y dar lo mínimo: archivos `644`, directorios `755`, y si hace falta, dueño o grupo `www-data` con `chown`.
 
@@ -250,7 +252,8 @@ touch equipo/config.ini && chmod u=rw,g=r,o= equipo/config.ini
 # umask 027: archivo 666-027 → 640 (rw-r-----) · directorio 777-027 → 750 (rwxr-x---)
 find /usr/bin -perm -4000 -ls
 ```
-Ejemplos de setuid: `passwd` (escribe en `/etc/shadow`), `sudo` (eleva privilegios), `su`, `mount`.
+Ejemplos de setuid: `passwd` (escribe en `/etc/shadow`), `su` (cambia de usuario), `mount` (monta discos).
+¿Y `sudo`? No sale en la lista: en Ubuntu 26.04, `/usr/bin/sudo` es un **enlace** a *sudo-rs*, el sudo reescrito en Rust, y `find` no sigue enlaces. `ls -l "$(readlink -f /usr/bin/sudo)"` muestra su `s`. El `sudo.ws` que sí aparece es el sudo clásico, que sigue instalado.
 (Detalle: la máscara no "resta", **apaga bits**. Con `umask 027` coincide con la resta, pero la regla exacta es `permisos AND NOT umask`.)
 </details>
 

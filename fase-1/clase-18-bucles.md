@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** C. Scripting con Bash
 
+> 💡 **La idea de hoy:** un bucle es decir «**haz esto con cada uno**»: con cada servidor de una lista, con cada archivo o con cada línea de un archivo. Y en operaciones hay una variante imprescindible: «**reinténtalo, pero no para siempre**».
+
 ## Objetivo
 
 - Repetir una acción sobre una lista, sobre archivos o con un contador.
@@ -226,7 +228,7 @@ Imprime el patrón tal cual: si un comodín no coincide con nada, bash lo deja s
 
 ## Reto
 
-1. `contar-codigos.sh <log>`: lee el log de nginx de la clase 05 (`~/my-devops-journey/recursos/clase-05/access.log`) línea a línea y cuenta cuántas respuestas son 2xx, 3xx, 4xx y 5xx. Pista: el código es el campo 9, así que `read -r _ _ _ _ _ _ _ _ CODIGO _` lo deja en `CODIGO`, y un `case` decide el grupo. Compara el tiempo con el de awk: `time ./contar-codigos.sh …` frente a `time awk '{print substr($9,1,1)"xx"}' … | sort | uniq -c`. ¿Qué concluyes?
+1. `contar-codigos.sh <log>`: lee el log de nginx de la clase 05 (`~/my-devops-journey/recursos/clase-05/access.log`) línea a línea y cuenta cuántas respuestas son 2xx, 3xx, 4xx y 5xx. Pista: el código es el campo 9, así que `read -r _ _ _ _ _ _ _ _ CODIGO _` lo deja en `CODIGO`, y un `case` decide el grupo. Compara el tiempo con el de awk: `time ./contar-codigos.sh …` frente a `time awk '{print substr($9,1,1)"xx"}' … | sort | uniq -c`. Con 2000 líneas los dos son instantáneos, así que fabrica un log de verdad: `for i in {1..50}; do cat "$LOG"; done > grande.log` (106 000 líneas) y repite. ¿Qué concluyes?
 2. `comprimir-logs.sh <carpeta>`: comprime con `gzip` cada `*.log` de la carpeta que ocupe más de 1 KB (`stat -c %s archivo` da el tamaño en bytes) e imprime qué hizo. Si no hay logs, no debe hacer nada raro. Prepara la prueba con `head -c 2000 /dev/urandom > grande.log` y `echo hola > pequeno.log`.
 3. Cambia `esperar-url.sh` para que la pausa crezca: 1, 2, 4, 8… segundos (*backoff exponencial*). ¿Por qué crees que los clientes de AWS reintentan así y no a intervalos fijos?
 
@@ -270,7 +272,7 @@ done < "$LOG"
 echo "2xx: $C2  3xx: $C3  4xx: $C4  5xx: $C5"
 EOF
 ```
-Con el log del curso: `2xx: 1611  3xx: 155  4xx: 252  5xx: 102`. `awk` tarda una fracción de lo que tarda el bucle: para analizar texto, awk; para actuar por cada elemento, bucle.
+Con el log del curso: `2xx: 1611  3xx: 155  4xx: 252  5xx: 102`. Con `grande.log`, en el portátil donde se probó, el bucle tardó 1,2 s y `awk`, 0,1 s: diez veces más. Un log de producción de un día puede tener millones de líneas. Para analizar texto, awk; para actuar por cada elemento, bucle.
 
 **Reto 2 (una solución):**
 ```bash

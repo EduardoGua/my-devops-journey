@@ -2,6 +2,8 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 60 min · **Bloque:** A. Linux en tu equipo
 
+> 💡 **La idea de hoy:** cada proceso nace con una **mochila de variables**, su *entorno*, que es una copia de la de su padre. Lo que exportas viaja en la mochila de tus hijos, pero un hijo nunca puede cambiar la tuya. El `PATH` es una de esas variables: la lista ordenada de carpetas donde el shell busca cada comando que escribes.
+
 ## Objetivo
 
 - Crear variables y entender la diferencia entre **variable del shell** y **variable de entorno** (`export`).
@@ -56,7 +58,9 @@ PATH=/usr/local/bin:/usr/bin:/bin:...
        1.º           2.º      3.º
 ```
 
-Si no está en ninguno, ves `command not found`, aunque el programa exista en otro sitio. Por eso un script propio se ejecuta con `./script.sh`: `.` (el directorio actual) **no** está en el PATH, a propósito, por seguridad.
+Si no está en ninguno, ves `command not found` (en tu Ubuntu, `no se encontró la orden`), aunque el programa exista en otro sitio. Por eso un script propio se ejecuta con `./script.sh`: `.` (el directorio actual) **no** está en el PATH, a propósito, por seguridad.
+
+> 🔁 **Vuelve a la clase 01.** En «Qué pasa cuando pulsas Enter», el paso 3 era «el shell busca el programa en las carpetas del PATH». Ahora conoces esa lista: el shell la recorre **en orden** y se queda con el **primer** programa que encuentra. Si dos carpetas tienen un programa con el mismo nombre, gana la que va antes. Lo comprobarás en el Rómpelo 2.
 
 ### Comillas
 
@@ -165,10 +169,13 @@ saludo
 which saludo
 ```
 
-Para hacerlo permanente, añádelo al final de `~/.bashrc`:
+Para hacerlo permanente **no tienes que tocar nada**: ahora que `~/bin` existe, `~/.profile` lo añadirá la próxima vez que inicies sesión. Compruébalo después de cerrar sesión y volver a entrar:
 ```bash
-echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+grep -A3 'private bin' ~/.profile     # el bloque que lo añade
+echo $PATH | tr ':' '\n' | head -3
 ```
+
+Evita la receta que verás en muchos tutoriales, `echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc`. `~/.bashrc` se ejecuta en **cada** shell nuevo, también en los que abres dentro de otro, y cada vez añade otra copia al PATH. En el Reto 5 verás un caso real.
 
 ### 5. Alias
 
@@ -224,6 +231,7 @@ Sin comillas, el shell parte el valor en dos argumentos: `mi` e `informe.txt`.
 2. Ejecútalo tres veces: normal, con `APP_ENV=produccion` solo para ese comando y después de `unset APP_ENV`.
 3. Añade a tu `~/.bashrc` el alias `journey` y comprueba que existe en una terminal **nueva**.
 4. ¿En qué directorio del PATH está `git`? ¿Y `docker`?
+5. **Tu PATH real.** Los instaladores de herramientas suelen añadir líneas a `~/.bashrc` y `~/.profile`. Cuenta las entradas repetidas de tu PATH con el patrón top-N de la clase 05 y busca qué líneas las añaden (`grep -n PATH ~/.bashrc ~/.profile`). Explica por qué se repiten y escribe cómo lo arreglarías. **No edites aún** esos archivos: primero entiende el problema.
 
 ## Cierre
 
@@ -257,8 +265,17 @@ chmod +x entorno.sh
 export APP_ENV=desarrollo; ./entorno.sh
 APP_ENV=produccion ./entorno.sh
 unset APP_ENV; ./entorno.sh
-which git docker        # /usr/bin/git, /usr/bin/docker
+which git docker        # /usr/bin/git, /usr/bin/docker (o /bin/…: en Ubuntu, /bin es un enlace a /usr/bin)
+echo $PATH | tr ':' '\n' | sort | uniq -c | sort -rn | head
 ```
+**Reto 5:** cada `export PATH="algo:$PATH"` de `~/.bashrc` se ejecuta en cada shell nuevo y añade otra copia, aunque ya esté. Un shell dentro de otro (`bash`, la terminal de VS Code, un `source ~/.bashrc`) hereda el PATH con las copias y añade más. Además, si la misma carpeta se añade en `~/.profile` y en `~/.bashrc`, se suma dos veces desde el principio. El arreglo: añadir cada carpeta **en un solo sitio** y solo si no está ya:
+```bash
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;                 # ya está: no hagas nada
+  *) PATH="$HOME/.local/bin:$PATH" ;;
+esac
+```
+Las repeticiones no rompen nada (bash usa la primera que encuentra), pero ensucian el PATH y esconden el orden real de búsqueda: justo lo que necesitas ver cuando un comando "no es el que crees".
 </details>
 
 ## Inglés
@@ -275,8 +292,8 @@ which git docker        # /usr/bin/git, /usr/bin/docker
 
 ## Fin del bloque A
 
-Ya sabes moverte, manipular archivos, filtrar texto, leer permisos y entender tu shell. En el bloque B pasas a **administrar un servidor**.
+Ya sabes moverte, manipular archivos, filtrar texto, leer permisos y entender tu shell. En el bloque B pasas a **administrar un servidor**. Antes, una sesión de repaso que mezcla las siete clases: es la que más fija de todo el bloque.
 
 ## Siguiente
 
-[Clase 08 — Tu primer servidor](clase-08-primer-servidor.md)
+[Repaso del bloque A](repaso-bloque-a.md)

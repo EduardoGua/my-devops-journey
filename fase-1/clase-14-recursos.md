@@ -2,6 +2,8 @@
 
 **Dónde:** VM `servidor-01` · **Tiempo:** 120 min (puedes partirla en dos sesiones) · **Bloque:** B. Administrar un servidor
 
+> 💡 **La idea de hoy:** un servidor tiene tres recursos que se agotan. Imagínalo como una cocina: los **fuegos** son la CPU (cuánto puede hacer a la vez), la **encimera** es la memoria (lo que tiene a mano) y la **despensa** es el disco (lo que guarda). Cuando algo va lento o se cae, la primera pregunta es cuál de los tres es el cuello de botella, porque la solución es distinta para cada uno.
+
 ## Objetivo
 
 - Interpretar la **carga** (load average) y el uso de CPU, incluido el *steal* de la nube.
@@ -164,7 +166,11 @@ logger "¿se escribe esto?"
 curl -s -o /dev/null -w "%{http_code}\n" localhost
 ```
 
-Lee cada error. nginx quizá siga respondiendo, porque leer no necesita espacio, pero no podrá escribir sus logs. Una base de datos, en cambio, dejaría de aceptar escrituras. Libera:
+Lee cada error. nginx quizá siga respondiendo, porque leer no necesita espacio, pero no podrá escribir sus logs. Una base de datos, en cambio, dejaría de aceptar escrituras.
+
+¿Algo de lo que corre como **root** (el `sudo apt`, el journal) sigue funcionando? No es un fallo del ejercicio. `df` calcula el espacio disponible para usuarios normales, y ext4 guarda en reserva una parte del disco (un 5 % por defecto) que solo puede usar root. Así el sistema sigue en pie y tú puedes entrar a arreglarlo. Míralo con `sudo tune2fs -l $(findmnt -no SOURCE /) | grep -i reserved`.
+
+Libera:
 
 ```bash
 sudo rm /relleno
