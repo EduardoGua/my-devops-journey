@@ -17,8 +17,8 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 
 ### A. Linux en tu equipo
 - [x] 01 · La terminal, el shell y el kernel · 2026-10-08
-- [ ] 02 · El sistema de archivos y las rutas ·
-- [ ] 03 · Archivos y directorios ·
+- [x] 02 · El sistema de archivos y las rutas · 2026-10-11
+- [x] 03 · Archivos y directorios · 2026-10-13
 - [ ] 04 · Redirecciones, pipes y códigos de salida ·
 - [ ] 05 · Buscar y filtrar: find, grep y compañía ·
 - [ ] 06 · Permisos: usuarios, grupos y rwx ·
