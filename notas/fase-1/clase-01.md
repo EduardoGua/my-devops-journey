@@ -22,6 +22,3 @@ Reto: 1 ✅ · 2 ✅ · 3 ✅ · 4 ✅
 
 Corrección cierre 2: el shell busca el programa en el PATH, el kernel comprueba si tienes permiso para ejecutarlo y leer lo que pides, y la terminal muestra el resultado.
 Corrección cierre 4: un servidor no tiene escritorio, solo entras por SSH. La consola web no sirve para automatizar ni repetir tareas.
-
-## Lo que me costó / dudas
-me costó la serie de pasos que lleva abrir un programa.

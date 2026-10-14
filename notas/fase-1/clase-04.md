@@ -27,7 +27,3 @@ Cierre: 1 · 2 · 3 · 4
 Reto: 
 
 Correcciones (una por cada 🟡 o ❌, con tus palabras, sin copiar la clase):
-
-
-## Lo que me costó / dudas
-

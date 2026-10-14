@@ -77,9 +77,6 @@ main() {
     echo
     echo "Correcciones (una por cada 🟡 o ❌, con tus palabras, sin copiar la clase):"
     echo
-    echo
-    echo "## Lo que me costó / dudas"
-    echo
   } > "$nota"
 
   echo "Creado: ${nota#"$REPO"/}"

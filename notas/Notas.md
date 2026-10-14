@@ -33,9 +33,4 @@ Tiempo: 70 min
 Cierre: 1 ✅ · 2 🟡 · 3 ✅ · 4 ✅
 Reto: 1 ✅ · 2 ✅ · 3 ❌ · 4 ✅   (el reto se hace en la terminal: aquí solo la marca)
 Corrección 2: ...
-
-## Lo que me costó / dudas
-...
 ```
-
-La sección "Lo que me costó" es la más útil para repasar antes del examen.
