@@ -29,11 +29,9 @@ Tiempo: 70 min
 3. ...
 4. (repaso, sin mirar) ...
 
-## Reto
-...
-
 ## Autocorrección
-1 ✅ · 2 🟡 · 3 ✅ · 4 ✅
+Cierre: 1 ✅ · 2 🟡 · 3 ✅ · 4 ✅
+Reto: 1 ✅ · 2 ✅ · 3 ❌ · 4 ✅   (el reto se hace en la terminal: aquí solo la marca)
 Corrección 2: ...
 
 ## Lo que me costó / dudas

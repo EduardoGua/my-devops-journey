@@ -218,7 +218,7 @@ En `labs/clase-03/reto/`, sin mirar arriba:
 5. Borra `logs/2026` entero y comprueba que `logs.bak` sigue intacta.
 6. Empaqueta `logs.bak` en `logs-<fecha de hoy>.tar.gz`, lista su contenido **sin** extraerlo y extráelo dentro de una carpeta `restore/`.
 
-Escribe los comandos en tu cierre.
+Hazlo en la terminal. En tus notas, marca cada punto con ✅ o ❌ al compararlo con la solución.
 
 ## Cierre
 

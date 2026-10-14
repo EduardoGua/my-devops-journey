@@ -208,7 +208,7 @@ Cierra la segunda ventana y repite el comando. El `sleep` desapareció: al cerra
 
 ## Reto
 
-Sin mirar la práctica, responde con comandos (escribe en tu cierre el comando que usaste):
+Sin mirar la práctica, responde con comandos:
 1. ¿Cuántos núcleos de CPU tiene tu máquina?
 2. ¿En qué directorio está el programa `ls`? (pista: `type` o `which`)
 3. Con `man`, encuentra la opción de `ls` que ordena por fecha de modificación.
@@ -223,7 +223,7 @@ Crea `notas/fase-1/clase-01.md` (plantilla en [`../notas/Notas.md`](../notas/Not
 3. `lsss` y `ls /esto-no-existe` fallan de forma distinta. ¿Quién da cada error y por qué?
 4. *(Calentamiento, sin clase previa)* ¿Por qué un Cloud/DevOps necesita dominar la terminal si AWS tiene consola web?
 
-Añade también las respuestas del **Reto**.
+Del **Reto**, anota solo los resultados (núcleos, ruta…) y marca cada punto con ✅ o ❌.
 
 ## Autocorrección
 

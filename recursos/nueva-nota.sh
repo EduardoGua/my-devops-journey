@@ -17,7 +17,7 @@ main() {
     nombre="clase-$(printf '%02d' "$((10#$arg))")" # 4 → 04 (10# evita que 08 se lea en octal)
     origenes=("$REPO"/fase-*/"$nombre"-*.md)
     seccion="Cierre"
-    extra="Reto"
+    extra=""                                       # el reto se hace en la terminal: solo su marca
   elif [[ $arg =~ ^repaso-([a-z])$ ]]; then       # un repaso: fase-*/repaso-bloque-X.md
     nombre="$arg"
     origenes=("$REPO"/fase-*/repaso-bloque-"${BASH_REMATCH[1]}".md)
@@ -65,10 +65,15 @@ main() {
     fi
     echo "## Autocorrección"
     echo
-    echo "Califica cada respuesta: ✅ la idea clave con tus palabras · 🟡 a medias o sin el porqué · ❌ incorrecta"
+    echo "Lo más dinámico: escríbele a Claude «examíname $nombre». O califica tú con la autocorrección de la clase:"
+    echo "✅ la idea clave con tus palabras · 🟡 a medias o sin el porqué · ❌ incorrecta"
     echo
     echo "$seccion: $(cut -d. -f1 <<< "$preguntas" | paste -sd' ' | sed 's/ / · /g')"
-    [[ -n $extra ]] && echo "$extra: "
+    if [[ -n $extra ]]; then
+      echo "$extra: "
+    elif [[ $seccion == Cierre ]]; then
+      echo "Reto: (✅ o ❌ por punto)"
+    fi
     echo
     echo "Correcciones (una por cada 🟡 o ❌, con tus palabras, sin copiar la clase):"
     echo

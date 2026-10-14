@@ -37,7 +37,7 @@ Si una clase dura 90 minutos o más, o es de VM (arrancar la máquina y retomar 
    ```bash
    bash ~/my-devops-journey/recursos/nueva-nota.sh 04      # el número de la clase
    ```
-4. **Corrígete** con la sección "Autocorrección" de la clase y **califica** cada respuesta (✅ 🟡 ❌). Sin calificación, la clase no está cerrada: es lo que te dice qué repasar.
+4. **Corrígete**: escríbeme `examíname clase-XX` (lo más dinámico) o abre tú la sección "Autocorrección" de la clase. En los dos casos, cada respuesta acaba calificada (✅ 🟡 ❌). Sin calificación, la clase no está cerrada: es lo que te dice qué repasar.
 5. Pasa a Anki: los términos de la sección Inglés y cada pregunta del cierre que tuviste en 🟡 o ❌. Etiquétalas por tema (`tema::Linux`, `tema::Redes`…) para poder suspender las fases que aún no empiezas.
 6. Marca la clase en `PROGRESO.md` con la fecha y anota el tiempo en el registro. Esa columna te da las horas del mes para la Ruta.
 7. Guarda en GitHub (ver más abajo).
@@ -52,7 +52,7 @@ Si una clase dura 90 minutos o más, o es de VM (arrancar la máquina y retomar 
 | **Teoría** | Lo justo para entender la práctica |
 | **Práctica guiada** | Comandos paso a paso. Antes de los importantes verás 🔮 **Predice**: piensa (o escribe) qué crees que pasará *antes* de ejecutarlo |
 | **Rómpelo** | Provocas un fallo y lo diagnosticas. Es la parte que más enseña |
-| **Reto** | Un problema sin guía, para comprobar que lo entendiste y no solo lo seguiste |
+| **Reto** | Un problema sin guía, para comprobar que lo entendiste y no solo lo seguiste. Se hace **en la terminal**: en tus notas solo marcas cada punto con ✅ o ❌ y apuntas el que te costó, sin copiar los comandos |
 | **Cierre** | 3 preguntas de esta clase + 1 de repaso de una clase anterior |
 | **Autocorrección** | Las respuestas, escondidas. Ábrelas **después** de escribir las tuyas |
 | **Inglés** | Vocabulario y una frase de entrevista |
@@ -78,9 +78,11 @@ Lo que **no** funciona aunque lo parezca: subrayar, releer la clase o ver vídeo
 
 Cuando predices y fallas, tu cerebro marca ese momento como importante y lo recuerdas. Cuando solo ejecutas y miras, se olvida pronto. Predecir mal es útil: es justo la confusión que estás corrigiendo.
 
-## Autocorrección: eres tu propio profesor
+## Autocorrección: con examinador o por tu cuenta
 
-Al terminar el cierre, abre la autocorrección y califica cada respuesta:
+**Con examinador (recomendado):** al terminar el cierre, escríbeme `examíname clase-XX`. Leo tus respuestas, te califico y, en lo que falle, te hago una o dos preguntas cortas, usando solo lo que ya has visto, para que encuentres tú la pieza que falta. Después escribes las correcciones con tus palabras. Es más rápido, y un examinador ve huecos que tú no ves.
+
+**Por tu cuenta** (si no tienes tiempo o quieres practicar a juzgarte): abre la autocorrección de la clase y califica cada respuesta:
 
 | Nota | Significa |
 |------|-----------|
@@ -90,12 +92,11 @@ Al terminar el cierre, abre la autocorrección y califica cada respuesta:
 
 Para cada 🟡 o ❌, añade debajo de tu respuesta una línea con `Corrección:` y la idea bien explicada **con tus palabras**. No copies la respuesta del curso.
 
-Si quieres una segunda opinión, escríbeme `revisa clase-XX` y la reviso con el listón de una entrevista.
-
 Lo que puedes pedirme, tal cual:
 
 | Pídeme | Y hago |
 |--------|--------|
+| `examíname clase-XX` | califico tu cierre y te pregunto por lo que falla hasta que lo encuentres tú |
 | `revisa clase-XX` | reviso tu cierre y tus notas de esa clase |
 | `revisa la fase N` | **antes de empezar cada fase:** compruebo que sus versiones, precios y comandos siguen al día, corrijo lo que haya cambiado y le añado lo que ya tiene la fase 1 (la idea de hoy y los repasos de bloque) |
 | `revisa examen …` | corrijo tu examen (fundamentos, fases 4 a 7 o fases 8 a 10) con su rúbrica |
