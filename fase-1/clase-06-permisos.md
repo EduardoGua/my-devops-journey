@@ -17,76 +17,119 @@
 
 ## Teoría
 
-### Usuarios y grupos
+Seis piezas cortas. La 3 es la que más sorprende: léela despacio.
 
-Cada proceso corre como un **usuario**, y cada usuario pertenece a uno o varios **grupos**. Cada archivo tiene un **dueño** y un **grupo**.
+### 1. Quién eres
+
+Cada programa que ejecutas corre **como un usuario** (normalmente, tú). Cada usuario pertenece a uno o varios **grupos**, como equipos de trabajo. Y cada archivo tiene **un dueño** y **un grupo**.
 
 ```bash
 id          # uid=1000(educo) gid=1000(educo) groups=1000(educo),27(sudo),...
 ```
 
-### Los nueve bits
+### 2. Tres juegos de llaves
+
+Las 9 letras que ves con `ls -l` son tres juegos de llaves, de tres letras cada uno:
 
 ```
 -rwxr-x---  1 educo devs  ... script.sh
  └┬┘└┬┘└┬┘
-  │  │  └── otros (o): todos los demás
-  │  └───── grupo (g): miembros del grupo "devs"
-  └──────── dueño (u): educo
+  │  │  └── el resto del mundo (otros, «o»):   ---  nada
+  │  └───── los del grupo devs (grupo, «g»):   r-x  leer y ejecutar
+  └──────── la dueña, educo (dueño, «u»):      rwx  todo
 ```
 
-El kernel comprueba **en orden** y aplica **solo la primera categoría que te corresponde**:
-1. ¿Eres el dueño? → se usan los permisos del dueño (y nada más).
-2. Si no, ¿estás en el grupo? → permisos del grupo.
-3. Si no → permisos de otros.
+Cada letra es una llave: **r** para leer, **w** para escribir y **x** para ejecutar. Un guion (`-`) es una llave que falta.
 
-(La excepción es **root**, que se salta casi todas las comprobaciones.)
+El kernel actúa como un portero que mira **en orden** y te da **solo el primer juego que te corresponde**:
+1. ¿Eres el dueño? Te da el juego del dueño, y no sigue mirando.
+2. Si no, ¿estás en el grupo? Te da el del grupo.
+3. Si no, te da el del resto.
 
-### `rwx` en archivos y en directorios
+(La excepción es **root**, el administrador, que se salta casi todas las comprobaciones.)
 
-| Bit | En un **archivo** | En un **directorio** |
-|-----|-------------------|----------------------|
-| `r` (4) | leer el contenido | **listar** los nombres de dentro (`ls`) |
-| `w` (2) | modificar el contenido | **crear, borrar y renombrar** archivos dentro |
-| `x` (1) | ejecutarlo como programa | **entrar** (`cd`) y acceder a lo de dentro por su nombre |
+### 3. En un directorio, las llaves abren otras cosas
 
-Consecuencias que sorprenden:
-- Borrar un archivo depende del permiso `w` del **directorio**, no del archivo.
-- Un directorio con `r` pero sin `x` te deja ver nombres, pero no abrir nada.
-- Para leer `/a/b/c.txt` necesitas `x` en `/`, `/a` y `/a/b`, y `r` en `c.txt`.
+En un **archivo**, las llaves significan lo que esperas: `r` leerlo, `w` modificarlo y `x` ejecutarlo como programa.
 
-### Notación numérica (octal)
+Un **directorio**, en cambio, es como **una habitación con la lista de lo que hay dentro pegada en la puerta**:
 
-`r = 4`, `w = 2`, `x = 1`. Se suman por categoría:
+| Llave | En un archivo | En un directorio (la habitación) |
+|-------|---------------|----------------------------------|
+| `r` | leer el contenido | **leer la lista** de la puerta: ver los nombres (`ls`) |
+| `w` | modificar el contenido | **meter o sacar** cosas: crear, borrar y renombrar dentro |
+| `x` | ejecutarlo | **cruzar la puerta**: entrar (`cd`) y llegar a lo que hay dentro |
 
-| Octal | Permisos | Uso típico |
-|-------|----------|------------|
+De ahí salen tres sorpresas que verás con tus ojos en la práctica:
+- Borrar un archivo depende de la `w` del **directorio**, no del archivo: es sacar algo de la habitación.
+- Con `r` pero sin `x`, lees la lista de la puerta pero no puedes entrar a coger nada.
+- Para leer `/a/b/c.txt` necesitas cruzar tres puertas (`x` en `/`, `/a` y `/a/b`) y la `r` del archivo.
+
+### 4. Los permisos en números
+
+Cada llave vale un número: **r = 4**, **w = 2**, **x = 1**. Se suman las de cada juego, así que cada juego queda en una cifra del 0 al 7:
+
+| Cifra | Llaves | Cuenta |
+|-------|--------|--------|
+| `7` | `rwx` | 4 + 2 + 1 |
+| `6` | `rw-` | 4 + 2 |
+| `5` | `r-x` | 4 + 1 |
+| `4` | `r--` | 4 |
+| `0` | `---` | nada |
+
+Tres cifras, una por juego, en el mismo orden (dueño, grupo, otros). `640` se lee así: **6** el dueño lee y escribe, **4** el grupo solo lee y **0** los demás nada → `rw-r-----`.
+
+### 5. Cambiar las llaves: `chmod`
+
+Hay dos formas de escribirlo:
+
+```bash
+chmod 640 archivo           # con números: fija las 9 llaves de golpe
+chmod u+x script.sh         # con letras: AÑADE (+) la x al dUeño (u)
+chmod g-w,o-r archivo       # QUITA (-) la w al Grupo y la r a los Otros
+```
+
+Con letras: **u** = dueño (*user*), **g** = grupo, **o** = otros; **+** añade y **-** quita. Los números sirven para dejar los permisos exactamente como quieres; las letras, para cambiar una llave sin tocar las demás.
+
+`chown usuario:grupo archivo` cambia el dueño y el grupo. Solo lo puede hacer root: lo practicarás en el servidor (clase 09).
+
+### 6. `umask`: el molde de los archivos nuevos
+
+Los archivos nuevos no nacen con permisos al azar: los saca un molde, la **umask**. Con la de Ubuntu para tu usuario (`002`), un archivo nuevo nace `664` (`rw-rw-r--`) y un directorio nuevo, `775`. La idea: la máscara **quita** llaves; con `002`, le quita la `w` al resto del mundo.
+
+`umask 077` cambia el molde **solo en esa terminal**: al cerrarla, vuelve el de siempre.
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. Traduce `rwxr-xr--` a números.
+2. Un archivo es `---rwxrwx` y tú eres su dueño. ¿Puedes leerlo?
+3. Quieres poder borrar archivos de una carpeta. ¿Qué llave necesitas, y dónde: en los archivos o en la carpeta?
+
+<details>
+<summary>Comprueba</summary>
+
+1. `754`: `rwx` = 7, `r-x` = 5, `r--` = 4. 2. No: el portero te da el juego del dueño (`---`) y no sigue mirando, aunque el resto tenga todo. Lo comprobarás en el Rómpelo 1. 3. La `w` de la **carpeta**: borrar es sacar algo de la habitación.
+</details>
+
+### Tu chuleta de la clase
+
+| Números | Letras | Uso típico |
+|---------|--------|------------|
 | `755` | `rwxr-xr-x` | scripts, directorios públicos |
 | `644` | `rw-r--r--` | archivos de configuración o de una web |
 | `700` | `rwx------` | directorio privado (`~/.ssh`) |
 | `600` | `rw-------` | archivo privado (llave SSH, contraseñas) |
 | `750` | `rwxr-x---` | directorio de un equipo (dueño y grupo) |
-| `777` | `rwxrwxrwx` | ❌ cualquiera hace cualquier cosa |
+| `777` | `rwxrwxrwx` | ❌ cualquiera hace cualquier cosa: nunca es la solución |
 
-### `chmod`
+| Comando | Qué hace |
+|---------|----------|
+| `ls -l archivo` · `ls -ld carpeta` | ver los permisos (`-d`: de la carpeta, no de lo que hay dentro) |
+| `chmod 640 f` · `chmod u+x f` · `chmod -R 750 d` | cambiar permisos: números, letras, recursivo (¡cuidado!) |
+| `umask` · `umask 077` | ver el molde · cambiarlo en esta terminal |
+| `id` | quién eres y en qué grupos estás |
 
-```bash
-chmod 640 archivo           # numérico: fija los 9 bits
-chmod u+x script.sh         # simbólico: añade x al dueño
-chmod g-w,o-r archivo       # quita w al grupo y r a otros
-chmod -R 750 directorio     # recursivo (¡cuidado!)
-```
-
-`chown usuario:grupo archivo` cambia dueño y grupo. Cambiar el dueño requiere ser root: lo practicarás en el servidor (clase 09).
-
-### `umask`: el molde de los archivos nuevos
-
-Los archivos nuevos nacen con `666` menos la máscara y los directorios con `777` menos la máscara. Con `umask 002` (la típica de Ubuntu para tu usuario), un archivo nace con `664` y un directorio con `775`. `umask` cambia la máscara **solo en ese shell**: al cerrar la terminal vuelve a la de siempre.
-
-### Bits especiales (para reconocerlos)
-
-- **setuid** (`s` en lugar de la `x` del dueño): el programa corre con los permisos de **su dueño**. `/usr/bin/passwd` lo tiene para poder escribir en `/etc/shadow`.
-- **sticky bit** (`t` al final): en `/tmp` todos pueden crear archivos, pero solo el dueño puede borrar los suyos.
+**Para reconocerlos** (no hace falta más hoy): una `s` en lugar de la `x` del dueño es el **setuid**: el programa corre con los permisos de su dueño, no con los tuyos (`/usr/bin/passwd` lo tiene para poder escribir en `/etc/shadow`). Una `t` al final es el **sticky bit**: en `/tmp` todos pueden crear archivos, pero cada uno solo puede borrar los suyos.
 
 ## Práctica guiada
 
@@ -101,12 +144,17 @@ umask
 ```bash
 ls -l /etc/passwd /etc/shadow /usr/bin/passwd
 ls -ld /tmp /root ~
+```
+
+Para cada línea, di en voz alta quién es el dueño, el grupo y qué llaves tiene cada juego.
+
+🔮 **Predice:** mirando los permisos de `/etc/shadow`, ¿podrás leerlo?
+
+```bash
 cat /etc/shadow
 ```
 
-🔮 **Predice antes del `cat`:** ¿podrás leer `/etc/shadow`? Mira sus permisos.
-
-`/etc/shadow` guarda los hashes de las contraseñas: solo root y el grupo `shadow` pueden leerlo.
+No: es `rw-r-----` de `root` y del grupo `shadow`, y tú caes en «el resto del mundo» (`---`). Guarda los *hashes* de las contraseñas (una versión cifrada de cada una), así que solo root y el grupo `shadow` pueden leerlo.
 
 ### 2. Un script sin permiso de ejecución
 
@@ -143,42 +191,56 @@ mkdir caja && echo "dato" > caja/dato.txt
 ls -ld caja
 ```
 
-Para cada bloque, 🔮 **predice** qué funcionará y qué no **antes** de ejecutarlo:
+`caja` es tu habitación de la teoría. Vas a quitarle llaves y ver qué puedes hacer en cada caso. Antes de cada bloque, 🔮 **predice** qué funcionará y qué no, y apúntalo.
 
-**Sin nada (000):**
+**Sin ninguna llave (000):**
 ```bash
 chmod 000 caja
 ls caja
 cat caja/dato.txt
 cd caja
-ls -ld caja           # esto sí funciona: lee la información del directorio desde el padre
+ls -ld caja
 ```
 
-**Solo lectura (r--, 400):**
+**Solo la `r` (400):**
 ```bash
 chmod 400 caja
-ls caja               # ves el NOMBRE...
-cat caja/dato.txt     # ...pero no puedes abrirlo: falta x
+ls caja
+cat caja/dato.txt
 ```
 
-**Solo paso (--x, 100):**
+**Solo la `x` (100):**
 ```bash
 chmod 100 caja
-ls caja               # no puedes listar...
-cat caja/dato.txt     # ...pero si sabes el nombre, entras directo
+ls caja
+cat caja/dato.txt
 ```
 
-**Lectura y paso, sin escritura (r-x, 500):**
+**`r` y `x`, sin `w` (500):**
 ```bash
 chmod 500 caja
 cat caja/dato.txt
-rm caja/dato.txt      # no puedes borrar: borrar es escribir en el DIRECTORIO
+rm caja/dato.txt
 touch caja/nuevo.txt
 ```
 
+Deja la caja en un estado normal:
 ```bash
-chmod 755 caja        # deja la caja en un estado normal
+chmod 755 caja
 ```
+
+<details>
+<summary>Compruébalo después de predecir</summary>
+
+| Llaves de `caja` | `ls caja` (leer la lista) | `cat caja/dato.txt` (entrar a coger algo) | Crear o borrar dentro |
+|------------------|---------------------------|-------------------------------------------|-----------------------|
+| `000` | ❌ | ❌ | ❌ |
+| `400` (`r`) | ✅ ves el nombre | ❌ no puedes cruzar la puerta | ❌ |
+| `100` (`x`) | ❌ no puedes leer la lista | ✅ si sabes el nombre, entras directo | ❌ |
+| `500` (`r` y `x`) | ✅ | ✅ | ❌ borrar y crear es cambiar la habitación: hace falta `w` |
+
+¿Y `ls -ld caja` con `000`? Funciona: no entra en la habitación, lee su ficha (permisos, dueño) desde la carpeta de fuera, donde sí tienes llaves.
+</details>
 
 ### 5. `umask` en acción
 
@@ -190,6 +252,8 @@ touch con-umask-077.txt && mkdir dir-077
 ls -ld con-umask-* dir-*
 umask 002             # restaura (o cierra la terminal)
 ```
+
+Compara: con el molde normal, el archivo nace `rw-rw-r--` y la carpeta `rwxrwxr-x`. Con `077`, el molde quita **todo** al grupo y al resto: nacen `rw-------` y `rwx------`, privados desde el primer momento.
 
 ## Rómpelo
 
@@ -218,10 +282,39 @@ Tu llave privada (`id_ed25519`) está en `600` y `~/.ssh` en `700`. Si la llave 
 
 ## Reto
 
-1. Crea `equipo/` con permisos para que el dueño haga todo, el grupo pueda entrar y leer, y los demás nada. Usa notación numérica.
-2. Dentro, crea `config.ini` que el dueño pueda leer y escribir y el grupo solo leer. Notación **simbólica**, partiendo de lo que tenga al crearse.
-3. Calcula sin ejecutar: con `umask 027`, ¿con qué permisos nacen un archivo y un directorio? Compruébalo después.
-4. Encuentra en `/usr/bin` los programas con setuid: `find /usr/bin -perm -4000`. Elige dos e investiga (`man`) por qué lo necesitan.
+En `labs/clase-06/`, en la terminal. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** Crea `equipo/` con permisos para que el dueño haga todo, el grupo pueda entrar y leer, y los demás nada. Usa números.
+
+<details>
+<summary>Pista</summary>
+
+Dueño, todo: 7. Grupo, entrar y leer (`r-x`): 4 + 1 = 5. Los demás, nada: 0. Un `mkdir` y después un `chmod` con esas tres cifras.
+</details>
+
+**2.** Dentro, crea `config.ini` para que el dueño pueda leer y escribir y el grupo solo leer. Usa **letras**, partiendo de los permisos con los que nace.
+
+<details>
+<summary>Pista</summary>
+
+Créalo con `touch` y mira con `ls -l` cómo nace (por la umask, `rw-rw-r--`). ¿Qué llave le sobra al grupo y cuál al resto? Quítalas con `chmod g-…,o-…`.
+</details>
+
+**3.** Calcula sin ejecutar: con `umask 027`, ¿con qué permisos nacen un archivo y un directorio? Compruébalo después.
+
+<details>
+<summary>Pista</summary>
+
+Los archivos parten de `rw-rw-rw-` y las carpetas de `rwxrwxrwx`. La máscara `027` quita: al dueño nada (0), al grupo la `w` (2) y al resto todo (7). Tacha esas llaves y lee lo que queda. Para comprobarlo: `umask 027`, un `touch` y un `mkdir`, y después `umask 002` para restaurar.
+</details>
+
+**4.** Ejecuta `find /usr/bin -perm -4000 2>/dev/null`: son los programas con setuid. Elige dos que conozcas e investiga por qué lo necesitan.
+
+<details>
+<summary>Pista</summary>
+
+Por ejemplo, `passwd` y `su`. En `man passwd`, lee la sección `DESCRIPTION`: ¿qué archivo del sistema necesita modificar, y quién puede escribir en él? (Lo viste en la práctica 1).
+</details>
 
 ## Cierre
 
@@ -231,6 +324,8 @@ En `notas/fase-1/clase-06.md`:
 2. Con el directorio en `000`, ¿qué pasó con `ls caja`, con `cat caja/dato.txt` y con `ls -ld caja`? ¿Por qué el último sí funcionó?
 3. Un compañero propone `chmod -R 777 /var/www` porque nginx da "Permission denied". ¿Qué le respondes y qué harías tú?
 4. **Repaso (clase 05, sin mirar):** ¿con qué pipeline sacarías las 5 IPs que más peticiones hacen en un log de nginx?
+
+Después, escríbeme `examíname clase-06`.
 
 ## Autocorrección
 
@@ -248,7 +343,7 @@ En `notas/fase-1/clase-06.md`:
 **Reto:**
 ```bash
 mkdir equipo && chmod 750 equipo
-touch equipo/config.ini && chmod u=rw,g=r,o= equipo/config.ini
+touch equipo/config.ini && chmod g-w,o-r equipo/config.ini     # nace rw-rw-r--: sobran la w del grupo y la r del resto
 # umask 027: archivo 666-027 → 640 (rw-r-----) · directorio 777-027 → 750 (rwxr-x---)
 find /usr/bin -perm -4000 -ls
 ```

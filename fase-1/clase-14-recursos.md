@@ -17,7 +17,11 @@ Las alarmas más comunes en CloudWatch son de CPU alta, memoria alta y disco lle
 
 ## Teoría
 
-### CPU y load average
+Cuatro piezas, con la cocina de *La idea de hoy*: los **fuegos** son la CPU, la **encimera** es la memoria y la **despensa** es el disco.
+
+### 1. La CPU: los fuegos
+
+Cada núcleo de CPU es un **fuego** de la cocina (`nproc` te dice cuántos hay). La **carga** (*load average*) es cuántos platos, de media, quieren fuego o están esperando algo de la despensa:
 
 ```bash
 uptime
@@ -25,27 +29,17 @@ uptime
 #                                            1 min  5 min  15 min
 ```
 
-La **carga** es el número medio de procesos que quieren CPU (en estado `R`) o esperan disco (en estado `D`). Se compara con el número de núcleos (`nproc`):
+Las tres cifras son la media del último minuto, de los últimos 5 y de los últimos 15: te dicen si la cosa va a más o a menos. Se leen **comparadas con el número de fuegos**:
 
-| Load / núcleos | Lectura |
-|----------------|---------|
-| < 0,7 | holgado |
-| ≈ 1 | al límite |
-| > 1 | hay cola: algo espera |
+| Carga dividida entre núcleos | Lectura |
+|------------------------------|---------|
+| menos de 0,7 | holgado |
+| cerca de 1 | todos los fuegos ocupados, al límite |
+| más de 1 | hay platos **esperando turno** |
 
-Si la carga es alta pero la CPU está ociosa, el problema suele ser el **disco** (procesos en `D`, mucho `wa` en `top`).
+Ojo: la carga cuenta también los platos que esperan ingredientes de la despensa (procesos en estado `D`, esperando al disco). Por eso una carga alta con la CPU tranquila suele significar **disco lento**.
 
-Línea `%Cpu(s)` de `top`:
-
-| Campo | Significado |
-|-------|-------------|
-| `us` | tiempo de tus programas |
-| `sy` | tiempo del kernel |
-| `wa` | esperando disco (I/O wait) |
-| `id` | ocioso |
-| `st` | **steal**: el hipervisor dio tu CPU a otra VM. En la nube, un `st` alto indica una instancia sin créditos de CPU (familia `t3`) o un host saturado |
-
-### Memoria
+### 2. La memoria: la encimera
 
 ```bash
 free -h
@@ -53,29 +47,61 @@ free -h
 # Mem:   962Mi   310Mi  120Mi  1Mi     532Mi       500Mi
 ```
 
-- **free**: memoria sin usar para nada. Linux procura que sea poca: la RAM vacía es RAM desperdiciada.
-- **buff/cache**: Linux usa la memoria libre como caché de disco y la **devuelve** cuando alguien la pide.
-- **available**: lo que los programas pueden usar de verdad. **Esta es la columna que importa.**
-- **swap**: disco usado como memoria extra. Es muy lento: si hay mucho swap en uso, la máquina se arrastra.
+- **free**: encimera vacía. Linux procura que haya poca: una encimera vacía es espacio desperdiciado.
+- **buff/cache**: Linux pone en la encimera libre cosas de la despensa que quizá vuelvas a pedir (una *caché* del disco), y las **retira** en cuanto alguien necesita sitio.
+- **available**: lo que de verdad pueden usar los programas, contando lo que se puede retirar de la caché. **Esta es la columna que importa.**
+- **swap**: cuando la encimera se llena, apoyar cosas en el suelo del pasillo (usar el disco como memoria). Funciona, pero es lentísimo.
 
-Si la memoria se agota, el kernel invoca al **OOM killer** (*Out Of Memory*): elige un proceso (normalmente el que más usa) y lo **mata con SIGKILL**. Ese proceso no deja nada en su log; la evidencia está en el **log del kernel**.
+Si aun así la encimera se llena, el kernel llama al **OOM killer** (*Out Of Memory*): elige un plato, normalmente el que más espacio ocupa, y lo **tira a la basura** con `SIGKILL` (clase 11). Ese proceso no llega a escribir nada en su log: la única pista queda en el **log del kernel**.
 
-### Disco
+### 3. El disco: la despensa
 
-| Comando | Responde a |
-|---------|------------|
-| `df -h` | ¿cuánto espacio queda en cada sistema de archivos? |
-| `df -i` | ¿cuántos **inodos** quedan? |
-| `du -sh dir` | ¿cuánto ocupa este directorio? |
-| `du -xh / --max-depth=1 \| sort -h` | ¿dónde está el espacio? (`-x`: no cruzar a otros discos) |
-| `lsblk` | discos y particiones |
-| `lsof +L1` | archivos **borrados** que siguen abiertos |
+Dos preguntas, dos comandos:
 
-Un **inodo** es la ficha de un archivo (permisos, dueño, dónde están sus datos). Cada sistema de archivos tiene un número fijo. Millones de archivos diminutos pueden agotarlos con gigas libres: `No space left on device` con `df -h` al 60 %.
+```bash
+df -h            # ¿cuánto sitio QUEDA en cada disco?
+du -sh carpeta   # ¿cuánto OCUPA esta carpeta?
+```
 
-Un mismo inodo puede tener **varios nombres**: los **enlaces duros** (`ln original otro-nombre`; `ls -li` muestra el número de inodo y cuántos nombres tiene). El espacio de un archivo solo se libera cuando desaparece su **último nombre** y **ningún proceso** lo tiene abierto. Un enlace simbólico (`ln -s`, clase 02) es otra cosa: un archivo pequeño que contiene una ruta.
+`df` mira la despensa desde fuera (cuánto cabe aún) y `du` cuenta lo que hay en cada estante. Normalmente cuadran. Cuando no cuadran, hay una de las dos trampas de la pieza 4.
 
-Un archivo borrado que un proceso **sigue teniendo abierto** no libera su espacio hasta que ese proceso lo cierra. `df` dice "lleno", `du` no encuentra el espacio. Pasa constantemente con logs borrados a mano.
+### 4. Dos trampas del disco
+
+**Trampa 1: se acaban las fichas.** Cada archivo necesita una **ficha** en el catálogo de la despensa, llamada **inodo** (sus permisos, su dueño, dónde están sus datos). El número de fichas es fijo. Con millones de archivos diminutos se acaban las fichas aunque los estantes estén medio vacíos: `No space left on device` con `df -h` al 60 %. Se mira con `df -i`.
+
+**Trampa 2: tachado de la lista, pero alguien lo sigue usando.** Si borras un archivo que un proceso tiene **abierto**, desaparece su nombre, pero el espacio no se libera hasta que ese proceso lo cierra. `df` dice «lleno» y `du` no encuentra nada. Pasa constantemente con logs borrados a mano. Se mira con `lsof +L1`.
+
+Relacionado con las fichas: una misma ficha puede tener **varios nombres**, que se llaman **enlaces duros** (`ln original otro-nombre`; `ls -li` muestra el número de ficha y cuántos nombres tiene). El espacio solo se libera cuando desaparece el **último nombre** y **nadie** tiene el archivo abierto. Un enlace simbólico (`ln -s`, clase 02) es otra cosa: un archivo pequeño que contiene una ruta, como un acceso directo.
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. Una VM de 2 núcleos tiene una carga de 4. ¿Qué significa?
+2. `free -h` dice `free 80Mi` y `available 600Mi`. ¿Falta memoria?
+3. Una app se reinicia sola y su log no dice nada. ¿Qué sospechas?
+
+<details>
+<summary>Comprueba</summary>
+
+1. Que hay el doble de trabajo del que caben en los fuegos: la mitad de los procesos espera turno (o espera al disco). 2. No: lo que cuenta es `available`, y 600 MiB está bien. 3. El OOM killer: busca en el log del kernel.
+</details>
+
+### Tu chuleta de la clase
+
+| Recurso | Comandos |
+|---------|----------|
+| CPU | `nproc` (núcleos) · `uptime` (carga) · `top` (en vivo; `P` ordena por CPU) · `vmstat 1` (cada segundo) |
+| Memoria | `free -h` · `ps aux --sort=-%mem \| head` (quién más usa) · `journalctl -k \| grep -i "killed process"` (el OOM killer) |
+| Disco | `df -h` (lo que queda) · `df -i` (fichas que quedan) · `du -sh dir` (lo que ocupa) · `du -xh / --max-depth=1 \| sort -h` (dónde está el espacio; `-x`: sin cruzar a otros discos) · `lsblk` (discos y particiones) · `lsof +L1` (borrados pero abiertos) |
+
+La línea `%Cpu(s)` de `top`, en la cocina:
+
+| Campo | Significado |
+|-------|-------------|
+| `us` | fuegos ocupados con tus programas |
+| `sy` | fuegos ocupados con el kernel |
+| `wa` | platos esperando a la despensa (*I/O wait*) |
+| `id` | fuegos libres |
+| `st` | **steal**: el hipervisor (clase 08) prestó tu fuego a otra VM. En la nube, un `st` alto indica una instancia sin créditos de CPU (familia `t3`) o un servidor físico saturado |
 
 ## Práctica guiada
 
@@ -301,11 +327,47 @@ Encuentra cuál fue (CPU, memoria, disco lleno o disco saturado de escrituras) c
 
 ## Reto
 
-1. Escribe un **one-liner** de salud que imprima en una línea: carga del 1.er minuto, memoria `available` en MB y % de uso del disco `/`. (Pistas: `cut -d' ' -f1 /proc/loadavg`, `free -m | awk '/Mem/ {print $7}'`, `df --output=pcent / | tail -1`.) Lo convertirás en un script de verdad en el bloque C.
-2. ¿Qué tamaño tienen los 5 archivos más grandes de todo el sistema? (`sudo find / -xdev -type f -size +50M -exec ls -lh {} + 2>/dev/null | sort -k5 -h | tail -5`)
-3. ¿Cuánto swap tiene la VM? Busca qué es `vm.swappiness` (`cat /proc/sys/vm/swappiness`).
-4. Crea un archivo, hazle un enlace duro y un enlace simbólico, y borra el original. ¿Cuál de los dos sigue funcionando? Explícalo con `ls -li`.
-5. ¿Qué pasaría si en el `fstab` del paso 7 no hubieras puesto `nofail` y el disco no estuviera al arrancar?
+En la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** Crea un archivo, hazle un enlace duro y un enlace simbólico, y borra el original. ¿Cuál de los dos enlaces sigue funcionando? Explícalo con `ls -li`.
+
+<details>
+<summary>Pista</summary>
+
+`ln original duro` y `ln -s original simbolico`. Después `rm original` y prueba `cat duro` y `cat simbolico`. `ls -li` enseña el número de ficha (inodo) de cada uno.
+</details>
+
+**2.** ¿Cuánto swap tiene la VM? Mira también el valor de `vm.swappiness` con `cat /proc/sys/vm/swappiness`.
+
+<details>
+<summary>Pista</summary>
+
+El swap sale en la segunda línea de `free -h`. `swappiness` va de 0 a 100: cuanto más alto, antes empieza Linux a usar el swap.
+</details>
+
+**3.** ¿Qué pasaría si en el `fstab` del paso 7 no hubieras puesto `nofail` y el disco no estuviera al arrancar?
+
+<details>
+<summary>Pista</summary>
+
+Relee el párrafo de `nofail` del paso 7.
+</details>
+
+**4.** Escribe una línea que imprima la carga del último minuto, la memoria `available` en MB y el % de uso del disco `/`. Lo convertirás en un script de verdad en el bloque C.
+
+<details>
+<summary>Pista</summary>
+
+Un `echo` con tres `$( )`, uno por dato: `echo "load=$(…) mem=$(…)MB disk=$(…)"`. Las tres piezas: `cut -d' ' -f1 /proc/loadavg`, `free -m | awk '/Mem/ {print $7}'` y `df --output=pcent / | tail -1`. Prueba cada pieza por separado antes de juntarlas.
+</details>
+
+**5.** ¿Qué tamaño tienen los 5 archivos más grandes de todo el sistema? Ejecuta `sudo find / -xdev -type f -size +50M -exec ls -lh {} + 2>/dev/null | sort -k5 -h | tail -5` y explica cada pieza.
+
+<details>
+<summary>Pista</summary>
+
+Aquí no se pide inventarlo, sino leerlo: `find` busca archivos de más de 50 MB sin salir de este disco (`-xdev`); `-exec ls -lh {} +` los muestra con su tamaño; `sort -k5 -h` ordena por la columna 5 (el tamaño) entendiendo K, M y G; `tail -5` se queda con los 5 últimos, los más grandes.
+</details>
 
 ## Cierre
 
@@ -315,6 +377,8 @@ En `notas/fase-1/clase-14.md`:
 2. Una app Java se reinicia sola de vez en cuando y en su log no hay ningún error. ¿Qué miras y qué buscas?
 3. `df -h` dice 100 % en `/`, pero `du` solo suma la mitad. Explica las dos causas posibles que viste hoy y cómo distinguirlas.
 4. **Repaso (clase 13, sin mirar):** ¿con qué comando ves los errores del arranque anterior del sistema?
+
+Después, escríbeme `examíname clase-14`.
 
 ## Autocorrección
 
@@ -329,14 +393,14 @@ En `notas/fase-1/clase-14.md`:
 
 **4.** `journalctl -b -1 -p err` (requiere journal persistente).
 
-**Reto 1:**
+**Reto 4:**
 ```bash
 echo "load=$(cut -d' ' -f1 /proc/loadavg) mem_avail=$(free -m | awk '/Mem/ {print $7}')MB disk=$(df --output=pcent / | tail -1 | tr -d ' ')"
 ```
 
-**Reto 4:** el enlace **duro** sigue funcionando: es otro nombre del mismo inodo, y los datos no se liberan mientras quede un nombre. El **simbólico** queda roto: apuntaba a una ruta que ya no existe.
+**Reto 1:** el enlace **duro** sigue funcionando: es otro nombre del mismo inodo, y los datos no se liberan mientras quede un nombre. El **simbólico** queda roto: apuntaba a una ruta que ya no existe.
 
-**Reto 5:** systemd esperaría al disco y, al no aparecer, el arranque fallaría y el sistema entraría en modo de emergencia. En una EC2, la instancia no llegaría a aceptar SSH, y habría que leer la consola del sistema y reparar `fstab` montando el disco raíz en otra instancia.
+**Reto 3:** systemd esperaría al disco y, al no aparecer, el arranque fallaría y el sistema entraría en modo de emergencia. En una EC2, la instancia no llegaría a aceptar SSH, y habría que leer la consola del sistema y reparar `fstab` montando el disco raíz en otra instancia.
 </details>
 
 ## Inglés

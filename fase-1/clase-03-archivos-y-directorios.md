@@ -17,6 +17,65 @@ Editar configuraciones, hacer copias de seguridad antes de un cambio y seguir un
 
 ## Teoría
 
+Cuatro piezas: crear, copiar y mover, borrar sin sustos y leer. Y una quinta, los comodines, que son la mitad de los sustos.
+
+### 1. Crear
+
+```bash
+touch notas.txt              # un archivo vacío
+mkdir -p logs/2026/10        # una carpeta; con -p, toda la ruta de una vez
+```
+
+### 2. Copiar, mover y renombrar
+
+```bash
+cp original copia            # copiar (para carpetas: cp -r)
+mv viejo nuevo               # renombrar...
+mv archivo carpeta/          # ...o mover: para Linux es la misma operación
+```
+
+⚠️ `cp` y `mv` **sobrescriben sin preguntar** si el destino ya existe. Con `-i` preguntan antes.
+
+### 3. Borrar: sin papelera
+
+`rm archivo` borra **para siempre**: no hay papelera ni «deshacer». Para una carpeta con cosas dentro, `rm -r carpeta`. Por eso, antes de cualquier `rm` importante: `pwd` para saber dónde estás y `echo` con el mismo patrón para ver qué se va a borrar (pieza 5).
+
+### 4. Leer
+
+```bash
+cat archivo                  # entero, de golpe (para archivos cortos)
+less archivo                 # página a página: q sale, /palabra busca
+head -n 5 archivo            # las 5 primeras líneas
+tail -n 5 archivo            # las 5 últimas
+tail -f archivo.log          # las últimas, y se queda mirando las nuevas en directo
+```
+
+### 5. Comodines: el shell hace la lista
+
+Un comodín es un patrón que el **shell** convierte en la lista de archivos que coinciden, **antes** de ejecutar el comando:
+
+| Patrón | Coincide con |
+|--------|--------------|
+| `*` | cualquier cosa, incluso nada: `*.log` son todos los que acaban en `.log` |
+| `?` | exactamente un carácter: `app?.log` |
+| `[1-3]` | un carácter de ese conjunto: `dia[1-3].txt` |
+
+El comando nunca ve el `*`: recibe la lista ya hecha. Por eso **`echo` es tu red de seguridad**: `echo *.log` te enseña exactamente lo que recibiría `rm *.log`, sin borrar nada.
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. ¿Con qué comando creas `a/b/c` de una vez?
+2. ¿Qué diferencia hay entre `mv informe.txt viejo.txt` y `mv informe.txt viejo/`?
+3. Antes de `rm *.tmp`, ¿qué escribes para ver qué se borraría?
+
+<details>
+<summary>Comprueba</summary>
+
+1. `mkdir -p a/b/c`. 2. El primero **renombra** el archivo; el segundo lo **mueve** dentro de la carpeta `viejo`. 3. `echo *.tmp` (o `ls *.tmp`).
+</details>
+
+### Tu chuleta de la clase
+
 | Comando | Qué hace | Opciones clave |
 |---------|----------|----------------|
 | `touch f` | Crea un archivo vacío (o actualiza su fecha si ya existe) | |
@@ -31,18 +90,6 @@ Editar configuraciones, hacer copias de seguridad antes de un cambio y seguir un
 | `tail -n 5 f` | Las últimas 5 líneas | `-f`: se queda esperando y muestra lo nuevo en directo |
 | `file f` | Te dice qué tipo de archivo es | |
 | `wc -l f` | Cuenta las líneas | |
-
-### Comodines (globbing)
-
-Los expande **el shell** antes de ejecutar el comando:
-
-| Patrón | Coincide con |
-|--------|--------------|
-| `*` | cualquier cosa, incluido nada: `*.log` |
-| `?` | exactamente un carácter: `app?.log` |
-| `[0-9]` | un carácter del conjunto: `dia[1-3].txt` |
-
-El comando nunca ve el `*`: recibe la lista de nombres ya expandida. Por eso **`echo` es tu red de seguridad**: `echo *.log` te enseña qué recibiría `rm *.log` antes de ejecutarlo.
 
 ## Práctica guiada
 
@@ -210,15 +257,55 @@ Si el `cd` falla, el shell sigue en el directorio anterior y `rm -rf *` borra **
 
 ## Reto
 
-En `labs/clase-03/reto/`, sin mirar arriba:
-1. Crea `logs/2026/10/` de un solo comando.
-2. Crea `web-1.log`, `web-2.log`, `web-3.log` y `db.log` dentro de `logs/2026/10/`.
-3. Mueve solo los `web-*.log` a `logs/web/` (créalo). Antes, comprueba el patrón con `echo`.
-4. Haz una copia de seguridad de toda la carpeta `logs` como `logs.bak`, conservando fechas y permisos.
-5. Borra `logs/2026` entero y comprueba que `logs.bak` sigue intacta.
-6. Empaqueta `logs.bak` en `logs-<fecha de hoy>.tar.gz`, lista su contenido **sin** extraerlo y extráelo dentro de una carpeta `restore/`.
+En `labs/clase-03/reto/`, sin mirar arriba, en la terminal. En tus notas, marca cada punto con ✅ o ❌ al compararlo con la solución. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
 
-Hazlo en la terminal. En tus notas, marca cada punto con ✅ o ❌ al compararlo con la solución.
+**1.** Crea `logs/2026/10/` de un solo comando.
+
+<details>
+<summary>Pista</summary>
+
+`mkdir` con la opción que crea toda la ruta de una vez.
+</details>
+
+**2.** Crea `web-1.log`, `web-2.log`, `web-3.log` y `db.log` dentro de `logs/2026/10/`.
+
+<details>
+<summary>Pista</summary>
+
+`touch` acepta varios nombres en el mismo comando: `touch ruta/a ruta/b`.
+</details>
+
+**3.** Mueve solo los `web-*.log` a `logs/web/` (créalo). Antes, comprueba el patrón con `echo`.
+
+<details>
+<summary>Pista</summary>
+
+Primero `mkdir -p logs/web`. El patrón es `logs/2026/10/web-*.log`: pruébalo con `echo` y, si salen los tres, cambia `echo` por `mv` y añade el destino al final.
+</details>
+
+**4.** Haz una copia de seguridad de toda la carpeta `logs` como `logs.bak`, conservando fechas y permisos.
+
+<details>
+<summary>Pista</summary>
+
+`cp` copia carpetas con `-r`. La opción que además conserva fechas y permisos es `-a` (y ya incluye `-r`).
+</details>
+
+**5.** Borra `logs/2026` entero y comprueba que `logs.bak` sigue intacta.
+
+<details>
+<summary>Pista</summary>
+
+`rm -r` borra una carpeta con todo lo que tiene. Después, `tree logs.bak`.
+</details>
+
+**6.** Empaqueta `logs.bak` en `logs-<fecha de hoy>.tar.gz`, lista su contenido **sin** extraerlo y extráelo dentro de una carpeta `restore/`.
+
+<details>
+<summary>Pista</summary>
+
+La tabla de `tar` de la práctica 8: **c** crear, **t** listar, **x** extraer, siempre con **z** y **f**. La fecha de hoy la da `$(date +%F)`, como en esa misma práctica. Para extraer en otra carpeta: créala y añade `-C restore/`.
+</details>
 
 ## Cierre
 
@@ -228,6 +315,8 @@ En `notas/fase-1/clase-03.md`:
 2. ¿Por qué `echo patrón` antes de `rm patrón` es buena idea? ¿Quién expande el `*`?
 3. ¿Para qué sirve `tail -f` en operaciones? Describe una situación concreta.
 4. **Repaso (clase 02, sin mirar):** desde `/var/log/nginx`, ¿a dónde te lleva `cd ../..`? ¿Y `cd /`?
+
+Después, escríbeme `examíname clase-03`.
 
 ## Autocorrección
 

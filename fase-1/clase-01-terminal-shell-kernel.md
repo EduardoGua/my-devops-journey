@@ -84,6 +84,29 @@ Opciones largas: `--all` equivale a `-a`. Las largas se leen mejor en scripts. L
 
 Cada paso puede fallar, y el mensaje de error te dice en cuál estás. `lsss` falla en el paso 3: el shell no encuentra ningún programa con ese nombre. `ls /esto-no-existe` llega hasta el paso 5: el programa existe, pero la ruta no. Volverás a esta cadena con más detalle en la clase 07 (paso 3), en la 11 (paso 4) y en la 16 (cuando el programa es un script tuyo).
 
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. Cierras la ventana de la terminal. ¿Has cerrado el shell, la terminal o las dos cosas?
+2. ¿Quién es el único que toca el hardware: el shell o el kernel?
+3. En `ls -l /etc`, ¿cuál es el comando, cuál la opción y cuál el argumento?
+
+<details>
+<summary>Comprueba</summary>
+
+1. Las dos: la ventana era la terminal, y el shell que corría dentro termina con ella. 2. El kernel. 3. `ls` es el comando, `-l` la opción y `/etc` el argumento.
+</details>
+
+### Tu chuleta de la clase
+
+| Comando | Qué hace |
+|---------|----------|
+| `whoami` · `hostname` · `pwd` · `date` | quién soy · cómo se llama la máquina · dónde estoy · qué hora es |
+| `uname -r` · `cat /etc/os-release` | versión del kernel · qué distribución es |
+| `nproc` · `uptime` | cuántos núcleos · cuánto lleva encendida |
+| `type cmd` · `type -a cmd` | qué es un comando (builtin, alias o programa) · todas sus versiones |
+| `man cmd` · `cmd --help` · `help cmd` | el manual · ayuda rápida · ayuda de un builtin |
+| `ps -p $$` | el proceso de tu shell |
+
 ## Práctica guiada
 
 Abre una terminal (`Ctrl+Alt+T`).
@@ -208,11 +231,39 @@ Cierra la segunda ventana y repite el comando. El `sleep` desapareció: al cerra
 
 ## Reto
 
-Sin mirar la práctica, responde con comandos:
-1. ¿Cuántos núcleos de CPU tiene tu máquina?
-2. ¿En qué directorio está el programa `ls`? (pista: `type` o `which`)
-3. Con `man`, encuentra la opción de `ls` que ordena por fecha de modificación.
-4. ¿`pwd` es un builtin o un programa?
+Sin mirar la práctica, responde con comandos. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** ¿Cuántos núcleos de CPU tiene tu máquina?
+
+<details>
+<summary>Pista</summary>
+
+Es un comando de una sola palabra de la práctica 2. Viene del inglés *number of processors*.
+</details>
+
+**2.** ¿En qué directorio está el programa `ls`?
+
+<details>
+<summary>Pista</summary>
+
+`which ls` te da la ruta del programa. (`type ls` a secas solo te dice que es un alias).
+</details>
+
+**3.** Con `man`, encuentra la opción de `ls` que ordena por fecha de modificación.
+
+<details>
+<summary>Pista</summary>
+
+Abre `man ls`, escribe `/time` y pulsa Enter; `n` salta a la siguiente coincidencia. Busca la línea que dice *Sort by modification time*.
+</details>
+
+**4.** ¿`pwd` es un builtin o un programa?
+
+<details>
+<summary>Pista</summary>
+
+El comando de la práctica 4 que te dice «qué es» un nombre: `type`.
+</details>
 
 ## Cierre
 
@@ -222,6 +273,8 @@ Crea `notas/fase-1/clase-01.md` (plantilla en [`../notas/Notas.md`](../notas/Not
 2. Escribes `ls -l /etc` y pulsas Enter. Cuenta en 3–5 pasos qué ocurre hasta que ves la lista.
 3. `lsss` y `ls /esto-no-existe` fallan de forma distinta. ¿Quién da cada error y por qué?
 4. *(Calentamiento, sin clase previa)* ¿Por qué un Cloud/DevOps necesita dominar la terminal si AWS tiene consola web?
+
+Después, escríbeme `examíname clase-01`.
 
 Del **Reto**, anota solo los resultados (núcleos, ruta…) y marca cada punto con ✅ o ❌.
 

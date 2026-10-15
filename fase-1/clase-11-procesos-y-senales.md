@@ -17,12 +17,14 @@
 
 ## Teoría
 
-### Programa frente a proceso
+Cuatro piezas, con la imagen de la cocina de *La idea de hoy*.
 
-- **Programa**: un archivo en disco (`/usr/sbin/nginx`). No hace nada por sí solo.
-- **Proceso**: un programa **en ejecución**, con memoria, un número único (**PID**), un usuario dueño y un **padre** (PPID). Un mismo programa puede tener muchos procesos a la vez.
+### 1. Receta y plato: programa y proceso
 
-Todos descienden del **PID 1** (`systemd`), el primer proceso que arranca el kernel:
+- Un **programa** es una receta guardada en el disco (`/usr/sbin/nginx`). Por sí sola no hace nada.
+- Un **proceso** es esa receta **mientras se cocina**: tiene su número de pedido (el **PID**), un dueño (el usuario que lo lanzó) y un **padre** (el proceso que lo encargó, su PPID). De la misma receta pueden estar cocinándose muchos platos a la vez.
+
+Todos los procesos descienden del **PID 1** (`systemd`), el primero que arranca el kernel:
 
 ```
 systemd (1)
@@ -34,45 +36,77 @@ systemd (1)
 
 > 🔁 **Vuelve a la clase 01.** El paso 4 de «Qué pasa cuando pulsas Enter» era «el kernel crea un proceso nuevo». Ese proceso es **hijo de tu shell**. Por dentro, el shell se **clona** (`fork`) y el clon se **convierte** en el programa que pediste (`exec`). Por eso el hijo hereda la mochila de variables de la clase 07. Lo verás en la práctica: `sleep 60 &` y `ps -o pid,ppid,cmd`. El PPID (el padre) del `sleep` es el PID de tu shell (`echo $$`).
 
-### Estados (columna `STAT` de `ps`)
+### 2. Ver qué se está cocinando
 
-| Estado | Significado |
-|--------|-------------|
-| `R` | Running: usando CPU o listo para usarla |
-| `S` | Sleeping: esperando algo (red, teclado, un temporizador). Lo más común |
-| `D` | Espera **ininterrumpible**, casi siempre de disco o red (NFS). Ni `kill -9` lo mata hasta que vuelve |
-| `T` | Detenido (`Ctrl+Z`, `SIGSTOP`) |
-| `Z` | Zombie: terminó, pero su padre no ha recogido su código de salida |
+Tres formas de mirar la cocina:
 
-### Señales
+```bash
+ps aux          # la lista de todos los procesos, una foto fija
+pstree -p       # el árbol de familia, con los PIDs
+top             # en directo, ordenado por lo que más CPU gasta (q para salir)
+```
 
-Una señal es un aviso del kernel a un proceso. El proceso puede **atraparla** (`trap`) y reaccionar, salvo `SIGKILL` y `SIGSTOP`.
+En la columna `STAT` de `ps` verás sobre todo dos estados: **R** (*running*, cocinando ahora) y **S** (*sleeping*, esperando algo: que llegue una petición, que pulses una tecla). Lo normal es que casi todo esté en S. Los demás estados están en la chuleta.
 
-| Señal | Nº | Uso |
-|-------|----|-----|
-| `SIGTERM` | 15 | "Termina, por favor." El proceso puede cerrar conexiones y guardar datos. **Es la que envía `kill` por defecto** |
-| `SIGINT` | 2 | La que envía `Ctrl+C` |
-| `SIGHUP` | 1 | Originalmente "se colgó la terminal". Muchos demonios la usan para **recargar la configuración** |
-| `SIGKILL` | 9 | Muerte inmediata, decidida por el kernel. No se puede atrapar: sin limpieza |
-| `SIGSTOP` / `SIGCONT` | 19 / 18 | Pausar / reanudar |
+### 3. Señales: mensajes al cocinero
 
-**Orden correcto:** `kill PID` (TERM) → esperar unos segundos → solo si sigue vivo, `kill -9 PID`.
+Una **señal** es un aviso que el kernel entrega a un proceso. Cuatro que usarás siempre:
 
-### Comandos
+| Señal | Cómo se envía | Es como decirle al cocinero… |
+|-------|---------------|------------------------------|
+| `SIGTERM` (15) | `kill PID` | «termina lo que tienes en el fuego, recoge y vete». Puede cerrar con orden |
+| `SIGINT` (2) | `Ctrl+C` | lo mismo, desde el teclado |
+| `SIGKILL` (9) | `kill -9 PID` | **apagón**: se corta todo en el acto. No puede recoger nada |
+| `SIGHUP` (1) | `kill -HUP PID` | muchos servicios lo entienden como «**vuelve a leer la receta**» (recargar la configuración) |
+
+El proceso puede **atrapar** las señales y reaccionar (despedirse, guardar datos)… todas menos `SIGKILL`, que no se puede atrapar. Por eso el orden correcto es: **`kill PID` → esperar unos segundos → solo si sigue vivo, `kill -9 PID`**.
+
+### 4. Primer y segundo plano
+
+Normalmente, un comando ocupa tu terminal hasta que termina: está en **primer plano**. Puedes mandarlo a **segundo plano** para seguir usando la terminal mientras se cocina:
+
+```bash
+sleep 300 &       # el & lo lanza directamente en segundo plano
+jobs              # tus trabajos en esta terminal: [1], [2]...
+fg %1             # traer el trabajo 1 al primer plano
+```
+
+`Ctrl+Z` **pausa** el que está en primer plano (no lo mata) y `bg %1` lo deja seguir en segundo plano. `nohup comando &` hace que siga vivo aunque cierres la terminal.
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. ¿Cuántos procesos pueden estar ejecutando el mismo programa a la vez?
+2. Una app no responde. ¿Qué señal envías primero y cuál solo como último recurso?
+3. ¿Qué hace `Ctrl+Z`: termina el proceso o lo pausa?
+
+<details>
+<summary>Comprueba</summary>
+
+1. Muchos: como varios platos de la misma receta. nginx, por ejemplo, tiene un *master* y varios *workers*. 2. Primero `SIGTERM` (`kill PID`); `SIGKILL` (`kill -9`) solo si no hace caso. 3. Lo **pausa**: sigue existiendo, en estado `T`.
+</details>
+
+### Tu chuleta de la clase
 
 | Comando | Para qué |
 |---------|----------|
-| `ps aux` | Todos los procesos (usuario, PID, %CPU, %MEM, estado, comando) |
-| `ps -ef --forest` | Con PPID y en árbol |
-| `pstree -p` | El árbol con PIDs |
-| `pgrep -a nombre` | Busca PIDs por nombre |
-| `top` / `htop` | Monitor en vivo (`q` sale; en htop `F6` ordena y `F9` envía señales) |
-| `kill [-SEÑAL] PID` | Envía una señal |
-| `pkill nombre` | Envía una señal por nombre (¡cuidado con lo que coincide!) |
-| `cmd &` | Lanza en segundo plano |
-| `jobs`, `fg %1`, `bg %1` | Gestiona trabajos de este shell |
-| `nohup cmd &` | Sobrevive al cierre de la terminal (ignora SIGHUP) |
-| `nice -n 10 cmd` / `renice` | Baja o sube la prioridad de CPU |
+| `ps aux` · `ps -ef --forest` | todos los procesos · con su padre (PPID) y en árbol |
+| `pstree -p` · `pgrep -a nombre` | el árbol con PIDs · buscar PIDs por nombre |
+| `top` / `htop` | monitor en vivo (`q` sale; en `top`, `P` ordena por CPU; en `htop`, `F9` envía señales) |
+| `kill PID` · `kill -9 PID` · `kill -HUP PID` | SIGTERM · SIGKILL · SIGHUP |
+| `pkill nombre` | envía la señal por nombre (¡mira antes con `pgrep -a` qué coincide!) |
+| `cmd &` · `jobs` · `fg %1` · `bg %1` | segundo plano · ver · traer · reanudar en segundo plano |
+| `nohup cmd &` | sobrevive al cierre de la terminal |
+| `nice -n 10 cmd` · `renice` | bajar o subir la prioridad de CPU |
+
+| Estado (`STAT`) | Significa |
+|-----------------|-----------|
+| `R` | *Running*: usando CPU o listo para usarla |
+| `S` | *Sleeping*: esperando algo. Lo más común |
+| `D` | Espera **ininterrumpible**, casi siempre de disco o red. Ni `kill -9` lo mata hasta que vuelve |
+| `T` | Detenido (`Ctrl+Z`, `SIGSTOP`) |
+| `Z` | Zombi: terminó, pero su padre no ha recogido su nota de salida |
+
+`SIGSTOP` (19) y `SIGCONT` (18) pausan y reanudan un proceso, como `Ctrl+Z` y `bg`.
 
 ## Práctica guiada
 
@@ -219,10 +253,39 @@ Aunque el master esté parado, los workers suelen seguir atendiendo, y `curl` pu
 
 ## Reto
 
-1. ¿Qué proceso tiene el PID 1 y cuánto tiempo lleva vivo? (`ps -o pid,etime,cmd -p 1`)
-2. Lanza tres `sleep 500 &` y termínalos **todos** con un solo comando, sin afectar a otros `sleep` que pudiera haber en el sistema. (Pista: `pkill -f "sleep 500"`.) ¿Qué riesgo tiene `pkill` en un servidor real?
-3. Lanza `yes > /dev/null &` con `nice -n 19` y otro sin `nice`. Observa en `top` el `NI` y el `%CPU` de cada uno. ¿Qué pasa? Termina ambos.
-4. Encuentra los 5 procesos que más memoria usan: `ps aux --sort=-%mem | head -6`.
+En la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** ¿Qué proceso tiene el PID 1 y cuánto tiempo lleva vivo?
+
+<details>
+<summary>Pista</summary>
+
+`ps -o pid,etime,cmd -p 1`. `etime` (*elapsed time*) es el tiempo que lleva vivo.
+</details>
+
+**2.** Lanza tres `sleep 500 &` y termínalos **todos** con un solo comando, sin afectar a otros `sleep` que pudiera haber. ¿Qué riesgo tiene `pkill` en un servidor real?
+
+<details>
+<summary>Pista</summary>
+
+Antes de matar, mira qué coincide: `pgrep -af "sleep 500"`. Después, `pkill -f "sleep 500"`. Para el riesgo: ¿qué pasaría con `pkill python` en un servidor con varias apps en Python?
+</details>
+
+**3.** Lanza dos `yes > /dev/null &`, uno con `nice -n 19` delante y otro sin él. En `top`, compara su `NI` y su `%CPU`. ¿Qué pasa? Termina los dos.
+
+<details>
+<summary>Pista</summary>
+
+`nice -n 19 yes > /dev/null &` y `yes > /dev/null &`. En `top`, la columna `NI` es la prioridad (19 = la más baja). Para terminarlos: `pkill yes`.
+</details>
+
+**4.** Encuentra los 5 procesos que más memoria usan.
+
+<details>
+<summary>Pista</summary>
+
+`ps aux --sort=-%mem` ordena por memoria, de mayor a menor. Añade `| head -6`: 6 y no 5, porque la primera línea es la cabecera (como el `total` de la clase 04).
+</details>
 
 ## Cierre
 
@@ -232,6 +295,8 @@ En `notas/fase-1/clase-11.md`:
 2. ¿Por qué se envía primero `SIGTERM` y solo después `SIGKILL`? ¿Qué pasa en Kubernetes o ECS al desplegar una versión nueva?
 3. ¿Por qué nginx usa un master como root y workers como www-data?
 4. **Repaso (clase 10, sin mirar):** ¿qué diferencia hay entre `apt remove` y `apt purge`?
+
+Después, escríbeme `examíname clase-11`.
 
 ## Autocorrección
 

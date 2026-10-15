@@ -11,7 +11,7 @@
 | 01 | [La terminal, el shell y el kernel](clase-01-terminal-shell-kernel.md) | Ubuntu | 60 min |
 | 02 | [El sistema de archivos y las rutas](clase-02-sistema-de-archivos.md) | Ubuntu | 60 min |
 | 03 | [Archivos y directorios](clase-03-archivos-y-directorios.md) | Ubuntu | 60 min |
-| 04 | [Redirecciones, pipes y códigos de salida](clase-04-redirecciones-y-pipes.md) | Ubuntu | 75 min |
+| 04 | [Redirecciones, pipes y códigos de salida](clase-04-redirecciones-y-pipes.md) | Ubuntu | 90 min |
 | 05 | [Buscar y filtrar: find, grep y compañía](clase-05-buscar-y-filtrar.md) | Ubuntu | 75 min |
 | 06 | [Permisos: usuarios, grupos y rwx](clase-06-permisos.md) | Ubuntu | 75 min |
 | 07 | [Variables de entorno, PATH y el shell](clase-07-entorno-y-path.md) | Ubuntu | 60 min |

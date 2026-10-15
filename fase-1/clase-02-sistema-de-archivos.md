@@ -60,6 +60,29 @@ En Windows hay `C:\`, `D:\`… En Linux hay **un único árbol** que empieza en 
 
 Un archivo cuyo nombre empieza por `.` está oculto: `.bashrc`, `.ssh/`, `.git/`. No es seguridad, solo orden: `ls` no los muestra salvo que uses `-a`.
 
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. ¿En qué carpeta buscarías la configuración de un programa? ¿Y sus logs?
+2. Estás en `/home/educo/proyectos`. ¿A dónde te lleva `cd ..`?
+3. ¿Qué tiene de especial un archivo llamado `.bashrc`?
+
+<details>
+<summary>Comprueba</summary>
+
+1. La configuración en `/etc`; los logs en `/var/log`. 2. A `/home/educo`: sube **un** nivel, no a la raíz. 3. Empieza por punto: está **oculto**, y `ls` solo lo muestra con `-a`.
+</details>
+
+### Tu chuleta de la clase
+
+| Comando | Qué hace |
+|---------|----------|
+| `pwd` | dónde estoy |
+| `cd ruta` · `cd ..` · `cd -` · `cd` | ir a una ruta · subir un nivel · volver a la anterior · ir a tu casa |
+| `ls -a` · `ls -l` · `ls -lh` · `ls -lt` | ver ocultos · detalles · tamaños legibles · por fecha |
+| `ls -ld carpeta` | los detalles de la carpeta, no de lo que hay dentro |
+| `tree` | el árbol de una carpeta |
+| `cat archivo` | ver un archivo |
+
 ## Práctica guiada
 
 ### 1. Recorre el árbol
@@ -173,11 +196,47 @@ Después de cualquier `cd` que falle, ejecuta `pwd` antes de seguir. Un `cd` fal
 
 ## Reto
 
-1. Desde `~/my-devops-journey/labs/clase-02/casa/cocina/cajon`, escribe una ruta **relativa** que te lleve a `garaje`. Escribe también la **absoluta**.
-2. ¿Qué tamaño tiene `/etc/passwd`? Muéstralo en formato legible.
-3. ¿Cuál es el archivo más reciente de `/var/log`?
-4. ¿A dónde apunta el enlace `/usr/bin/python3`?
-5. En `/etc` hay un archivo que dice qué servidores DNS usa la máquina. Su nombre empieza por `resolv`. Encuéntralo y averigua si es un archivo normal o un enlace.
+En la terminal. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** Desde `~/my-devops-journey/labs/clase-02/casa/cocina/cajon`, escribe una ruta **relativa** que te lleve a `garaje`. Escribe también la **absoluta**.
+
+<details>
+<summary>Pista</summary>
+
+Cuenta cuántas carpetas tienes que subir desde `cajon` hasta llegar a `clase-02`: cada subida es un `..`, separados por `/`. Desde ahí, bajas a `garaje`. La absoluta empieza por `~/my-devops-journey/…`.
+</details>
+
+**2.** ¿Qué tamaño tiene `/etc/passwd`? Muéstralo en formato legible.
+
+<details>
+<summary>Pista</summary>
+
+`ls -l` da el tamaño en bytes. ¿Qué letra añadías en la práctica 4 para verlo en K, M o G?
+</details>
+
+**3.** ¿Cuál es el archivo más reciente de `/var/log`?
+
+<details>
+<summary>Pista</summary>
+
+`ls -lt` ordena por fecha, con lo más reciente arriba. Con `| head` ves solo el principio, como en la práctica 4.
+</details>
+
+**4.** ¿A dónde apunta el enlace `/usr/bin/python3`?
+
+<details>
+<summary>Pista</summary>
+
+`ls -l` de un enlace enseña una flecha `->` hacia su destino.
+</details>
+
+**5.** En `/etc` hay un archivo que dice qué servidores DNS usa la máquina. Su nombre empieza por `resolv`. Encuéntralo y averigua si es un archivo normal o un enlace.
+
+<details>
+<summary>Pista</summary>
+
+`ls /etc` y busca con la vista un nombre que empiece por `resolv`. Después, `ls -l` de ese archivo: ¿la línea empieza por `l` (enlace) o por `-` (archivo)?
+</details>
 
 ## Cierre
 
@@ -187,6 +246,8 @@ En `notas/fase-1/clase-02.md`:
 2. Llegas a un servidor desconocido con una web caída. ¿En qué dos directorios miras primero y por qué?
 3. ¿Qué tienen de especial `/proc` y `/dev`? ¿Qué significa "en Linux todo es un archivo"?
 4. **Repaso (clase 01, sin mirar):** ¿Qué hace el shell y en qué se diferencia de la terminal?
+
+Después, escríbeme `examíname clase-02`.
 
 ## Autocorrección
 

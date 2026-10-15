@@ -216,6 +216,8 @@ En `notas/fase-1/clase-21.md`:
 3. Nombra tres limitaciones de la v0 y qué versión futura de Vigía resuelve cada una (mira la tabla del principio).
 4. **Repaso (clase 20, sin mirar):** ¿por qué un `%` puede romper una línea de crontab sin dejar rastro en tu log?
 
+Después, escríbeme `examíname clase-21`: además del cierre, reviso tu `vigia.sh` y tu README como lo haría quien te entreviste.
+
 ## Autocorrección
 
 <details>

@@ -17,15 +17,17 @@ Los scripts de operaciones repiten: revisar 20 servidores, comprimir 300 logs, e
 
 ## Teoría
 
-### `for` sobre una lista
+Cuatro piezas. Todas dicen lo mismo de formas distintas: «**haz esto con cada uno**».
+
+### 1. `for`: con cada uno de una lista
 
 ```bash
-for SERVIDOR in web-01 web-02 db-01; do
-  echo "Revisando $SERVIDOR"
+for SERVIDOR in web-01 web-02 db-01; do      # con cada uno de estos tres...
+  echo "Revisando $SERVIDOR"                 # ...haz esto (SERVIDOR vale uno distinto en cada vuelta)
 done
 ```
 
-### `for` sobre archivos: comodines, nunca `ls`
+La lista puede salir de un **comodín** (clase 03), y así recorres archivos:
 
 ```bash
 for F in /var/log/*.log; do
@@ -33,28 +35,32 @@ for F in /var/log/*.log; do
 done
 ```
 
-El comodín entrega cada archivo como un elemento, aunque su nombre tenga espacios. `$(ls)` los parte (lo verás en Rómpelo).
+El comodín entrega cada archivo entero, aunque su nombre tenga espacios. **Nunca** uses `$(ls)` para esto: parte los nombres por los espacios (lo verás en el Rómpelo 1).
 
-### `for` con contador
+Y para repetir un número de veces, con un contador:
 
 ```bash
-for (( i = 1; i <= 5; i++ )); do echo "intento $i"; done
-for i in {1..5}; do echo "intento $i"; done          # lo mismo, si el límite es fijo
+for (( i = 1; i <= 5; i++ )); do echo "intento $i"; done   # i vale 1, 2, 3, 4 y 5
+for i in {1..5}; do echo "intento $i"; done                # lo mismo, si el límite es fijo
 ```
 
-### `while`: mientras un comando tenga éxito
+### 2. `while`: mientras pase algo
+
+`while` repite **mientras** un comando deje nota 0, igual que `if` decide con la nota (clase 17):
 
 ```bash
-while ! curl -fs -o /dev/null http://localhost:8080; do
-  echo "esperando…"; sleep 2
+while ! curl -fs -o /dev/null http://localhost:8080; do     # mientras NO (!) responda...
+  echo "esperando…"; sleep 2                                # ...espera 2 segundos y vuelve a probar
 done
 ```
 
-`while` repite mientras el comando devuelva 0, igual que `if` decide con el código de salida. Ese ejemplo tiene un problema grave: si el servicio no arranca nunca, espera para siempre. Siempre pon un límite (práctica 5).
+`curl -f` (*fail*) hace que una respuesta de error de la web (un 404 o un 500) cuente como fallo; sin `-f`, `curl` solo falla si no puede conectar.
 
-`curl -f` (*fail*) hace que curl devuelva un código de error si la respuesta HTTP es 400 o superior. Sin `-f`, un 404 o un 500 cuentan como éxito para curl.
+Ese ejemplo tiene un problema grave: si el servicio no arranca nunca, **espera para siempre**. Todo bucle de espera necesita un **límite** de intentos: lo construirás en la práctica 5.
 
-### Leer un archivo línea a línea
+### 3. Leer un archivo línea a línea
+
+Es el corazón de Vigía: una lista de URLs en un archivo, y hacer algo con cada una.
 
 ```bash
 while read -r URL || [[ -n $URL ]]; do
@@ -62,6 +68,8 @@ while read -r URL || [[ -n $URL ]]; do
   echo "procesando: $URL"
 done < urls.txt
 ```
+
+Pieza a pieza:
 
 | Pieza | Para qué |
 |-------|----------|
@@ -71,13 +79,38 @@ done < urls.txt
 | `\#*` | "empieza por `#`" (se escapa porque `#` abre un comentario) |
 | `< urls.txt` al final | el archivo entra por stdin al bucle entero |
 
-`read` recorta los espacios del principio y del final de cada línea, y eso es lo que quieres para una lista de URLs. Si alguna vez necesitas la línea **exacta**, usa `IFS= read -r LINEA`.
+`read` también reparte una línea en varias variables, separando por espacios: `read -r A B RESTO` pone la primera palabra en `A`, la segunda en `B` y todo lo demás en `RESTO`. Por convención, `_` es la variable para lo que no te interesa.
 
-`read` también reparte una línea en varias variables, separando por espacios: `read -r A B RESTO` pone la primera palabra en `A`, la segunda en `B` y todo lo demás en `RESTO`. Por convención, `_` es la variable que se usa para lo que no te interesa.
+(`read` recorta los espacios del principio y del final de cada línea: es lo que quieres para una lista de URLs. Si algún día necesitas la línea **exacta**, usa `IFS= read -r LINEA`).
 
-### ¿Bucle o `awk`?
+### 4. ¿Bucle o `awk`?
 
-Para **procesar texto** (contar, filtrar, sumar columnas), `awk` y los pipes de la clase 05 son mucho más rápidos. Usa un bucle cuando tengas que **hacer algo** por cada elemento: lanzar una petición, comprimir un archivo o conectarte a un servidor.
+Para **analizar texto** (contar, filtrar, sumar columnas), la cadena de montaje de la clase 05 es mucho más rápida. Usa un bucle cuando tengas que **hacer algo** con cada elemento: lanzar una petición, comprimir un archivo o conectarte a un servidor.
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. ¿Qué imprime `for X in a b c; do echo "[$X]"; done`?
+2. ¿Por qué no se escribe `for F in $(ls)`?
+3. ¿Qué le falta a un bucle `while` que espera a que un servicio arranque?
+
+<details>
+<summary>Comprueba</summary>
+
+1. `[a]`, `[b]` y `[c]`, uno por línea. 2. Porque `$(ls)` parte los nombres que tienen espacios; el comodín (`for F in *`) los entrega enteros. 3. Un **límite** de intentos: si el servicio no arranca nunca, esperaría para siempre.
+</details>
+
+### Tu chuleta de la clase
+
+| Forma | Para qué |
+|-------|----------|
+| `for X in a b c; do …; done` | con cada elemento de una lista |
+| `for F in /ruta/*.log; do …; done` | con cada archivo (nunca con `$(ls)`) |
+| `for (( i = 1; i <= N; i++ )); do …; done` · `for i in {1..5}` | contar |
+| `while cmd; do …; done` · `while ! cmd; do …; done` | mientras salga bien · mientras falle |
+| `while read -r L \|\| [[ -n $L ]]; do …; done < archivo` | cada línea de un archivo, sin perder la última |
+| `continue` · `break` | pasar a la siguiente vuelta · salir del bucle |
+| `done < <(comando)` | leer la salida de un comando sin usar un pipe (Rómpelo 2) |
+| `shopt -s nullglob` | que un comodín sin coincidencias no produzca nada (Rómpelo 4) |
 
 ## Práctica guiada
 
@@ -228,9 +261,33 @@ Imprime el patrón tal cual: si un comodín no coincide con nada, bash lo deja s
 
 ## Reto
 
-1. `contar-codigos.sh <log>`: lee el log de nginx de la clase 05 (`~/my-devops-journey/recursos/clase-05/access.log`) línea a línea y cuenta cuántas respuestas son 2xx, 3xx, 4xx y 5xx. Pista: el código es el campo 9, así que `read -r _ _ _ _ _ _ _ _ CODIGO _` lo deja en `CODIGO`, y un `case` decide el grupo. Compara el tiempo con el de awk: `time ./contar-codigos.sh …` frente a `time awk '{print substr($9,1,1)"xx"}' … | sort | uniq -c`. Con 2000 líneas los dos son instantáneos, así que fabrica un log de verdad: `for i in {1..50}; do cat "$LOG"; done > grande.log` (106 000 líneas) y repite. ¿Qué concluyes?
-2. `comprimir-logs.sh <carpeta>`: comprime con `gzip` cada `*.log` de la carpeta que ocupe más de 1 KB (`stat -c %s archivo` da el tamaño en bytes) e imprime qué hizo. Si no hay logs, no debe hacer nada raro. Prepara la prueba con `head -c 2000 /dev/urandom > grande.log` y `echo hola > pequeno.log`.
-3. Cambia `esperar-url.sh` para que la pausa crezca: 1, 2, 4, 8… segundos (*backoff exponencial*). ¿Por qué crees que los clientes de AWS reintentan así y no a intervalos fijos?
+En `labs/clase-18/`. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** Cambia `esperar-url.sh` para que la pausa crezca: 1, 2, 4, 8… segundos (*backoff exponencial*). ¿Por qué crees que los clientes de AWS reintentan así y no a intervalos fijos?
+
+<details>
+<summary>Pista</summary>
+
+Una variable `PAUSA=1` antes del bucle. Dentro, `sleep "$PAUSA"` y después `PAUSA=$(( PAUSA * 2 ))`. Para el porqué: imagina mil clientes reintentando a la vez contra un servicio que intenta recuperarse.
+</details>
+
+**2.** `comprimir-logs.sh <carpeta>`: comprime con `gzip` cada `*.log` de la carpeta que ocupe más de 1 KB e imprime qué hizo. Si no hay logs, no debe hacer nada raro. Prepara la prueba con `head -c 2000 /dev/urandom > grande.log` y `echo hola > pequeno.log`.
+
+<details>
+<summary>Pista</summary>
+
+`for F in "$DIR"/*.log` (pieza 1). `stat -c %s archivo` da el tamaño en bytes: `if (( $(stat -c %s "$F") > 1024 ))`. Para el caso sin logs, el Rómpelo 4: `[[ -e $F ]] || continue`.
+</details>
+
+**3.** `contar-codigos.sh <log>`: lee el log de la clase 05 (`~/my-devops-journey/recursos/clase-05/access.log`) línea a línea y cuenta cuántas respuestas son 2xx, 3xx, 4xx y 5xx.
+
+<details>
+<summary>Pista</summary>
+
+El bucle de la pieza 3, con `< "$LOG"` al final. `read -r _ _ _ _ _ _ _ _ CODIGO _` deja el trozo 9 en `CODIGO` (ocho `_` para los ocho primeros). Un `case` con `2??)`, `3??)`… (`?` es un carácter cualquiera, clase 03) y un contador por grupo: `C2=$(( C2 + 1 ))`. Empieza los cuatro contadores en 0.
+</details>
+
+➕ **Si te queda energía:** compara la velocidad de tu `contar-codigos.sh` con la cadena de montaje. Fabrica un log grande con `for i in {1..50}; do cat "$LOG"; done > grande.log` (106 000 líneas) y compara `time ./contar-codigos.sh grande.log` con `time awk '{print $9}' grande.log | sort | uniq -c`. ¿Qué concluyes?
 
 ## Cierre
 
@@ -240,6 +297,8 @@ En `notas/fase-1/clase-18.md`:
 2. Explica cada parte de `while read -r URL || [[ -n $URL ]]; do … done < archivo`.
 3. ¿Por qué un contador dentro de `cmd | while …` vale 0 al terminar? ¿Cómo lo arreglas?
 4. **Repaso (clase 17, sin mirar):** ¿qué evalúa realmente `if`?
+
+Después, escríbeme `examíname clase-18`.
 
 ## Autocorrección
 
@@ -254,7 +313,7 @@ En `notas/fase-1/clase-18.md`:
 
 **4.** El código de salida del comando que le sigue: 0 es verdadero (`then`) y cualquier otro valor es falso (`else`).
 
-**Reto 1 (una solución):**
+**Reto 3 (una solución):**
 ```bash
 cat > contar-codigos.sh <<'EOF'
 #!/bin/bash
@@ -272,7 +331,7 @@ done < "$LOG"
 echo "2xx: $C2  3xx: $C3  4xx: $C4  5xx: $C5"
 EOF
 ```
-Con el log del curso: `2xx: 1611  3xx: 155  4xx: 252  5xx: 102`. Con `grande.log`, en el portátil donde se probó, el bucle tardó 1,2 s y `awk`, 0,1 s: diez veces más. Un log de producción de un día puede tener millones de líneas. Para analizar texto, awk; para actuar por cada elemento, bucle.
+Con el log del curso: `2xx: 1611  3xx: 155  4xx: 252  5xx: 102`. En el extra, con `grande.log`, en el portátil donde se probó, el bucle tardó 1,2 s y la cadena de montaje, una décima: unas diez veces más. Un log de producción de un día puede tener millones de líneas. Para analizar texto, awk; para actuar por cada elemento, bucle.
 
 **Reto 2 (una solución):**
 ```bash
@@ -290,7 +349,7 @@ done
 EOF
 ```
 
-**Reto 3:** dentro del bucle, `sleep "$PAUSA"; PAUSA=$(( PAUSA * 2 ))`, empezando con `PAUSA=1`. Si miles de clientes reintentan a la vez y a intervalos fijos, golpean al servicio justo cuando intenta recuperarse. Con esperas que crecen (y algo de azar, el *jitter*), la carga se reparte y el servicio tiene tiempo de levantarse.
+**Reto 1:** dentro del bucle, `sleep "$PAUSA"; PAUSA=$(( PAUSA * 2 ))`, empezando con `PAUSA=1`. Si miles de clientes reintentan a la vez y a intervalos fijos, golpean al servicio justo cuando intenta recuperarse. Con esperas que crecen (y algo de azar, el *jitter*), la carga se reparte y el servicio tiene tiempo de levantarse.
 </details>
 
 ## Inglés

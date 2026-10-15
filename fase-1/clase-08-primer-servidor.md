@@ -49,6 +49,43 @@ Un **contenedor** (Docker, fase 5) es otra cosa: comparte el kernel del host. Po
 
 Ya comprobé que tu equipo soporta virtualización por hardware (`/dev/kvm` existe y la CPU tiene las extensiones). Con 7 GB de RAM puedes mantener **dos VMs de 1 GB** encendidas a la vez sin problema.
 
+### El snapshot: tu punto de guardado
+
+Un **snapshot** es como el **punto de guardado de un videojuego**: congela el disco de la VM tal como está. Si después rompes algo, cargas la partida guardada y vuelves a ese momento en segundos. Durante todo el bloque B harás uno antes de cada experimento peligroso. En AWS se hace lo mismo con los discos de las EC2 (*EBS snapshots*).
+
+Tres palabras que no conviene confundir, porque en AWS una de ellas te sigue costando dinero:
+
+| Multipass | Qué hace | En AWS |
+|-----------|----------|--------|
+| `stop` | **apaga** la VM; el disco se conserva | *Stop*: no pagas CPU, **sí** el disco |
+| `delete` | la manda a la **papelera**: aún se puede recuperar | (no existe en AWS) |
+| `delete --purge` | la **destruye** para siempre | *Terminate* |
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. Tu VM tiene su propio kernel. ¿Qué pieza de tu PC reparte el hardware real entre él y la VM?
+2. Vas a probar algo que puede romper la VM. ¿Qué haces antes?
+3. Apagas una EC2 con *Stop*. ¿Dejas de pagar del todo?
+
+<details>
+<summary>Comprueba</summary>
+
+1. El **hipervisor** (KVM). 2. Un **snapshot**, el punto de guardado. 3. No: el disco (el volumen EBS) se sigue cobrando. Solo *Terminate* lo detiene.
+</details>
+
+### Tu chuleta de la clase
+
+| Comando | Qué hace |
+|---------|----------|
+| `multipass launch lts --name X --cpus 1 --memory 1G --disk 10G` | crear una VM |
+| `multipass list` · `multipass info X` | ver tus VMs · ver una (IP, disco, versión) |
+| `multipass shell X` | entrar (salir: `exit`) |
+| `multipass exec X -- comando` | ejecutar algo dentro sin entrar |
+| `multipass transfer archivo X:/ruta/` | copiar un archivo a la VM |
+| `multipass stop X` · `multipass start X` | apagar · encender |
+| `multipass snapshot X --name N` · `multipass restore X.N` | guardar partida (con la VM parada) · cargarla |
+| `multipass delete X` · `recover X` · `delete --purge X` | a la papelera · sacarla · destruirla |
+
 ## Práctica guiada
 
 ### 1. Instalar Multipass
@@ -198,10 +235,39 @@ En AWS, *Terminate* equivale a `delete --purge`: no hay vuelta atrás.
 
 ## Reto
 
-1. ¿Cuántas IPs tiene `servidor-01`? ¿Y tu PC? Compara la salida de `ip -br addr` en ambos. ¿Ves alguna interfaz en tu PC que antes no existía? Relaciónala con Multipass.
-2. Desde tu PC, haz `ping -c 3 <IP de servidor-01>`. ¿Responde?
-3. Sin entrar en la VM, averigua cuánto tiempo lleva encendida y qué versión de kernel tiene.
-4. Deja `servidor-01` **encendido** y con el snapshot `limpio` creado: lo usarás en las próximas clases.
+En tu PC y en la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** ¿Cuántas IPs tiene `servidor-01`? ¿Y tu PC? ¿Ves en tu PC alguna interfaz que antes no existía?
+
+<details>
+<summary>Pista</summary>
+
+`ip -br addr` en tu PC, y en la VM sin entrar: `multipass exec servidor-01 -- ip -br addr`. En tu PC, busca una interfaz cuyo nombre empiece por `mp`.
+</details>
+
+**2.** Desde tu PC, haz `ping -c 3` a la IP de `servidor-01`. ¿Responde?
+
+<details>
+<summary>Pista</summary>
+
+La IP te la da `multipass list`.
+</details>
+
+**3.** Sin entrar en la VM, averigua cuánto tiempo lleva encendida y qué versión de kernel tiene.
+
+<details>
+<summary>Pista</summary>
+
+`multipass exec servidor-01 --` seguido de `uptime`, y después de `uname -r`.
+</details>
+
+**4.** Deja `servidor-01` **encendido** y con el snapshot `limpio` creado: lo usarás en las próximas clases.
+
+<details>
+<summary>Pista</summary>
+
+Los snapshots se hacen con la VM parada: `stop`, `snapshot` y `start`, como en la práctica 6. Comprueba con `multipass list --snapshots`.
+</details>
 
 ## Cierre
 
@@ -211,6 +277,8 @@ En `notas/fase-1/clase-08.md`:
 2. ¿Para qué sirve un snapshot? Describe una situación en el trabajo en la que te salvaría.
 3. ¿Qué diferencia hay entre `stop`, `delete` y `delete --purge`? ¿Cuál de ellas sigue costando dinero en AWS (piensa en el disco)?
 4. **Repaso (clase 07, sin mirar):** ¿por qué un comando que funciona en tu terminal puede fallar dentro de un servicio o un cron?
+
+Después, escríbeme `examíname clase-08`.
 
 ## Autocorrección
 

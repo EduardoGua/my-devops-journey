@@ -17,41 +17,31 @@ Toda aplicación en un servidor corre como servicio: nginx, bases de datos, tu A
 
 ## Teoría
 
-### systemd
+Cinco piezas, con la imagen del encargado del edificio de *La idea de hoy*.
 
-`systemd` es el **PID 1**: el primer proceso, padre de todos. Arranca el sistema y **supervisa** los servicios: los inicia en orden, los reinicia si mueren y recoge sus logs (journald, clase 13).
+### 1. El encargado del edificio
 
-### Qué pasa al encender un servidor Linux
+`systemd` es el **PID 1**: el primer proceso que arranca el kernel, padre de todos los demás (lo viste en el árbol de la clase 11). Hace de **encargado**:
+- al encender, **arranca** los servicios en el orden correcto;
+- mientras funcionan, los **vigila** y los vuelve a levantar si se caen;
+- y apunta todo lo que dicen en su registro, el *journal* (clase 13).
 
-Pregunta clásica de entrevista:
+### 2. Las fichas de instrucciones: las *units*
 
-```
-firmware (BIOS/UEFI) ─► gestor de arranque (GRUB) ─► kernel (+ initramfs) ─► systemd (PID 1) ─► targets y servicios ─► login
-  comprueba el hardware    elige y carga el kernel      monta el disco raíz       arranca todo en orden      (multi-user.target)
-```
+Cada cosa que gestiona el encargado tiene una **ficha de instrucciones**, una *unit*. Hoy usarás dos tipos:
+- `.service`: un programa que debe estar funcionando (`nginx.service`).
+- `.timer`: algo que debe ejecutarse a ciertas horas (`apt-daily.timer`), la alternativa moderna a cron.
 
-En una EC2 no ves la pantalla, pero sí la **consola del sistema** (*Get system log* / *EC2 serial console*). Ahí se diagnostica una instancia que no arranca, por ejemplo por un `fstab` roto (clase 14).
+Las fichas viven en dos sitios, y esto importa:
 
-### Units
+| Dónde | Qué hay | ¿Las tocas? |
+|-------|---------|-------------|
+| `/usr/lib/systemd/system/` | las fichas **del fabricante**, que instalan los paquetes | **No**: una actualización las sobrescribe |
+| `/etc/systemd/system/` | **las tuyas** y tus cambios | **Sí**: tienen prioridad sobre las del fabricante |
 
-Todo lo que gestiona systemd es una **unit**. Las más comunes:
+### 3. Leer una ficha
 
-| Tipo | Ejemplo | Qué es |
-|------|---------|--------|
-| `.service` | `nginx.service` | un proceso (demonio) |
-| `.timer` | `apt-daily.timer` | una tarea programada (la alternativa moderna a cron) |
-| `.target` | `multi-user.target` | un grupo de units, un "estado" del sistema |
-| `.socket`, `.mount` | | sockets y puntos de montaje |
-
-### Dónde están
-
-| Ruta | Qué contiene |
-|------|--------------|
-| `/usr/lib/systemd/system/` | Las units que instalan los **paquetes**. No se editan: una actualización las sobrescribe |
-| `/etc/systemd/system/` | **Las tuyas** y las personalizaciones. Tienen prioridad |
-| `/etc/systemd/system/x.service.d/override.conf` | *Drop-in*: cambia solo algunas líneas de una unit (`systemctl edit x`) |
-
-### Anatomía de un servicio
+Así es la ficha del servicio que vas a crear hoy. Cada `#` explica la línea de debajo:
 
 ```ini
 [Unit]
@@ -76,23 +66,66 @@ RestartSec=3
 WantedBy=multi-user.target
 ```
 
-⚠️ En los unit files, los comentarios (`#`) van **en su propia línea**. Un `#` al final de una línea con valor **no** es un comentario: pasaría a formar parte del valor.
+Tres secciones: `[Unit]` dice **qué es** y cuándo arrancarlo; `[Service]` dice **cómo ejecutarlo** (con qué usuario, qué comando y qué hacer si falla); `[Install]` dice si debe arrancar **al encender** el servidor.
 
-### systemctl
+⚠️ Los comentarios (`#`) van **en su propia línea**. Un `#` al final de una línea con valor **no** es un comentario: pasaría a formar parte del valor.
 
-| Comando | Efecto |
-|---------|--------|
-| `status x` | Estado, PID, memoria y las últimas líneas de log |
-| `start` / `stop` / `restart x` | Arrancar / parar / parar y arrancar |
-| `reload x` | Recargar la configuración **sin cortar** (si el servicio lo soporta) |
-| `enable` / `disable x` | Arrancar (o no) **en el próximo arranque**. ⚠️ No lo arranca ahora |
-| `enable --now x` | Activar y arrancar a la vez |
-| `is-active x`, `is-enabled x` | Respuesta corta, ideal para scripts |
-| `daemon-reload` | Releer los unit files tras editarlos |
-| `list-units --type=service --failed` | Qué servicios fallaron |
-| `cat x` | Muestra la unit **efectiva**, con sus drop-ins |
+### 4. Hablar con el encargado: `systemctl`
 
-**Activo** (corriendo ahora) y **habilitado** (arrancará tras reiniciar) son independientes. Un clásico: arrancas el servicio a mano, funciona y te vas, pero no estaba `enabled`. En el siguiente reinicio de la EC2, la web cae.
+Lo esencial son seis órdenes:
+
+```bash
+systemctl status nginx          # ¿cómo está? (estado, PID y sus últimas líneas de log)
+sudo systemctl start nginx      # arráncalo AHORA
+sudo systemctl stop nginx       # páralo
+sudo systemctl restart nginx    # páralo y arráncalo
+sudo systemctl enable nginx     # arráncalo CADA VEZ que se encienda el servidor
+sudo systemctl daemon-reload    # vuelve a leer las fichas (después de editar una)
+```
+
+La confusión más cara del oficio es la de `start` y `enable`. Son dos preguntas **independientes**:
+- **¿Está abierto ahora?** Es `start`, y lo dice `is-active`.
+- **¿Abrirá mañana, cuando se reinicie?** Es `enable`, y lo dice `is-enabled`.
+
+Arrancas un servicio a mano, compruebas que funciona y te vas… pero no lo habilitaste. Semanas después la EC2 se reinicia y la web no vuelve. Por eso se usa `sudo systemctl enable --now x`: lo habilita **y** lo arranca.
+
+### 5. Para entrevistas: qué pasa al encender un servidor
+
+```
+firmware (BIOS/UEFI) ─► gestor de arranque (GRUB) ─► kernel (+ initramfs) ─► systemd (PID 1) ─► targets y servicios ─► login
+  comprueba el hardware    elige y carga el kernel      monta el disco raíz       arranca todo en orden      (multi-user.target)
+```
+
+En una EC2 no ves la pantalla, pero sí la **consola del sistema** (*Get system log* / *EC2 serial console*). Ahí se diagnostica una instancia que no arranca, por ejemplo por un `fstab` roto (clase 14).
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. Instalas un servicio, haces `enable` y te vas. ¿Está funcionando ahora mismo?
+2. Has editado una ficha en `/etc/systemd/system/`. ¿Qué tienes que hacer antes de reiniciar el servicio?
+3. ¿Por qué no se edita una ficha de `/usr/lib/systemd/system/`?
+
+<details>
+<summary>Comprueba</summary>
+
+1. No necesariamente: `enable` solo hace que arranque **al encender**. Para arrancarlo ya, `start` (o las dos cosas con `enable --now`). 2. `sudo systemctl daemon-reload`, para que el encargado vuelva a leer las fichas. 3. Porque es del fabricante: la próxima actualización del paquete la sobrescribiría. Tus cambios van en `/etc/systemd/system/`.
+</details>
+
+### Tu chuleta de la clase
+
+| `systemctl …` | Efecto |
+|---------------|--------|
+| `status x` | estado, PID, memoria y las últimas líneas de log |
+| `start` / `stop` / `restart x` | arrancar / parar / parar y arrancar |
+| `reload x` | recargar la configuración **sin cortar** (si el servicio lo soporta) |
+| `enable` / `disable x` | arrancar (o no) **al encender**. ⚠️ No lo arranca ahora |
+| `enable --now x` | habilitar y arrancar a la vez |
+| `is-active x` · `is-enabled x` | respuesta corta, ideal para scripts |
+| `daemon-reload` | releer las fichas tras editarlas |
+| `list-units --type=service --failed` | qué servicios fallaron |
+| `cat x` · `edit x` · `revert x` | ver la ficha efectiva · cambiar solo unas líneas (*drop-in*) · deshacer esos cambios |
+| `reset-failed x` | limpiar el estado `failed` para poder arrancarlo otra vez |
+
+Otros tipos de unit que verás: `.target` (un grupo de units, como `multi-user.target`, «el arranque normal»), `.socket` y `.mount`. Un *drop-in* es un archivo `/etc/systemd/system/x.service.d/override.conf` que cambia solo algunas líneas de una ficha: lo crea `systemctl edit x`.
 
 ## Práctica guiada
 
@@ -278,9 +311,31 @@ sudo systemctl restart miapp && systemctl is-active miapp
 
 ## Reto
 
-1. Crea un **timer** que cada minuto añada la fecha y la carga del sistema a `/var/log/latido.log`. Necesitas dos units: `latido.service` (`Type=oneshot`, con `ExecStart=/bin/sh -c 'echo "$(date) $(cat /proc/loadavg)" >> /var/log/latido.log'`) y `latido.timer` (con `[Timer] OnCalendar=minutely` y `[Install] WantedBy=timers.target`). Actívalo con `enable --now latido.timer` y compruébalo con `systemctl list-timers`.
-2. Con un drop-in (`systemctl edit miapp`), cambia `RestartSec` a 10 sin tocar el archivo original. Comprueba el resultado con `systemctl cat miapp`.
-3. ¿Qué servicios están `enabled` pero no `active`? `systemctl list-unit-files --state=enabled` y compara.
+En la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** Con un drop-in, cambia el `RestartSec` de `miapp` a 10 sin tocar el archivo original. Comprueba el resultado.
+
+<details>
+<summary>Pista</summary>
+
+`sudo systemctl edit miapp` abre un archivo casi vacío. Escribe entre los comentarios `[Service]` y, debajo, `RestartSec=10`. Guarda y mira el resultado con `systemctl cat miapp`.
+</details>
+
+**2.** Elige tres servicios de `systemctl list-unit-files --type=service --state=enabled` y comprueba con `systemctl is-active` si están funcionando ahora. ¿Alguno está habilitado pero no activo? ¿Por qué podría ser?
+
+<details>
+<summary>Pista</summary>
+
+`systemctl is-active nombre` responde `active` o `inactive`. Recuerda las dos preguntas de la pieza 4: ¿abrirá al encender? y ¿está abierto ahora? Pueden tener respuestas distintas.
+</details>
+
+**3.** (El más largo.) Crea un **timer** que cada minuto añada la fecha y la carga del sistema a `/var/log/latido.log`. Necesitas dos fichas: `latido.service` (`Type=oneshot`, con `ExecStart=/bin/sh -c 'echo "$(date) $(cat /proc/loadavg)" >> /var/log/latido.log'`) y `latido.timer` (con `[Timer] OnCalendar=minutely` y `[Install] WantedBy=timers.target`).
+
+<details>
+<summary>Pista</summary>
+
+Crea cada ficha con `sudo nano /etc/systemd/system/latido.service` (y `latido.timer`), con la forma `[Unit]`/`[Service]` del ejemplo de la teoría. El `.service` no necesita `[Install]`: lo arranca el timer. Después, `sudo systemctl daemon-reload` y `sudo systemctl enable --now latido.timer`. Comprueba con `systemctl list-timers` y, pasado un minuto, con `cat /var/log/latido.log`.
+</details>
 
 ## Cierre
 
@@ -290,6 +345,8 @@ En `notas/fase-1/clase-12.md`:
 2. Un servicio no arranca. Escribe tus **tres primeros comandos** y qué buscas en cada uno.
 3. ¿Por qué tu servicio corre con `User=appsvc` y no como root? ¿Qué gana la seguridad?
 4. **Repaso (clase 11, sin mirar):** ¿qué hace `SIGHUP` en nginx y qué comando de systemctl lo usa?
+
+Después, escríbeme `examíname clase-12`.
 
 ## Autocorrección
 
@@ -304,7 +361,9 @@ En `notas/fase-1/clase-12.md`:
 
 **4.** `SIGHUP` hace que nginx relea su configuración y renueve los workers sin cortar las conexiones. `systemctl reload nginx` lo envía por debajo (lo define `ExecReload` en la unit).
 
-**Reto 1 (units):**
+**Reto 2:** un servicio puede estar habilitado y no activo por dos motivos: es de tipo `oneshot` (hace su trabajo al arrancar y termina, como `latido.service`) o falló al arrancar (`systemctl status` lo dirá, con `failed`).
+
+**Reto 3 (las dos fichas):**
 ```ini
 # /etc/systemd/system/latido.service
 [Unit]

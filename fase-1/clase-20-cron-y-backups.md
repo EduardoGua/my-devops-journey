@@ -18,7 +18,11 @@ Backups, limpieza de logs, informes diarios, comprobaciones de salud: todo lo pe
 
 ## Teoría
 
-### La línea de cron
+Cuatro piezas, con el despertador de *La idea de hoy*. La 3 es la que más fallos evita: léela despacio.
+
+### 1. La hora del despertador: la línea de cron
+
+Cada línea de cron son **cinco campos de tiempo** y un comando:
 
 ```
 ┌───────────── minuto (0–59)
@@ -29,6 +33,8 @@ Backups, limpieza de logs, informes diarios, comprobaciones de salud: todo lo pe
 │ │ │ │ │
 * * * * *  comando
 ```
+
+Un `*` significa «**cualquiera**»: `* * * * *` es «cada minuto de cada hora de cada día». `*/5` en el campo de los minutos es «cada 5 minutos», y `1-5` en el día de la semana, «de lunes a viernes». Se lee de izquierda a derecha:
 
 | Expresión | Significa |
 |-----------|-----------|
@@ -41,7 +47,7 @@ Backups, limpieza de logs, informes diarios, comprobaciones de salud: todo lo pe
 
 Para comprobar una expresión, [crontab.guru](https://crontab.guru) la traduce a palabras.
 
-### Los comandos
+### 2. Poner y quitar alarmas: `crontab`
 
 | Comando | Qué hace |
 |---------|----------|
@@ -54,7 +60,9 @@ Antes de tocarlo, haz una copia: `crontab -l > ~/crontab.respaldo`.
 
 Cada usuario tiene su propio crontab. Las tareas del sistema viven en `/etc/crontab`, `/etc/cron.d/` y `/etc/cron.daily/`. En tu portátil, las de `/etc/cron.daily/` las lanza **anacron**, que recupera las ejecuciones perdidas si el equipo estaba apagado.
 
-### El entorno de cron: aquí falla casi todo
+### 3. El entorno de cron: aquí falla casi todo
+
+Cron ejecuta tus comandos como si el despertador te levantara **en otra casa**: sin tus cosas a mano. No tiene tu PATH, ni tus alias, ni tu carpeta actual, ni una pantalla donde escribir. Un script que funciona en tu terminal puede fallar en cron sin que nadie se entere.
 
 Comprobado en Ubuntu 26.04, un trabajo de tu crontab arranca así:
 
@@ -75,7 +83,7 @@ De ahí salen cuatro reglas:
 
 Y una de hardware: si tu portátil está apagado o suspendido a la hora programada, cron **no** recupera esa ejecución.
 
-### Comprobar que se ejecutó
+### 4. Comprobar que sonó: los logs
 
 ```bash
 journalctl -u cron --since "10 min ago" --no-pager
@@ -83,7 +91,7 @@ journalctl -u cron --since "10 min ago" --no-pager
 
 Cada ejecución deja una línea `CRON[1234]: (educo) CMD (…el comando…)`. Si la tarea no aparece ahí, cron no la lanzó. Si aparece pero no hizo lo esperado, mira **tu** log.
 
-### cron frente a un timer de systemd (clase 12)
+### Para saber más: cron frente a un timer de systemd (clase 12)
 
 | | cron | timer de systemd |
 |--|------|------------------|
@@ -93,6 +101,30 @@ Cada ejecución deja una línea `CRON[1234]: (educo) CMD (…el comando…)`. Si
 | Dónde lo verás | casi cualquier servidor; la misma sintaxis en Kubernetes y en CI | las tareas del propio sistema en distribuciones modernas |
 
 Para Vigía usarás cron: es más simple y su sintaxis te servirá en la fase 9.
+
+### Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `crontab -l > ~/crontab.respaldo` | copia de seguridad de tus alarmas (siempre lo primero) |
+| `crontab -e` · `crontab -l` · `crontab archivo` | editar · ver · reemplazar por un archivo |
+| `min hora día mes día-semana comando` | la línea: `*` = cualquiera, `*/5` = cada 5, `1-5` = de 1 a 5 |
+| `… /ruta/absoluta/script.sh >> /ruta/log 2>&1` | la forma segura: ruta absoluta y salida a un log |
+| `\%` | un `%` dentro del crontab (sin `\`, corta la línea) |
+| `journalctl -u cron --since "10 min ago"` | ¿sonó la alarma? |
+| `touch -d "8 days ago" archivo` | fabricar un archivo «viejo» para probar una rotación |
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. ¿Qué significa `0 21 * * *`?
+2. Un script funciona en tu terminal, pero desde cron dice que no encuentra un comando. ¿Qué es lo primero que sospechas?
+3. ¿Por qué no se pone `date +%F` directamente en una línea de crontab?
+
+<details>
+<summary>Comprueba</summary>
+
+1. Todos los días a las 21:00 (minuto 0, hora 21, cualquier día, cualquier mes, cualquier día de la semana). 2. El PATH: cron solo tiene `/usr/bin:/bin`. Arreglo: rutas absolutas. 3. Porque en el crontab el `%` corta la línea: hay que escaparlo (`\%`) o, mejor, poner la lógica en un script.
+</details>
 
 ## Práctica guiada
 
@@ -259,10 +291,33 @@ Un respaldo de un segundo te salva del error de teclado más caro de cron.
 
 ## Reto
 
-1. **Sin mirar la clase**, escribe desde cero `~/bin/backup2.sh` con el mismo comportamiento que `backup.sh`. Después compáralos con `diff`. Este es un criterio de salida de la fase 1: repítelo otro día hasta que te salga sin ayuda.
-2. Escribe la línea de crontab que, los domingos a las 20:00, borre los archivos de `~/logs` con más de 30 días. Explica cada campo.
-3. Traduce a palabras: `15 2 * * 1-5`, `*/10 8-18 * * *` y `0 0 1 1 *`.
-4. Opcional: convierte el backup en un **timer de systemd de usuario** (sin `sudo`). Crea `~/.config/systemd/user/backup.service` (`Type=oneshot`, `ExecStart=%h/bin/backup.sh %h/my-devops-journey/notas`) y `backup.timer` (`OnCalendar=*-*-* 21:00:00`, `Persistent=true`, `WantedBy=timers.target`). Actívalo con `systemctl --user daemon-reload && systemctl --user enable --now backup.timer`, y míralo con `systemctl --user list-timers` y `journalctl --user -u backup.service`. ¿Qué ventaja tiene `Persistent=true` en un portátil? (`%h` es tu HOME dentro de una unit.)
+En tu Ubuntu. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** Traduce a palabras: `15 2 * * 1-5`, `*/10 8-18 * * *` y `0 0 1 1 *`.
+
+<details>
+<summary>Pista</summary>
+
+Lee campo a campo con el dibujo de la pieza 1 (minuto, hora, día, mes, día de la semana). `8-18` en el campo de la hora es «de 8 a 18».
+</details>
+
+**2.** Escribe la línea de crontab que, los domingos a las 20:00, borre los archivos de `~/logs` con más de 30 días. Explica cada campo.
+
+<details>
+<summary>Pista</summary>
+
+Cinco campos: minuto 0, hora 20, cualquier día del mes, cualquier mes y día de la semana 0 (domingo). El comando es el `find … -mtime +30 -delete` de la clase 19, con rutas absolutas.
+</details>
+
+**3.** **Sin mirar la clase**, escribe desde cero `~/bin/backup2.sh` con el mismo comportamiento que `backup.sh`. Después compáralos con `diff`. Es un criterio de salida de la fase 1: repítelo otro día hasta que te salga sin ayuda.
+
+<details>
+<summary>Pista</summary>
+
+Si te atascas, no mires el script: mira la lista «Línea por línea, lo nuevo» de la práctica 2 y escribe cada parte por orden: validar, nombre con fecha, `tar`, rotación.
+</details>
+
+➕ **Opcional:** convierte el backup en un **timer de systemd de usuario** (sin `sudo`). Crea `~/.config/systemd/user/backup.service` (`Type=oneshot`, `ExecStart=%h/bin/backup.sh %h/my-devops-journey/notas`) y `backup.timer` (`OnCalendar=*-*-* 21:00:00`, `Persistent=true`, `WantedBy=timers.target`). Actívalo con `systemctl --user daemon-reload && systemctl --user enable --now backup.timer`, y míralo con `systemctl --user list-timers` y `journalctl --user -u backup.service`. ¿Qué ventaja tiene `Persistent=true` en un portátil? (`%h` es tu HOME dentro de una unit).
 
 ## Cierre
 
@@ -272,6 +327,8 @@ En `notas/fase-1/clase-20.md`:
 2. Da tres diferencias entre el entorno de tu terminal y el de cron, y cómo escribes los scripts para que no te afecten.
 3. ¿Cómo compruebas si una tarea de cron se ejecutó y, si se ejecutó, si falló?
 4. **Repaso (clase 19, sin mirar):** ¿qué hace cada parte de `set -euo pipefail`?
+
+Después, escríbeme `examíname clase-20`.
 
 ## Autocorrección
 
@@ -288,9 +345,9 @@ En `notas/fase-1/clase-20.md`:
 
 **Reto 2:** `0 20 * * 0 /usr/bin/find /home/educo/logs -type f -mtime +30 -delete`. Minuto 0, hora 20, cualquier día del mes y cualquier mes, día de la semana 0 (domingo).
 
-**Reto 3:** a las 2:15 de lunes a viernes · cada 10 minutos entre las 8:00 y las 18:50 · a medianoche del 1 de enero.
+**Reto 1:** a las 2:15 de lunes a viernes · cada 10 minutos entre las 8:00 y las 18:50 · a medianoche del 1 de enero.
 
-**Reto 4:** con `Persistent=true`, si el portátil estaba apagado o suspendido a las 21:00, systemd lanza el backup en cuanto vuelve a estar encendido. Cron, en cambio, se lo salta. Un detalle: los timers de usuario solo corren mientras tienes la sesión iniciada, salvo que actives `loginctl enable-linger`.
+**Extra opcional:** con `Persistent=true`, si el portátil estaba apagado o suspendido a las 21:00, systemd lanza el backup en cuanto vuelve a estar encendido. Cron, en cambio, se lo salta. Un detalle: los timers de usuario solo corren mientras tienes la sesión iniciada, salvo que actives `loginctl enable-linger`.
 
 **Un detalle de `-mtime +7`:** `find` redondea la edad hacia abajo en días completos, así que `+7` significa "8 días o más". Una copia de 7 días y medio todavía se conserva.
 </details>

@@ -20,7 +20,9 @@ Las clases 16 a 20 forman el bloque de scripting. Cada una añade una pieza: hoy
 
 ## Teoría
 
-### Anatomía de un script
+Seis piezas, con la receta de *La idea de hoy*. La 5 (las tijeras) es la más nueva: tómatela con calma.
+
+### 1. Cómo es una receta escrita
 
 ```bash
 #!/bin/bash                       # shebang: qué programa interpreta el archivo
@@ -30,11 +32,11 @@ echo "Hola, $NOMBRE"              # la lógica
 exit 0                            # código de salida (0 = éxito)
 ```
 
-El **shebang** (`#!`) tiene que ser la primera línea, desde el primer carácter. Cuando ejecutas `./hola.sh`, el kernel lee esos dos caracteres y lanza `/bin/bash ./hola.sh` por ti.
+El **shebang** (`#!`) tiene que ser la **primera línea**, desde el primer carácter. Cuando ejecutas `./hola.sh`, el kernel lee esos dos caracteres y lanza `/bin/bash ./hola.sh` por ti.
 
 > 🔁 **Vuelve a la clase 01.** En el paso 4 de «Qué pasa cuando pulsas Enter», el kernel ejecuta un programa. Un programa compilado, como `ls`, sabe ejecutarlo directamente. Un script, en cambio, es solo texto: el `#!` es la nota que le dice al kernel a qué programa pasárselo. Y si el archivo no tiene `x` (clase 06), el kernel se niega justo en ese paso: `Permiso denegado`.
 
-### Tres formas de ejecutarlo
+### 2. Tres formas de lanzarlo
 
 | Forma | ¿Necesita `x`? | ¿Usa el shebang? | ¿Dónde corre? |
 |-------|----------------|------------------|---------------|
@@ -42,44 +44,90 @@ El **shebang** (`#!`) tiene que ser la primera línea, desde el primer carácter
 | `bash hola.sh` | no | no: eliges tú el intérprete | en un proceso hijo |
 | `source hola.sh` | no | no | **en tu shell actual** (clase 07) |
 
-Lo normal es `./hola.sh`. `source` solo se usa para cargar variables o funciones en tu shell.
+Lo normal es `./hola.sh`. `source` solo se usa para cargar variables o funciones en tu propio shell, como viste en la clase 07.
 
-### Argumentos
+### 3. Los ingredientes: los argumentos
+
+Lo que escribes detrás del nombre del script le llega numerado:
+
+```
+./copia.sh  informe.txt  /backups
+   $0           $1          $2          $# = 2 (cuántos llegaron)
+```
 
 | Variable | Contiene |
 |----------|----------|
-| `$0` | el nombre con el que se llamó al script |
-| `$1` … `$9`, `${10}` | los argumentos, por posición |
+| `$1`, `$2`… | cada argumento, por su posición |
 | `$#` | cuántos argumentos llegaron |
-| `"$@"` | todos, **cada uno como un argumento separado** (respeta los espacios) |
-| `$?` | código de salida del último comando (clase 04) |
+| `"$@"` | todos, **cada uno por separado**, aunque tengan espacios. Siempre entre comillas |
+| `$0` | el nombre con el que se llamó al script |
 
-### Expansión de parámetros
+### 4. Valores por defecto y argumentos obligatorios
 
-Bash puede transformar el valor de una variable sin llamar a otro programa. Con `URL="https://ejemplo.com/salud"` y `ARCHIVO="backup-2026-10-12.tar.gz"`:
-
-| Expresión | Resultado | Para qué |
-|-----------|-----------|----------|
-| `${URL}` | `https://ejemplo.com/salud` | el valor; las llaves delimitan el nombre |
-| `${#ARCHIVO}` | `24` | longitud |
-| `${VAR:-defecto}` | `defecto` si `VAR` está vacía o no existe | opciones con valor por defecto |
-| `${1:?mensaje}` | si falta `$1`: imprime el mensaje en stderr y **sale con error** | argumentos obligatorios |
-| `${URL#*://}` | `ejemplo.com/salud` | quitar por la **izquierda** lo más corto que coincida |
-| `${URL%/*}` | `https://ejemplo.com` | quitar por la **derecha** lo más corto que coincida |
-| `${ARCHIVO%.tar.gz}` | `backup-2026-10-12` | quitar una extensión conocida |
-| `${ARCHIVO##*.}` | `gz` | doble = lo más **largo**: todo hasta el último punto |
-
-Truco para recordarlo: en el teclado, `#` está a la izquierda de `$` y `%` a la derecha. Un símbolo quita lo más corto; dos, lo más largo.
-
-### Datos, mensajes y código de salida
+Dos formas de escribir una variable que usarás en casi todos tus scripts:
 
 ```bash
-echo "resultado"                 # stdout: los datos que otro programa puede usar
-echo "Error: falta X" >&2        # stderr: mensajes para humanos y errores
-exit 2                           # convención: 0 = bien, 1 = fallo, 2 = uso incorrecto
+NOMBRE="${1:-mundo}"              # si no me das $1, uso "mundo"
+RUTA="${1:?Uso: $0 <ruta>}"       # si no me das $1, me quejo y termino con error
 ```
 
-`>&2` significa "manda esta salida al flujo 2" (clase 04). Así, si alguien hace `./script.sh > datos.txt`, los errores siguen apareciendo en pantalla y no ensucian los datos.
+`:-` significa «**o, si no hay**»; `:?`, «**y si no hay, error**». La segunda es la forma más corta de declarar un argumento obligatorio: el script se para antes de hacer nada.
+
+### 5. Las tijeras: recortar texto sin otros programas
+
+Bash puede recortar el texto de una variable por delante o por detrás. Con `URL="https://ejemplo.com/salud"`:
+
+| Escribes | Corta… | Resultado |
+|----------|--------|-----------|
+| `${URL#*://}` | por **delante**, hasta el primer `://` | `ejemplo.com/salud` |
+| `${URL%/*}` | por **detrás**, desde la última `/` | `https://ejemplo.com` |
+
+Y con `ARCHIVO="backup-2026-10-12.tar.gz"`, la diferencia entre uno y dos símbolos:
+
+| Escribes | Corta… | Resultado |
+|----------|--------|-----------|
+| `${ARCHIVO%.tar.gz}` | ese final exacto | `backup-2026-10-12` |
+| `${ARCHIVO#*.}` | por delante, **lo mínimo** (hasta el primer punto) | `tar.gz` |
+| `${ARCHIVO##*.}` | por delante, **lo máximo** (hasta el último punto) | `gz` |
+
+Cómo recordarlo: en el teclado, `#` está a la **izquierda** de `$` (corta por delante) y `%` a la **derecha** (corta por detrás). **Un** símbolo corta lo mínimo; **dos**, lo máximo. Y `${#ARCHIVO}`, con el `#` delante del nombre, no recorta: cuenta las letras (`24`).
+
+### 6. Datos, mensajes y la nota de salida
+
+Tu script tiene las mismas dos mangueras y la misma nota que cualquier programa (clase 04):
+
+```bash
+echo "resultado"                 # manguera 1: los datos que otro programa puede usar
+echo "Error: falta X" >&2        # manguera 2: mensajes para humanos y errores
+exit 2                           # la nota: 0 = bien, 1 = fallo, 2 = uso incorrecto
+```
+
+`>&2` significa «manda esto por la manguera 2». Así, si alguien hace `./script.sh > datos.txt`, los errores siguen saliendo en pantalla y no ensucian los datos.
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. Ejecutas `./saluda.sh Ana Luis`. ¿Qué valen `$1`, `$2` y `$#`?
+2. ¿Qué hace `NOMBRE="${1:-mundo}"` si no le das ningún argumento?
+3. Con `F=foto.png`, ¿qué da `${F%.png}`?
+
+<details>
+<summary>Comprueba</summary>
+
+1. `$1` = `Ana`, `$2` = `Luis`, `$#` = `2`. 2. `NOMBRE` vale `mundo`. 3. `foto`: `%` corta ese final exacto.
+</details>
+
+### Tu chuleta de la clase
+
+| Escribes | Qué es |
+|----------|--------|
+| `#!/bin/bash` | el shebang: primera línea, desde el primer carácter |
+| `chmod +x s.sh` · `./s.sh` | darle permiso de ejecución · lanzarlo |
+| `$1` `$2`… · `$#` · `"$@"` · `$0` | argumentos · cuántos · todos por separado · el nombre del script |
+| `${VAR:-defecto}` · `${1:?mensaje}` | valor por defecto · obligatorio (si falta, error y salida) |
+| `${V#…}` `${V##…}` · `${V%…}` `${V%%…}` | cortar por delante (mínimo · máximo) · por detrás (mínimo · máximo) |
+| `${#V}` | la longitud |
+| `echo "…" >&2` · `exit N` | mensaje por la manguera 2 · terminar con la nota N |
+| `bash -x s.sh` | ejecutarlo enseñando cada línea ya expandida |
 
 ## Práctica guiada
 
@@ -256,10 +304,39 @@ chmod +x typo.sh && ./typo.sh
 
 ## Reto
 
-1. Escribe `info.sh`, que imprima en cuatro líneas el nombre del equipo, la versión del kernel (`uname -r`), cuánto tiempo lleva encendido (`uptime -p`) y el porcentaje de uso del disco `/` (`df -h /` y `awk`). Guarda cada valor en una variable antes de imprimirlo.
-2. Escribe `extension.sh <archivo>`, que imprima el nombre sin extensión y la extensión, usando solo expansión de parámetros (sin `cut`): `./extension.sh informe.final.pdf` → `nombre: informe.final · extensión: pdf`.
-3. Haz que `tamano.sh` acepte un segundo argumento **opcional**: la etiqueta que se muestra. `./tamano.sh ~/Descargas "Mis descargas"` → `Mis descargas ocupa 1,2G`. Sin segundo argumento, muestra la ruta como hasta ahora.
-4. Ejecuta `./tamano.sh /no-existe; echo $?` y explica en tus notas por qué ese resultado es un problema.
+En `labs/clase-16/`. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** Ejecuta `./tamano.sh /no-existe; echo $?` y explica en tus notas por qué ese resultado es un problema.
+
+<details>
+<summary>Pista</summary>
+
+¿Qué nota deja? ¿Qué pensaría cron, o un pipeline de CI, al verla?
+</details>
+
+**2.** Escribe `extension.sh <archivo>`, que imprima el nombre sin extensión y la extensión, usando solo las tijeras (sin `cut`): `./extension.sh informe.final.pdf` → `nombre: informe.final · extensión: pdf`.
+
+<details>
+<summary>Pista</summary>
+
+Pieza 5 de la teoría. El nombre es cortar por **detrás** lo mínimo, desde el último punto (`%.*`). La extensión es cortar por **delante** lo máximo, hasta el último punto (`##*.`).
+</details>
+
+**3.** Haz que `tamano.sh` acepte un segundo argumento **opcional**: la etiqueta que se muestra. `./tamano.sh ~/Descargas "Mis descargas"` → `Mis descargas ocupa 1,2G`. Sin segundo argumento, muestra la ruta como hasta ahora.
+
+<details>
+<summary>Pista</summary>
+
+Una variable nueva con un valor por defecto de la pieza 4: `ETIQUETA="${2:-…}"`. Si no llega un segundo argumento, ¿qué quieres mostrar en su lugar?
+</details>
+
+**4.** Escribe `info.sh`, que imprima en cuatro líneas el nombre del equipo, la versión del kernel (`uname -r`), cuánto tiempo lleva encendido (`uptime -p`) y el porcentaje de uso del disco `/` (`df --output=pcent / | tail -1`). Guarda cada valor en una variable antes de imprimirlo.
+
+<details>
+<summary>Pista</summary>
+
+Cada valor en su variable con `$( )`: `KERNEL="$(uname -r)"`. Después, cuatro `echo`. Crea el archivo con un *heredoc*, como en la clase 07.
+</details>
 
 ## Cierre
 
@@ -269,6 +346,8 @@ En `notas/fase-1/clase-16.md`:
 2. ¿Qué diferencia hay entre `"$@"` y `$@`? ¿Cuándo se nota?
 3. ¿Por qué los mensajes de error van a stderr y los datos a stdout?
 4. **Repaso (clase 15, sin mirar):** ¿qué guardas en `~/.ssh/config` y qué te ahorra?
+
+Después, escríbeme `examíname clase-16`.
 
 ## Autocorrección
 
@@ -291,7 +370,7 @@ cat > info.sh <<'EOF'
 HOST="$(hostname)"
 KERNEL="$(uname -r)"
 ENCENDIDO="$(uptime -p)"
-DISCO="$(df -h / | awk 'NR==2 {print $5}')"
+DISCO="$(df --output=pcent / | tail -1)"
 echo "Equipo:    $HOST"
 echo "Kernel:    $KERNEL"
 echo "Encendido: $ENCENDIDO"
@@ -307,7 +386,7 @@ EOF
 ```
 En `tamano.sh`, añade `ETIQUETA="${2:-$RUTA}"` y cambia el `echo` por `echo "$ETIQUETA ocupa ${TAMANO:-?}"`. Fíjate en que tu Ubuntu está en español: `du` escribe `1,2G`, con coma.
 
-**Reto 4:** devuelve 0 aunque la ruta no existe, así que quien lo use (otro script, cron, un pipeline) cree que todo fue bien. Un script debe devolver un código distinto de 0 cuando falla.
+**Reto 1:** devuelve 0 aunque la ruta no existe, así que quien lo use (otro script, cron, un pipeline) cree que todo fue bien. Un script debe devolver un código distinto de 0 cuando falla.
 </details>
 
 ## Inglés

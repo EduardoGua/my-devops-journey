@@ -18,7 +18,11 @@ Un script que sigue adelante después de un error es peor que no tener script: h
 
 ## Teoría
 
-### Funciones
+Seis piezas. Todas sirven para lo mismo: que tu script **falle de forma segura** en lugar de seguir a ciegas.
+
+### 1. Funciones: recetas dentro de la receta
+
+Una función es un trozo de script con nombre, que llamas cuando lo necesitas, como una receta pequeña dentro de la grande:
 
 ```bash
 saludar() {
@@ -28,11 +32,13 @@ saludar() {
 saludar "Ana"
 ```
 
-- Dentro de una función, `$1`, `$2` y `"$@"` son **sus** argumentos, no los del script.
-- Una función **devuelve datos** escribiéndolos en stdout (se capturan con `$(...)`) y **devuelve un estado** con `return N` o con el código de su último comando.
-- Sin `local`, una variable creada dentro de la función es global y puede pisar otra del script.
+- Dentro de la función, `$1`, `$2` y `"$@"` son **sus** ingredientes, no los del script.
+- `local` hace que la variable exista **solo** dentro de la función. Sin `local`, podría pisar otra variable del script con el mismo nombre.
+- Una función devuelve cosas por los mismos dos sitios que cualquier programa: **datos** por la manguera 1 (que capturas con `$(...)`) y una **nota** con `return N` (o la del último comando que ejecutó).
 
-### Modo estricto
+### 2. El modo estricto: tres cinturones de seguridad
+
+Sin nada, un script sigue adelante aunque algo falle. Esta línea, justo debajo del shebang, le pone tres cinturones:
 
 ```bash
 #!/bin/bash
@@ -45,36 +51,40 @@ set -euo pipefail
 | `-u` (*nounset*) | usar una variable que no existe es un error | el `$DIRETORIO` vacío de la clase 16 |
 | `-o pipefail` | un pipe falla si falla **cualquiera** de sus comandos | el pipe "en verde" de la clase 04 |
 
-Con `-u`, una variable opcional se lee con valor por defecto: `${APP_ENV:-}` vale vacío en lugar de dar error.
+Con `-u`, una variable opcional se lee con valor por defecto (clase 16): `${APP_ENV:-}` vale vacío en lugar de dar error.
 
-### Dónde `set -e` no actúa
+### 3. Los fallos que esperas
 
-`set -e` **no** detiene el script cuando el comando que falla está:
-- en la condición de un `if`, un `while` o un `until`;
+`set -e` **no** para el script cuando el comando que falla está:
+- en la pregunta de un `if` o de un `while`;
 - a la izquierda de `&&` o de `||`;
 - negado con `!`.
 
-Es a propósito: así se manejan los fallos que **esperas**.
+Es a propósito: así tratas los fallos que **esperas**, los que no son errores de verdad.
 
 ```bash
 if ! grep -q "^ana:" /etc/passwd; then echo "ana no existe"; fi   # fallo esperado y tratado
 N="$(grep -c "zzz" archivo || true)"                             # "no hay coincidencias" no es un error
 ```
 
-Y tiene dos trampas que conviene conocer:
-- `(( contador++ ))` con `contador=0` devuelve 1 (la expresión vale 0, que en aritmética es "falso") y **mata el script**. Usa `contador=$(( contador + 1 ))`.
-- `local x=$(comando)` oculta el fallo del comando: el código que ve `set -e` es el de `local`, que siempre funciona. Separa: `local x; x=$(comando)`.
+Dos trampas que verás en el Rómpelo:
+- `(( contador++ ))` con `contador=0` deja nota 1 y **mata el script**. Usa `contador=$(( contador + 1 ))`.
+- `local x=$(comando)` esconde el fallo del comando: la nota que ve `set -e` es la de `local`, que siempre sale bien. Sepáralo en dos: `local x; x=$(comando)`.
 
-`set -e` es una red de seguridad, no un sustituto de comprobar los errores importantes.
+`set -e` es una red de seguridad, no un sustituto de comprobar tú los errores importantes.
 
-### `trap`: limpiar siempre
+### 4. `trap`: recoger al salir, pase lo que pase
+
+Como quien cierra la cocina al irse, **termine como termine**:
 
 ```bash
 TMP="$(mktemp -d)"                 # crea un directorio temporal con nombre único
 trap 'rm -rf "$TMP"' EXIT          # se ejecuta al salir: por éxito, por error o con Ctrl+C
 ```
 
-### Logs
+`mktemp -d` crea una carpeta temporal con un nombre único. `trap '…' EXIT` apunta lo que hay que hacer **al salir del script**: tanto si termina bien como si falla o pulsas `Ctrl+C`.
+
+### 5. Dejar rastro: logs
 
 ```bash
 log() { echo "$(date '+%F %T') [$1] ${*:2}" >&2; }   # log NIVEL mensaje…
@@ -83,13 +93,13 @@ log ERROR "no encuentro el archivo"
 logger -t mi-script "copia terminada"               # al journal: journalctl -t mi-script
 ```
 
-`${*:2}` son todos los argumentos desde el segundo, unidos en un texto.
+`log INFO "mensaje"` escribe una línea con fecha, hora y nivel por la manguera 2. `${*:2}` son todos los argumentos desde el segundo, unidos en un texto. `logger` deja el mensaje en el journal (clase 13).
 
-### `shellcheck`
+### 6. `shellcheck`: el corrector ortográfico de Bash
 
-Un analizador estático para scripts de shell: lee el script **sin ejecutarlo** y avisa de errores típicos (comillas que faltan, `cd` sin comprobar, `$(ls)` en un bucle…). Cada aviso tiene un código `SCxxxx` con una explicación en su wiki. Lo instalarás hoy.
+`shellcheck script.sh` lee tu script **sin ejecutarlo** y te avisa de los errores típicos: comillas que faltan, `cd` sin comprobar, `$(ls)` en un bucle… Cada aviso tiene un código (`SC2086`…) con su explicación en la wiki de shellcheck. Lo instalarás hoy.
 
-### La plantilla
+### Todo junto: la plantilla
 
 Así empezarán tus scripts a partir de ahora, Vigía incluido:
 
@@ -110,7 +120,32 @@ main() {
 main "$@"
 ```
 
-`main "$@"` va en la última línea: bash lee todas las funciones antes de ejecutar nada, y el flujo del script queda arriba, a la vista.
+`main "$@"` va en la **última** línea: bash lee primero todas las funciones, y la lógica del script (`main`) queda arriba, fácil de leer.
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. Un script con `set -e` hace `cd /no-existe` y después `rm -rf *`. ¿Llega a ejecutar el `rm`?
+2. Con `set -u`, escribes `$DIRETORIO` en lugar de `$DIRECTORIO`. ¿Qué pasa?
+3. ¿Cuándo se ejecuta lo que pones en `trap '…' EXIT`?
+
+<details>
+<summary>Comprueba</summary>
+
+1. No: el `cd` falla y `set -e` para el script ahí. Sin él, borraría lo que hubiera en la carpeta actual. 2. El script se para con `DIRETORIO: variable sin asignar` en lugar de seguir con un valor vacío. 3. Al salir del script, termine como termine: bien, con error o con `Ctrl+C`.
+</details>
+
+### Tu chuleta de la clase
+
+| Escribes | Qué es |
+|----------|--------|
+| `nombre() { …; }` · `nombre arg1 arg2` | definir una función · llamarla |
+| `local x="$1"` · `return 1` | variable solo de la función · terminar la función con nota 1 |
+| `set -euo pipefail` | los tres cinturones: parar al fallar, variables sin definir, pipes |
+| `if ! cmd; then …` · `cmd \|\| true` | tratar un fallo esperado · ignorarlo a propósito |
+| `TMP="$(mktemp -d)"` · `trap '…' EXIT` | carpeta temporal · qué hacer al salir |
+| `logger -t nombre "mensaje"` | escribir en el journal (`journalctl -t nombre`) |
+| `shellcheck script.sh` | revisar el script sin ejecutarlo |
+| `bash -x script.sh` | ver cada línea según se ejecuta (clase 16) |
 
 ## Práctica guiada
 
@@ -334,9 +369,31 @@ Pulsa `Ctrl+C`: verás `limpieza hecha` y el directorio desaparece. Ejecuta `ech
 
 ## Reto
 
-1. Reescribe `esperar-url.sh` (clase 18) con la plantilla: `set -euo pipefail`, funciones `log`, `die` y `main`, y que `shellcheck` no dé ningún aviso.
-2. `limpiar-viejos.sh <carpeta> <días> [--dry-run]`: borra los archivos de la carpeta con más de N días (`find "$DIR" -type f -mtime +"$DIAS" -print -delete`). Valida que la carpeta existe y que los días son un número. Con `--dry-run`, solo lista lo que borraría. Pruébalo en una carpeta de prueba con archivos creados con `touch -d "10 days ago" viejo.txt`.
-3. Pasa `shellcheck` a tus scripts de las clases 16 a 18. Arregla al menos tres avisos y apunta en tus notas qué significaba cada código.
+En `labs/clase-19/`. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** Pasa `shellcheck` a tus scripts de las clases 16 a 18. Arregla al menos tres avisos y apunta en tus notas qué significaba cada código.
+
+<details>
+<summary>Pista</summary>
+
+`shellcheck *.sh` en cada carpeta de `labs/`. Cada aviso trae un código como `SC2086`: su explicación está en `https://www.shellcheck.net/wiki/SC2086` (cambia el número).
+</details>
+
+**2.** Reescribe `esperar-url.sh` (clase 18) con la plantilla: `set -euo pipefail`, funciones `log`, `die` y `main`, y que `shellcheck` no dé ningún aviso.
+
+<details>
+<summary>Pista</summary>
+
+Copia la plantilla de la teoría y mete el bucle dentro de `main`. Cambia los `echo … >&2` por `log WARN …` y el error final por `die …`. Después, `shellcheck` y corrige los avisos uno a uno.
+</details>
+
+**3.** `limpiar-viejos.sh <carpeta> <días> [--dry-run]`: borra los archivos de la carpeta con más de N días (`find "$DIR" -type f -mtime +"$DIAS" -print -delete`). Valida que la carpeta existe y que los días son un número. Con `--dry-run`, solo lista lo que borraría. Pruébalo en una carpeta de prueba con archivos creados con `touch -d "10 days ago" viejo.txt`.
+
+<details>
+<summary>Pista</summary>
+
+Tres piezas: validar con `[[ -d $DIR ]]` y `[[ $DIAS =~ ^[0-9]+$ ]]` (clase 17); decidir con `if [[ ${3:-} == --dry-run ]]`; y el `find` del enunciado, sin `-delete` en el modo de prueba.
+</details>
 
 ## Cierre
 
@@ -346,6 +403,8 @@ En `notas/fase-1/clase-19.md`:
 2. Nombra dos situaciones en las que `set -e` no detiene el script. ¿Cómo manejas un fallo que esperas?
 3. ¿Para qué sirve `trap '…' EXIT`? Pon un ejemplo real.
 4. **Repaso (clase 18, sin mirar):** ¿por qué `cmd | while read …` pierde las variables al terminar?
+
+Después, escríbeme `examíname clase-19`.
 
 ## Autocorrección
 
@@ -360,7 +419,7 @@ En `notas/fase-1/clase-19.md`:
 
 **4.** Porque cada lado del pipe corre en un proceso hijo: el `while` cambia su copia de la variable, que desaparece al terminar el pipe. Se arregla con `while …; done < archivo` o `done < <(comando)`.
 
-**Reto 1 (una solución):**
+**Reto 2 (una solución):**
 ```bash
 cat > esperar-url.sh <<'EOF'
 #!/bin/bash
@@ -390,7 +449,7 @@ main "$@"
 EOF
 ```
 
-**Reto 2 (la parte central):**
+**Reto 3 (la parte central):**
 ```bash
 if [[ ${3:-} == --dry-run ]]; then
   find "$DIR" -type f -mtime +"$DIAS" -print

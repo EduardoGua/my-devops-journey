@@ -18,16 +18,22 @@ En un servidor real conviven personas (cada administrador con su cuenta) y servi
 
 ## Teoría
 
-### Autenticación y autorización
+Cuatro piezas, con la imagen del hotel de *La idea de hoy*.
 
-| | Pregunta | En Linux | En AWS |
-|-|----------|----------|--------|
-| **Autenticación** | ¿Quién eres? | contraseña, llave SSH | contraseña + MFA, access keys |
-| **Autorización** | ¿Qué puedes hacer? | permisos de archivos, grupos, sudoers | políticas IAM |
+### 1. Dos preguntas distintas: ¿quién eres? y ¿qué puedes hacer?
 
-Primero se autentica y después se autoriza. Puedes estar autenticado (entraste) y aun así no estar autorizado a leer un archivo concreto.
+En un hotel, la recepción comprueba **quién eres** una vez (tu documento) y te da una tarjeta que solo abre **lo que te corresponde** (tu habitación y el gimnasio). En un servidor es igual:
 
-### Los archivos de usuarios
+| | Pregunta | En el hotel | En Linux | En AWS |
+|-|----------|-------------|----------|--------|
+| **Autenticación** | ¿Quién eres? | el documento en recepción | contraseña, llave SSH | contraseña + MFA, access keys |
+| **Autorización** | ¿Qué puedes hacer? | lo que abre tu tarjeta | permisos de archivos, grupos, sudoers | políticas IAM |
+
+Primero se autentica y después se autoriza. Puedes haber entrado (autenticado) y aun así no tener permiso para leer un archivo concreto (no autorizado).
+
+### 2. El registro de huéspedes: `/etc/passwd`
+
+Linux apunta a cada usuario en una línea de `/etc/passwd`:
 
 ```
 /etc/passwd   →  ana:x:1001:1001:Ana Ruiz:/home/ana:/bin/bash
@@ -43,29 +49,31 @@ Primero se autentica y después se autoriza. Puedes estar autenticado (entraste)
 /etc/group    →  devs:x:1003:ana,luis    (grupo:x:GID:miembros)
 ```
 
-Los usuarios de servicio (`www-data`, `nobody`) suelen tener como shell `/usr/sbin/nologin`: existen para ser **dueños de procesos y archivos**, no para que nadie entre con ellos.
+Las contraseñas no están ahí, sino cifradas en `/etc/shadow`, que solo puede leer root (lo viste en la clase 06). Los **grupos** y sus miembros están en `/etc/group`.
 
-### Comandos
+No todos los usuarios son personas. `www-data` (el de nginx) o `nobody` son **usuarios de servicio**: su shell es `/usr/sbin/nologin`, porque existen para ser **dueños de procesos y archivos**, no para que alguien entre con ellos. Ya lo viste en la clase 04: son la mayoría de las cuentas.
 
-| Comando | Para qué |
-|---------|----------|
-| `sudo adduser ana` | Crear un usuario (interactivo, crea su casa). Recomendado en Ubuntu |
-| `sudo useradd -m -s /bin/bash ana` | Lo mismo, a bajo nivel (el que se usa en scripts) |
-| `sudo passwd ana` | Poner o cambiar la contraseña |
-| `sudo groupadd devs` | Crear un grupo |
-| `sudo usermod -aG devs ana` | **Añadir** a un grupo. ⚠️ Sin `-a` **reemplaza** todos sus grupos |
-| `sudo gpasswd -d ana devs` | Quitar de un grupo |
-| `sudo usermod -L ana` / `-U` | Bloquear / desbloquear la contraseña |
-| `sudo userdel -r ana` | Borrar el usuario y su casa |
-| `id ana`, `groups ana` | Ver UID y grupos |
-| `sudo -u ana comando` | Ejecutar un comando como otro usuario |
-| `su - ana` | Abrir un shell como otro usuario (pide **su** contraseña) |
+### 3. Dar de alta y organizar en equipos
 
-### sudo
+Los cuatro comandos que más usarás:
 
-`sudo` ejecuta un comando como root **si las reglas de `/etc/sudoers` te autorizan**. Pide **tu** contraseña, no la de root, y registra cada uso en los logs. En Ubuntu, pertenecer al grupo `sudo` da permiso para todo.
+```bash
+sudo adduser ana               # dar de alta a Ana (pregunta la contraseña y crea su casa)
+sudo groupadd devs             # crear el equipo "devs"
+sudo usermod -aG devs ana      # AÑADIR a Ana al equipo devs
+id ana                         # ver quién es Ana y en qué equipos está
+```
 
-Las reglas se escriben **siempre con `visudo`**, que comprueba la sintaxis antes de guardar: un error en sudoers puede dejar a todo el mundo sin `sudo`. Las reglas propias van en archivos separados dentro de `/etc/sudoers.d/`.
+⚠️ En `usermod -aG`, la `-a` significa **añadir**. Sin ella, `-G` **sustituye** todos los grupos de la persona por los que pongas, y la saca de los demás. Es uno de los errores más típicos (lo provocarás en el Rómpelo 2).
+
+### 4. `sudo`: la llave maestra, con registro
+
+`sudo comando` ejecuta ese comando **como root**, el administrador, pero solo si **la lista de recepción** te lo permite. Esa lista es `/etc/sudoers`. Tres detalles:
+- Te pide **tu** contraseña, no la de root: demuestras que eres tú.
+- **Apunta cada uso** en el log del sistema: quién, cuándo y qué. Es una auditoría.
+- En Ubuntu, estar en el grupo `sudo` te da la llave maestra para **todo**.
+
+Lo profesional es dar solo lo necesario. Una regla de sudoers se lee así:
 
 ```
 ana  ALL=(root)  /usr/bin/journalctl, /usr/bin/systemctl restart nginx
@@ -74,6 +82,37 @@ ana  ALL=(root)  /usr/bin/journalctl, /usr/bin/systemctl restart nginx
 │    └─ en cualquier máquina
 └─ quién
 ```
+
+La lista se edita **siempre con `visudo`**, que revisa que lo que escribiste es correcto antes de guardar. Un error en sudoers puede dejar a **todo el mundo** sin `sudo`. Las reglas propias van en archivos aparte, dentro de `/etc/sudoers.d/`.
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. Ana entra con su contraseña, pero no puede leer `/srv/proyecto`. ¿Falló la autenticación o la autorización?
+2. ¿Qué pasa si escribes `sudo usermod -G devs luis`, sin la `-a`?
+3. ¿Por qué no se edita `/etc/sudoers` con `nano` directamente?
+
+<details>
+<summary>Comprueba</summary>
+
+1. La autorización: entró (autenticada), pero no tiene permiso. 2. Luis pasa a estar **solo** en `devs` y pierde los demás grupos. 3. Porque `visudo` revisa la sintaxis antes de guardar; con `nano`, un error dejaría a todos sin `sudo`.
+</details>
+
+### Tu chuleta de la clase
+
+| Comando | Para qué |
+|---------|----------|
+| `sudo adduser ana` | crear un usuario (interactivo, crea su casa). Recomendado en Ubuntu |
+| `sudo useradd -m -s /bin/bash ana` | lo mismo, sin preguntas: el que se usa en scripts |
+| `sudo passwd ana` | poner o cambiar su contraseña |
+| `sudo groupadd devs` | crear un grupo |
+| `sudo usermod -aG devs ana` | **añadir** a un grupo (⚠️ sin `-a`, sustituye) |
+| `sudo gpasswd -d ana devs` | sacar de un grupo |
+| `sudo usermod -L ana` / `-U ana` | bloquear / desbloquear su contraseña |
+| `sudo userdel -r ana` | borrar el usuario y su casa |
+| `id ana` · `groups ana` · `getent group devs` | ver usuario y grupos · ver los miembros de un grupo |
+| `sudo -u ana comando` | ejecutar un comando como Ana |
+| `su - ana` | abrir un shell como Ana (pide **su** contraseña) |
+| `sudo visudo -f /etc/sudoers.d/ana` · `sudo -l -U ana` | editar una regla de sudo con revisión · ver qué puede hacer Ana |
 
 ## Práctica guiada
 
@@ -117,7 +156,7 @@ sudo chmod 2770 /srv/proyecto
 ls -ld /srv/proyecto
 ```
 
-El `2` inicial activa el **setgid** en el directorio (verás una `s` en el grupo): todo lo que se cree dentro hereda el grupo `devs` en vez del grupo personal de quien lo crea. Sin él, los archivos de Ana serían del grupo `ana` y Luis no podría editarlos.
+El `2` inicial activa el **setgid** en el directorio (verás una `s` en el grupo). Funciona como un **sello de equipo**: todo lo que se crea dentro sale con el sello `devs`, en vez del grupo personal de quien lo crea. Sin él, los archivos de Ana serían del grupo `ana` y Luis no podría editarlos.
 
 Antes de seguir, mira un detalle que va a importar:
 ```bash
@@ -138,12 +177,15 @@ sudo -u luis bash -c 'echo "cambio" >> /srv/proyecto/borrador.txt'
 sudo -u carla cat /srv/proyecto/plan.txt
 ```
 
-Qué deberías ver:
+<details>
+<summary>Compruébalo después de predecir</summary>
+
 - `ls -l /srv/proyecto` como `ubuntu` **falla**: `ubuntu` no está en `devs`, y el directorio no da nada a "otros". Por eso el siguiente lleva `sudo`.
 - Los dos archivos son del grupo `devs` gracias al setgid. ✅
 - `plan.txt` (creado con umask 002) es `rw-rw-r--`, y Luis puede añadir. ✅
 - `borrador.txt` (creado con umask 022) es `rw-r--r--`, y Luis **no** puede escribir. ❌ El umask 022 quitó la escritura al grupo. Muchos servicios, scripts y el propio sudo trabajan con 022.
 - Carla no puede ni leer: no está en `devs`.
+</details>
 
 En equipos reales, un directorio compartido necesita dos piezas: **setgid** (que el grupo sea el correcto) y **permisos de grupo correctos**: umask 002 en quien crea los archivos, o mejor, ACLs por defecto en el directorio (`setfacl -d -m g:devs:rwX /srv/proyecto`), que no dependen de nadie. Con una sola de las dos piezas falla. Arregla el borrador:
 
@@ -238,10 +280,39 @@ sudo ls /srv/proyecto
 🔮 ¿Se borró algo? No: `rm` se queja de que no existe `'/srv/proyecto/*.txt'`. El comodín lo expande **tu shell** (usuario `ubuntu`) **antes** de ejecutar `sudo`, y tu shell no puede leer `/srv/proyecto`, así que deja el patrón tal cual (clase 03). Es la misma trampa que `sudo echo … >> archivo` (clase 10). Si quieres que el comodín lo expanda root: `sudo bash -c 'rm /srv/proyecto/*.txt'`. No lo ejecutes ahora: necesitas esos archivos.
 ## Reto
 
-1. Crea el usuario de servicio `appsvc`, sin casa, con shell `/usr/sbin/nologin` y como usuario de sistema (`useradd --system`). Comprueba que nadie puede entrar con `su - appsvc`.
-2. Haz que `/srv/proyecto/config` sea legible por `devs` pero **solo modificable por Ana**.
-3. Da a Luis permiso para ejecutar con sudo **solo** `apt update`, sin `apt install`. ¿Qué comando exacto escribes en sudoers? Pruébalo.
-4. Borra a Carla con su casa y comprueba que no queda rastro en `/etc/passwd` ni en `/home`.
+En la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** Crea el usuario de servicio `appsvc`: sin casa, con shell `/usr/sbin/nologin` y como usuario de sistema. Comprueba que nadie puede entrar con él.
+
+<details>
+<summary>Pista</summary>
+
+`sudo useradd` con tres opciones: `--system` (usuario de servicio), `--no-create-home` (sin casa) y `--shell /usr/sbin/nologin`. Para probar que no se puede entrar: `sudo su - appsvc`.
+</details>
+
+**2.** Crea, **como Ana**, el archivo `/srv/proyecto/config.txt`, y deja sus permisos para que los de `devs` puedan leerlo pero **solo Ana** pueda modificarlo.
+
+<details>
+<summary>Pista</summary>
+
+Para crearlo como Ana: `sudo -u ana touch …`. Así Ana es la dueña, y el sello de equipo (setgid) le pone el grupo `devs`. Después, `sudo chmod` en números: dueña lee y escribe (6), grupo solo lee (4) y los demás nada (0).
+</details>
+
+**3.** Da a Luis permiso para ejecutar con sudo **solo** `apt update`, sin `apt install`. Pruébalo.
+
+<details>
+<summary>Pista</summary>
+
+Copia la forma de la regla de Ana de la práctica 4, en su propio archivo (`sudo visudo -f /etc/sudoers.d/luis`), con el comando y su argumento: `/usr/bin/apt update`. Para probar: `su - luis` y después `sudo apt update` y `sudo apt install cowsay`.
+</details>
+
+**4.** Borra a Carla con su casa y comprueba que no queda rastro en `/etc/passwd` ni en `/home`.
+
+<details>
+<summary>Pista</summary>
+
+En la chuleta: `userdel` con la opción que borra también su casa. Después, `grep carla /etc/passwd` y `ls /home`.
+</details>
 
 ## Cierre
 
@@ -251,6 +322,8 @@ En `notas/fase-1/clase-09.md`:
 2. ¿Para qué sirve el setgid (`2770`) en `/srv/proyecto`? ¿Qué pasaría sin él? ¿Y por qué Luis no pudo escribir en `borrador.txt` aunque el grupo era correcto?
 3. ¿Por qué darle a Ana solo `journalctl` en sudoers es mejor que meterla en el grupo `sudo`? Relaciónalo con IAM en AWS.
 4. **Repaso (clase 08, sin mirar):** ¿qué diferencia hay entre parar y terminar una instancia en AWS, y cuál sigue costando dinero?
+
+Después, escríbeme `examíname clase-09`.
 
 ## Autocorrección
 
@@ -269,7 +342,7 @@ En `notas/fase-1/clase-09.md`:
 ```bash
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin appsvc
 sudo su - appsvc                   # "This account is currently not available."
-sudo -u ana mkdir /srv/proyecto/config && sudo chmod 2750 /srv/proyecto/config   # dueño ana: rwx · devs: r-x
+sudo -u ana touch /srv/proyecto/config.txt && sudo chmod 640 /srv/proyecto/config.txt   # ana: rw- · devs: r-- · resto: ---
 # en sudo visudo -f /etc/sudoers.d/luis:
 luis ALL=(root) /usr/bin/apt update
 sudo userdel -r carla && grep carla /etc/passwd; ls /home

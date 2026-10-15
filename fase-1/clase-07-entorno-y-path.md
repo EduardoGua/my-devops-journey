@@ -17,69 +17,92 @@ La configuración de las aplicaciones modernas llega por **variables de entorno*
 
 ## Teoría
 
-### Variables
+Cinco piezas. La 2 (la mochila) es la idea que más usarás en todo el curso: en Docker, en Kubernetes y en GitHub Actions.
+
+### 1. Una variable es una etiqueta con un valor
 
 ```bash
-NOMBRE=valor        # sin espacios alrededor del =
-echo $NOMBRE
-echo "${NOMBRE}s"   # las llaves delimitan el nombre
+NOMBRE=valor        # crear: sin espacios alrededor del =
+echo $NOMBRE        # usar: con $ delante
+echo "${NOMBRE}s"   # las llaves marcan dónde acaba el nombre: imprime «valors»
 ```
 
-### Shell frente a entorno
+### 2. La mochila: variables del shell y variables de entorno
+
+Cada programa nace con una **mochila de variables**, su *entorno*, que es una **copia** de la mochila de quien lo lanzó (su padre).
 
 ```
-  bash (tu shell)
-  ├── variable del shell:  COLOR=azul         ← solo existe en este shell
-  └── variable de entorno: export REGION=eu   ← se HEREDA a cada programa que lanzas
+  tu bash
+  ├── COLOR=azul           ← en el bolsillo: solo la ve tu shell
+  └── export REGION=eu     ← en la mochila: viaja con cada programa que lances
           │
-          ▼
-      programa hijo (python, otro bash, un script): ve REGION, no ve COLOR
+          ▼  (copia de la mochila)
+      programa hijo (un script, python, otro bash): ve REGION, no ve COLOR
 ```
 
-Cada proceso recibe una **copia** del entorno de su padre. Un hijo nunca puede cambiar el entorno del padre.
+- Una variable recién creada se queda **en tu bolsillo**: solo la ve tu shell.
+- `export` la mete **en la mochila**: desde ese momento, cada programa que lances recibe una copia.
+- El hijo recibe una **copia**: puede cambiar la suya, pero nunca la de su padre. Cuando termina, sus cambios desaparecen con él.
 
-### Variables que ya existen
+### 3. El `PATH`: la lista de cajones donde el shell busca
 
-| Variable | Contiene |
-|----------|----------|
-| `HOME` | tu casa (`/home/educo`) |
-| `USER` | tu usuario |
-| `PWD` | directorio actual |
-| `SHELL` | tu shell por defecto |
-| `PATH` | dónde se buscan los comandos |
-| `?` | código de salida del último comando (`$?`) |
-
-### El PATH
-
-`PATH` es una lista de directorios separados por `:`. Cuando escribes `python3`, bash lo busca **en orden** en esos directorios y ejecuta el primero que encuentra.
+`PATH` es una variable de la mochila con una lista de carpetas separadas por `:`. Cuando escribes `python3`, el shell abre esas carpetas **en orden**, como cajones, y ejecuta el **primer** `python3` que encuentra.
 
 ```
 PATH=/usr/local/bin:/usr/bin:/bin:...
-       1.º           2.º      3.º
+       1.º cajón     2.º      3.º
 ```
 
-Si no está en ninguno, ves `command not found` (en tu Ubuntu, `no se encontró la orden`), aunque el programa exista en otro sitio. Por eso un script propio se ejecuta con `./script.sh`: `.` (el directorio actual) **no** está en el PATH, a propósito, por seguridad.
+Si no está en ningún cajón, ves `no se encontró la orden`, aunque el programa exista en otro sitio. Por eso tus propios scripts se ejecutan con `./script.sh`: la carpeta actual (`.`) **no** es uno de los cajones, a propósito, por seguridad.
 
 > 🔁 **Vuelve a la clase 01.** En «Qué pasa cuando pulsas Enter», el paso 3 era «el shell busca el programa en las carpetas del PATH». Ahora conoces esa lista: el shell la recorre **en orden** y se queda con el **primer** programa que encuentra. Si dos carpetas tienen un programa con el mismo nombre, gana la que va antes. Lo comprobarás en el Rómpelo 2.
 
-### Comillas
+### 4. Comillas: tres formas de escribir un texto
 
-| Forma | Efecto | Ejemplo |
-|-------|--------|---------|
-| `"..."` | expande variables y `$(...)` | `"Hola $USER"` → `Hola educo` |
-| `'...'` | literal, no expande nada | `'Hola $USER'` → `Hola $USER` |
-| sin comillas | expande y además **parte por espacios** | peligroso con rutas que tengan espacios |
+| Escribes | El shell… | `USER` vale `educo` → resultado |
+|----------|-----------|---------------------------------|
+| `"Hola $USER"` | sustituye las variables | `Hola educo` |
+| `'Hola $USER'` | no toca nada: lo deja tal cual | `Hola $USER` |
+| `Hola $USER`, sin comillas | sustituye **y además parte** el resultado por los espacios | funciona aquí, pero rompe rutas con espacios |
 
-Regla práctica: **usa siempre comillas dobles alrededor de las variables**: `"$ARCHIVO"`.
+Regla práctica: **pon siempre comillas dobles alrededor de las variables**: `"$ARCHIVO"`. Lo verás romperse en el Rómpelo 3.
 
-### Archivos de arranque
+### 5. Los archivos que preparan tu shell
 
 | Archivo | Se lee cuando… |
 |---------|----------------|
-| `~/.bashrc` | abres un shell interactivo (cada terminal nueva) |
-| `~/.profile` | inicias sesión (login, también por SSH) |
+| `~/.bashrc` | abres una terminal nueva (un shell interactivo) |
+| `~/.profile` | inicias sesión en el equipo (también al entrar por SSH) |
 
-Cambiar `~/.bashrc` no afecta a las terminales ya abiertas hasta que ejecutas `source ~/.bashrc`, que lo lee de nuevo en el shell actual.
+Si cambias `~/.bashrc`, las terminales que ya estaban abiertas no se enteran hasta que ejecutas `source ~/.bashrc`, que lo vuelve a leer en el shell actual.
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. Escribes `COLOR=azul` y lanzas un script que hace `echo $COLOR`. ¿Qué imprime? ¿Y si antes hubieras hecho `export COLOR`?
+2. Instalas un programa en `/opt/app/bin`. Escribes su nombre y sale `no se encontró la orden`. ¿Por qué?
+3. ¿Qué imprime `echo 'Soy $USER'`?
+
+<details>
+<summary>Comprueba</summary>
+
+1. Una línea vacía: `COLOR` estaba en el bolsillo, no en la mochila. Con `export`, el script recibe la copia e imprime `azul`. 2. `/opt/app/bin` no es uno de los cajones del `PATH`. 3. `Soy $USER`, tal cual: las comillas simples no sustituyen nada.
+</details>
+
+### Tu chuleta de la clase
+
+| Comando | Qué hace |
+|---------|----------|
+| `VAR=valor` · `echo "$VAR"` | crear · usar |
+| `export VAR=valor` | meterla en la mochila |
+| `VAR=valor comando` | darle la variable solo a ese comando |
+| `unset VAR` | borrarla |
+| `env` · `printenv VAR` | ver la mochila entera · ver una variable |
+| `echo "$PATH" \| tr ':' '\n'` | los cajones del PATH, uno por línea |
+| `type -a cmd` · `which cmd` | en qué cajón está un comando |
+| `source archivo` | ejecutar un archivo en tu shell, no en un hijo |
+| `alias ll='ls -lah'` | crear un atajo |
+
+Variables que ya existen: `HOME` (tu casa), `USER` (tu usuario), `PWD` (dónde estás), `SHELL` (tu shell), `PATH` (los cajones) y `?` (la nota del último comando, `$?`).
 
 ## Práctica guiada
 
@@ -97,9 +120,11 @@ echo 'La región es $REGION'
 echo "Hoy: $(date +%F), usuario: $USER"
 ```
 
-### 2. Shell frente a entorno
+### 2. El bolsillo y la mochila
 
-🔮 **Predice:** ¿qué imprimirá cada `bash -c`?
+`bash -c '...'` lanza un shell **hijo** que ejecuta lo que hay entre comillas y termina. Es la forma más rápida de ver qué recibe un hijo en su mochila.
+
+🔮 **Predice:** ¿qué imprimirá el `bash -c`?
 
 ```bash
 COLOR=azul
@@ -107,7 +132,11 @@ export ENTORNO=produccion
 bash -c 'echo "COLOR=$COLOR  ENTORNO=$ENTORNO"'
 ```
 
-`bash -c '...'` lanza un shell **hijo**: solo ve lo exportado.
+<details>
+<summary>Compruébalo</summary>
+
+`COLOR=  ENTORNO=produccion`. `COLOR` estaba en el bolsillo; `ENTORNO`, en la mochila.
+</details>
 
 ```bash
 env | grep ENTORNO
@@ -125,6 +154,8 @@ Así se pasan configuraciones en Docker y en CI: `PORT=8080 python3 app.py`.
 
 ### 3. El hijo no cambia al padre
 
+Primero, un truco para crear archivos de varias líneas sin abrir un editor: el *heredoc*. `cat > archivo <<'EOF'` escribe en `archivo` todo lo que pongas debajo, hasta la línea que dice `EOF`. Crea un script pequeño:
+
 ```bash
 cat > cambia.sh <<'EOF'
 #!/bin/bash
@@ -132,13 +163,22 @@ export ENTORNO=modificado-por-el-script
 echo "Dentro del script: $ENTORNO"
 EOF
 chmod +x cambia.sh
+```
+
+🔮 **Predice** qué imprime cada `echo` antes de ejecutar estas líneas. Recuerda: ahora mismo `ENTORNO` vale `produccion`.
+
+```bash
 ./cambia.sh
 echo "En mi shell: $ENTORNO"
 source cambia.sh
 echo "Tras source: $ENTORNO"
 ```
 
-`./cambia.sh` corre en un proceso hijo: su cambio muere con él. `source` ejecuta el archivo **en tu shell actual**. (El `<<'EOF' ... EOF` se llama *heredoc*: escribe varias líneas en un archivo de una vez.)
+<details>
+<summary>Compruébalo</summary>
+
+`./cambia.sh` corre en un hijo: cambia **su copia** de la mochila, y el cambio desaparece con él. Tu shell sigue con `produccion`. `source` ejecuta el archivo **en tu propio shell**, así que ahí sí cambia: `modificado-por-el-script`.
+</details>
 
 ### 4. El PATH
 
@@ -227,11 +267,47 @@ Sin comillas, el shell parte el valor en dos argumentos: `mi` e `informe.txt`.
 
 ## Reto
 
-1. Exporta `APP_ENV=desarrollo` y escribe un script `entorno.sh` que imprima `Modo: <valor>`, o `Modo: sin definir` si la variable está vacía. Pista: `${APP_ENV:-sin definir}`.
-2. Ejecútalo tres veces: normal, con `APP_ENV=produccion` solo para ese comando y después de `unset APP_ENV`.
-3. Añade a tu `~/.bashrc` el alias `journey` y comprueba que existe en una terminal **nueva**.
-4. ¿En qué directorio del PATH está `git`? ¿Y `docker`?
-5. **Tu PATH real.** Los instaladores de herramientas suelen añadir líneas a `~/.bashrc` y `~/.profile`. Cuenta las entradas repetidas de tu PATH con el patrón top-N de la clase 05 y busca qué líneas las añaden (`grep -n PATH ~/.bashrc ~/.profile`). Explica por qué se repiten y escribe cómo lo arreglarías. **No edites aún** esos archivos: primero entiende el problema.
+En `labs/clase-07/`, en la terminal. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** Escribe un script `entorno.sh` que imprima `Modo: <valor de APP_ENV>`, o `Modo: sin definir` si la variable está vacía.
+
+<details>
+<summary>Pista</summary>
+
+Créalo con un *heredoc*, como en la práctica 3: el shebang y una línea `echo "Modo: ${APP_ENV:-sin definir}"`. `${APP_ENV:-sin definir}` significa «APP_ENV o, si está vacía, *sin definir*». No olvides `chmod +x`.
+</details>
+
+**2.** Ejecútalo tres veces: después de `export APP_ENV=desarrollo`, con `APP_ENV=produccion` solo para ese comando, y después de `unset APP_ENV`.
+
+<details>
+<summary>Pista</summary>
+
+«Solo para ese comando» es la forma `VARIABLE=valor ./entorno.sh`, de la práctica 2.
+</details>
+
+**3.** Haz que el alias `journey` exista en todas tus terminales nuevas.
+
+<details>
+<summary>Pista</summary>
+
+Abre `nano ~/.bashrc`, añade al final `alias journey='cd ~/my-devops-journey'`, guarda y abre una terminal **nueva** para probarlo.
+</details>
+
+**4.** ¿En qué carpeta del PATH está `git`? ¿Y `docker`?
+
+<details>
+<summary>Pista</summary>
+
+`which git docker`.
+</details>
+
+**5.** **Tu PATH real.** Cuenta las carpetas repetidas de tu PATH y busca qué líneas de `~/.bashrc` y `~/.profile` las añaden. Explica con tus palabras por qué se repiten. **No edites** esos archivos todavía.
+
+<details>
+<summary>Pista</summary>
+
+Para contar, pon una carpeta por línea con `echo "$PATH" | tr ':' '\n'` y añade la cadena top-N de la clase 05 (`| sort | uniq -c | sort -rn`). Para encontrar las líneas: `grep -n PATH ~/.bashrc ~/.profile`. La clave del porqué: ¿cuántas veces se lee `~/.bashrc`?
+</details>
 
 ## Cierre
 
@@ -241,6 +317,8 @@ En `notas/fase-1/clase-07.md`:
 2. Un script funciona en tu terminal, pero desde `cron` falla con "command not found". ¿Cuál es la causa más probable y cómo lo arreglas?
 3. ¿Por qué no está `.` en el PATH? ¿Qué podría pasar si estuviera al principio?
 4. **Repaso (clase 06, sin mirar):** ¿qué hacen `r`, `w` y `x` en un **directorio**?
+
+Después, escríbeme `examíname clase-07`.
 
 ## Autocorrección
 
@@ -268,7 +346,7 @@ unset APP_ENV; ./entorno.sh
 which git docker        # /usr/bin/git, /usr/bin/docker (o /bin/…: en Ubuntu, /bin es un enlace a /usr/bin)
 echo $PATH | tr ':' '\n' | sort | uniq -c | sort -rn | head
 ```
-**Reto 5:** cada `export PATH="algo:$PATH"` de `~/.bashrc` se ejecuta en cada shell nuevo y añade otra copia, aunque ya esté. Un shell dentro de otro (`bash`, la terminal de VS Code, un `source ~/.bashrc`) hereda el PATH con las copias y añade más. Además, si la misma carpeta se añade en `~/.profile` y en `~/.bashrc`, se suma dos veces desde el principio. El arreglo: añadir cada carpeta **en un solo sitio** y solo si no está ya:
+**Reto 5:** cada `export PATH="algo:$PATH"` de `~/.bashrc` se ejecuta en cada shell nuevo y añade otra copia, aunque ya esté. Un shell dentro de otro (`bash`, la terminal de VS Code, un `source ~/.bashrc`) hereda el PATH con las copias y añade más. Además, si la misma carpeta se añade en `~/.profile` y en `~/.bashrc`, se suma dos veces desde el principio. El arreglo (usa `case`, que verás en la clase 17): añadir cada carpeta **en un solo sitio** y solo si no está ya:
 ```bash
 case ":$PATH:" in
   *":$HOME/.local/bin:"*) ;;                 # ya está: no hagas nada

@@ -49,7 +49,9 @@ Si una clase dura 90 minutos o más, o es de VM (arrancar la máquina y retomar 
 | 💡 **La idea de hoy** | La clase en dos frases y con una imagen cotidiana. Léela antes de empezar: es el gancho del que cuelga todo lo demás |
 | **Objetivo** | Lo que sabrás hacer al terminar |
 | **Por qué importa** | Dónde lo usarás en Cloud/DevOps y en AWS |
-| **Teoría** | Lo justo para entender la práctica |
+| **Teoría** | Lo justo para entender la práctica, en piezas cortas y en orden: cada una se apoya en la anterior |
+| **✋ Antes de practicar** | Tres preguntas rápidas, sin mirar, para comprobar que tienes la base. Si fallas una, relee esa pieza |
+| **Tu chuleta** | Todos los comandos de la clase en una tabla. Para consultar mientras practicas, no para memorizarla de golpe |
 | **Práctica guiada** | Comandos paso a paso. Antes de los importantes verás 🔮 **Predice**: piensa (o escribe) qué crees que pasará *antes* de ejecutarlo |
 | **Rómpelo** | Provocas un fallo y lo diagnosticas. Es la parte que más enseña |
 | **Reto** | Un problema sin guía, para comprobar que lo entendiste y no solo lo seguiste. Se hace **en la terminal**: en tus notas solo marcas cada punto con ✅ o ❌ y apuntas el que te costó, sin copiar los comandos |

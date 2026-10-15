@@ -2,7 +2,7 @@
 
 **Dónde:** tu Ubuntu + VM `servidor-01` · **Tiempo:** 90 min · **Bloque:** B. Administrar un servidor
 
-> 💡 **La idea de hoy:** SSH funciona con un **par de llaves**. La **pública** se puede repartir: la dejas en cada servidor en el que quieres entrar. La **privada** nunca sale de tu PC y es la única que puede demostrar que eres tú. El servidor también se identifica con su propia *huella*, para que sepas que no hablas con un impostor.
+> 💡 **La idea de hoy:** entrar por SSH es como **firmar en la puerta**. Tu llave **privada** es tu firma: nunca sale de tu PC. Tu llave **pública** es una muestra de esa firma, que dejas en cada servidor para que pueda comprobar que eres tú. Y el servidor también se identifica con su propio sello (su *huella*), para que sepas que no hablas con un impostor.
 
 ## Objetivo
 
@@ -18,7 +18,25 @@ SSH es la puerta de cada servidor Linux. En AWS, una EC2 se crea con un *key pai
 
 ## Teoría
 
-### Dos pares de llaves
+Cuatro piezas, con la imagen de la firma de *La idea de hoy*.
+
+### 1. Tu firma y su muestra
+
+Cuando creas un par de llaves, obtienes dos archivos que van juntos:
+- la **privada** (`lab_ed25519`): tu **firma**. Solo la tienes tú;
+- la **pública** (`lab_ed25519.pub`): una **muestra de tu firma**. Se puede enseñar a cualquiera: la pegas en los servidores, en GitHub o en AWS.
+
+Al conectarte, el servidor te pone delante un documento único (un *reto*); tu PC lo **firma** con la privada y el servidor **compara** la firma con la muestra que guarda en `~/.ssh/authorized_keys`. Si coinciden, entras. La privada **nunca viaja por la red**: solo viaja la firma de ese documento.
+
+Por eso la pública no es peligrosa (con una muestra no se puede firmar) y la privada sí: quien la tenga **es** tú para todos esos servidores. Una *passphrase* la protege en el disco: si te la roban, no sirve sin la frase.
+
+### 2. El servidor también se identifica
+
+El servidor tiene su propio par de llaves, su **sello** (*host key*). La primera vez que te conectas, tu PC te enseña la **huella** de ese sello (*fingerprint*) y te pregunta si te fías. Si dices que sí, la apunta en `~/.ssh/known_hosts`.
+
+Las siguientes veces la compara. Si un día la huella **cambia**, SSH se niega a conectar y avisa a gritos: podría ser un impostor en medio (un ataque *man-in-the-middle*) o, simplemente, un servidor reinstalado. Nunca se acepta sin averiguar cuál de las dos es.
+
+Las dos piezas juntas:
 
 ```
    TU PC (cliente)                                   SERVIDOR
@@ -27,14 +45,9 @@ SSH es la puerta de cada servidor Linux. En AWS, una EC2 se crea con un *key pai
    ~/.ssh/known_hosts ◄──── recuerda ─────────────── /etc/ssh/ssh_host_ed25519_key.pub (pública del servidor)
 ```
 
-1. **El servidor demuestra quién es** con su *host key*. La primera vez, tu cliente pregunta si confías en su huella (*fingerprint*) y la guarda en `known_hosts`. Si otro día la huella cambia, SSH **se niega a conectar** y avisa: podría ser un ataque *man-in-the-middle*, o simplemente un servidor reinstalado.
-2. **Tú demuestras quién eres** con tu llave: el servidor te envía un reto, tu cliente lo **firma con la llave privada** y el servidor comprueba la firma con la pública de `authorized_keys`. La llave privada nunca viaja por la red.
+### 3. SSH es estricto con los permisos
 
-Por eso **la pública se puede enseñar** (se pega en servidores, en GitHub, en AWS) y **la privada no**: quien la tiene **es** tú para esos servidores. Una *passphrase* cifra la privada en el disco, así que si te la roban no sirve sin la frase.
-
-### Permisos obligatorios
-
-SSH se niega a funcionar si los permisos son demasiado abiertos:
+Si alguien más pudiera leer tu firma o cambiar la lista de muestras, SSH no se fía y se niega a funcionar. Exige (clase 06):
 
 | Ruta | Permiso |
 |------|---------|
@@ -43,7 +56,9 @@ SSH se niega a funcionar si los permisos son demasiado abiertos:
 | `authorized_keys` | `600` (o `644`) |
 | la casa del usuario | sin escritura para grupo ni otros |
 
-### Configuración del servidor (`/etc/ssh/sshd_config`)
+### 4. Cerrar la puerta a los demás
+
+La configuración del servidor SSH está en `/etc/ssh/sshd_config`. Cuatro ajustes la hacen mucho más segura:
 
 | Directiva | Valor seguro | Por qué |
 |-----------|--------------|---------|
@@ -52,9 +67,34 @@ SSH se niega a funcionar si los permisos son demasiado abiertos:
 | `AllowUsers` | lista explícita | Solo esos usuarios pueden entrar |
 | `MaxAuthTries` | `3` | Corta los intentos por conexión |
 
-Ubuntu lee también los archivos de `/etc/ssh/sshd_config.d/*.conf`, y **la primera vez que aparece una directiva es la que gana**. Por eso las personalizaciones van en un archivo con un número bajo (`00-…`).
+Ubuntu lee también los archivos de `/etc/ssh/sshd_config.d/*.conf`, y **la primera vez que aparece un ajuste es la que gana**. Por eso tus cambios van en un archivo con un número bajo (`00-…`).
 
-**Regla de supervivencia:** al cambiar la configuración de SSH, **mantén abierta una sesión** y prueba desde **otra**. Si te equivocas, todavía tienes la primera para arreglarlo. En una EC2 sin otra vía de acceso, un error aquí significa perder la instancia.
+**Regla de supervivencia:** al cambiar la configuración de SSH, **deja abierta una sesión** y prueba desde **otra**. Si te equivocas, aún tienes la primera para arreglarlo. En una EC2 sin otra forma de entrar, un error aquí significa perder la instancia.
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. ¿Qué archivo pegas en el servidor: la llave pública o la privada?
+2. SSH te avisa de que la huella del servidor ha cambiado. ¿Qué haces?
+3. Vas a desactivar las contraseñas en el servidor SSH. ¿Qué haces antes de reiniciar el servicio?
+
+<details>
+<summary>Comprueba</summary>
+
+1. La **pública** (`.pub`), la muestra. La privada nunca sale de tu PC. 2. No aceptar a ciegas: averiguar si el servidor se reinstaló, comprobando la huella por otra vía, y solo entonces borrar la vieja. 3. Dejar abierta una sesión de seguridad y probar desde otra (y revisar la sintaxis con `sudo sshd -t`).
+</details>
+
+### Tu chuleta de la clase
+
+| Comando | Para qué |
+|---------|----------|
+| `ssh-keygen -t ed25519 -f ~/.ssh/nombre -C "comentario"` | crear un par de llaves |
+| `ssh -i ~/.ssh/llave usuario@IP` | entrar con una llave concreta |
+| `ssh-add ~/.ssh/llave` · `ssh-add -l` | darle la llave al agente (la passphrase, una sola vez) · ver cuáles tiene |
+| `~/.ssh/config` (`Host`, `HostName`, `User`, `IdentityFile`) | alias: `ssh servidor-01` |
+| `scp archivo servidor:/ruta/` · `rsync -avz dir/ servidor:/ruta/` | copiar archivos · sincronizar carpetas (solo copia lo que cambia) |
+| `ssh -N -L 9090:localhost:8080 servidor` | túnel: tu puerto 9090 llega al 8080 del servidor |
+| `ssh-keygen -lf archivo.pub` · `ssh-keygen -R IP` | ver una huella · olvidar la huella guardada de un servidor |
+| `sudo sshd -t` · `sudo sshd -T` | revisar la sintaxis de la configuración · ver la configuración efectiva |
 
 ## Práctica guiada
 
@@ -236,9 +276,31 @@ Si hubieras cerrado todas las sesiones, la única salida sería restaurar un sna
 
 ## Reto
 
-1. Añade a `~/.ssh/config` una entrada `ana-lab` para entrar como Ana con `ssh ana-lab`.
-2. Usa `rsync` para "desplegar" una carpeta local `web/` en `/var/www/html/` de la VM. (Pista: el usuario `ubuntu` no puede escribir ahí. Copia a `/tmp` y mueve con sudo, o usa `--rsync-path="sudo rsync"`.) Comprueba el resultado en el navegador con `http://IP`.
-3. **Incidente simulado:** alguien sube por error la llave `ana_lab` (la privada) a un repo público. Escribe los pasos **en orden** para cerrar el incidente y ejecútalos en la VM.
+En tu PC y en la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** Añade a `~/.ssh/config` una entrada `ana-lab` para entrar como Ana con `ssh ana-lab`.
+
+<details>
+<summary>Pista</summary>
+
+Copia el bloque `Host servidor-01` de la práctica 5 y cambia tres líneas: el nombre del `Host`, el `User` y el `IdentityFile` (la llave de Ana).
+</details>
+
+**2.** Usa `rsync` para «desplegar» una carpeta local `web/` en `/var/www/html/` de la VM, y comprueba el resultado en el navegador con `http://IP`.
+
+<details>
+<summary>Pista</summary>
+
+`ubuntu` no puede escribir en `/var/www/html/`. Lo más sencillo: `rsync -avz web/ servidor-01:/tmp/web/` y, dentro de la VM, `sudo cp -r /tmp/web/* /var/www/html/`.
+</details>
+
+**3.** **Incidente simulado:** alguien sube por error la llave **privada** `ana_lab` a un repo público. Escribe en orden los pasos para cerrar el incidente y ejecútalos en la VM.
+
+<details>
+<summary>Pista</summary>
+
+Tres verbos, en este orden: **revocar** (quitar esa muestra de firma del servidor: `sudo nano /home/ana/.ssh/authorized_keys` y borra la línea que termina en `ana`), **reemplazar** (un par de llaves nuevo, como en la práctica 9) y **revisar** (¿alguien la usó? Busca `Accepted publickey for ana` en `journalctl -u ssh`).
+</details>
 
 ## Cierre
 
@@ -248,6 +310,8 @@ En `notas/fase-1/clase-15.md`:
 2. ¿Qué significa el aviso `REMOTE HOST IDENTIFICATION HAS CHANGED` y qué haces cuando lo ves?
 3. Una llave privada se publicó en GitHub. ¿Por qué borrar el archivo del repo **no** cierra el incidente? ¿Qué pasos sí lo cierran?
 4. **Repaso (clase 14, sin mirar):** `df` dice que el disco está lleno pero `du` no encuentra el espacio. ¿Qué compruebas?
+
+Después, escríbeme `examíname clase-15`.
 
 ## Autocorrección
 
@@ -264,7 +328,7 @@ En `notas/fase-1/clase-15.md`:
 
 **Reto 3 (en la VM):**
 ```bash
-sudo sed -i '/ ana$/d' /home/ana/.ssh/authorized_keys      # revocar la pública vieja (comentario "ana")
+sudo nano /home/ana/.ssh/authorized_keys                    # revocar: borra la línea que termina en "ana"
 # en tu PC: ssh-keygen -t ed25519 -f ~/.ssh/ana_lab_v2 -C "ana-v2"   → instalar la nueva pública
 sudo journalctl -u ssh --since "-7 days" --no-pager | grep "Accepted publickey for ana"
 ```

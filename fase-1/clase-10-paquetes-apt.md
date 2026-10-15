@@ -17,7 +17,9 @@ Cada servidor se aprovisiona instalando paquetes: en el *user-data* de una EC2, 
 
 ## Teoría
 
-### Paquetes y repositorios
+Cuatro piezas, con la imagen de la tienda de *La idea de hoy*.
+
+### 1. El catálogo y la tienda
 
 ```
  Repositorio de Ubuntu (internet)          Tu servidor
@@ -32,30 +34,63 @@ Cada servidor se aprovisiona instalando paquetes: en el *user-data* de una EC2, 
                                            └──────────────────────────────┘
 ```
 
-- Un **paquete** (`.deb`) es un archivo con programas, configuración por defecto y metadatos: versión y **dependencias**.
-- Un **repositorio** es un servidor con miles de paquetes y un índice. Ubuntu los configura en `/etc/apt/sources.list.d/`.
-- `apt` es la herramienta cómoda. Por debajo, `dpkg` es quien instala de verdad los `.deb`.
-- Los paquetes están **firmados**: apt verifica que vienen del repositorio oficial y no fueron manipulados.
+- La **tienda** es un **repositorio**: un servidor con miles de programas empaquetados. Ubuntu tiene configurados los suyos en `/etc/apt/sources.list.d/`.
+- El **catálogo** es el índice: qué programas hay y en qué versión. Tu servidor guarda **una copia local** del catálogo, que se queda vieja si no la actualizas.
+- `apt update` descarga el **catálogo** nuevo. **No instala nada.**
+- `apt install` mira el catálogo, descarga el programa y lo instala.
 
-### Comandos
+### 2. Paquetes, dependencias y firmas
+
+- Un **paquete** (`.deb`) es una caja con el programa, su configuración por defecto y una etiqueta con su versión y lo que necesita.
+- Lo que necesita son sus **dependencias**: otros paquetes sin los que no funciona. `apt` las trae solas.
+- Cada caja viene **firmada**: `apt` comprueba la firma y rechaza lo que no venga de la tienda oficial o haya sido manipulado.
+- Por debajo, quien instala de verdad las cajas es `dpkg`. `apt` es el dependiente amable que lo organiza todo.
+
+### 3. Los cinco del día a día
+
+```bash
+sudo apt update              # 1. actualizar el catálogo (siempre lo primero)
+sudo apt install nginx       # 2. instalar un programa (y sus dependencias)
+sudo apt upgrade             # 3. actualizar todo lo que ya tienes a la versión del catálogo
+sudo apt remove nginx        # 4. desinstalar, pero DEJAR su configuración en /etc
+sudo apt purge nginx         # 5. desinstalar y BORRAR también su configuración
+```
+
+`remove` frente a `purge` es como devolver un mueble guardando o tirando las instrucciones de montaje: con `remove`, si lo reinstalas, recupera tu configuración. Lo verás en el Rómpelo 1.
+
+### 4. `apt` para ti, `apt-get` para los scripts
+
+`apt` es para usarlo a mano: tiene colores y barras de progreso. En **scripts** y **Dockerfiles** se usa `apt-get`, porque su salida no cambia entre versiones, con `-y` para que no pregunte nada:
+
+```bash
+sudo apt-get update && sudo apt-get install -y nginx
+```
+
+### ✋ Antes de practicar: tres preguntas, sin mirar
+
+1. Acabas de crear un servidor y `apt install curl` dice `Unable to locate package`. ¿Qué te faltó hacer?
+2. ¿`apt update` instala las versiones nuevas de tus programas?
+3. Quieres desinstalar nginx y que no quede ni rastro de su configuración. ¿`remove` o `purge`?
+
+<details>
+<summary>Comprueba</summary>
+
+1. `sudo apt update`: el catálogo local estaba vacío o viejo. 2. No: solo actualiza el **catálogo**. Instalar las versiones nuevas es `apt upgrade`. 3. `purge`.
+</details>
+
+### Tu chuleta de la clase
 
 | Comando | Qué hace |
 |---------|----------|
-| `sudo apt update` | Actualiza el **índice** local. No instala nada |
-| `sudo apt upgrade` | Instala las versiones nuevas de lo que ya tienes |
-| `sudo apt install pkg` | Instala con sus dependencias |
-| `sudo apt remove pkg` | Desinstala, pero **deja su configuración** en `/etc` |
-| `sudo apt purge pkg` | Desinstala y borra su configuración |
-| `sudo apt autoremove` | Quita las dependencias que ya nadie usa |
-| `apt search texto` | Busca paquetes |
-| `apt show pkg` | Información: versión, tamaño, dependencias |
-| `apt policy pkg` | Versión instalada, versión candidata y de qué repositorio viene |
-| `apt list --installed` | Lista lo instalado |
-| `dpkg -L pkg` | Archivos que instaló un paquete |
-| `dpkg -S /ruta/archivo` | Qué paquete instaló ese archivo |
-| `sudo apt-mark hold pkg` | Congela la versión (no se actualiza) |
-
-> `apt` es para usar a mano. En **scripts** y Dockerfiles se usa `apt-get`, porque su salida no cambia entre versiones, con `-y` para no pedir confirmación.
+| `sudo apt update` | actualiza el catálogo local. No instala nada |
+| `sudo apt install pkg` · `sudo apt upgrade` | instala con sus dependencias · actualiza lo que ya tienes |
+| `sudo apt remove pkg` · `sudo apt purge pkg` | desinstala dejando / borrando su configuración |
+| `sudo apt autoremove` | quita las dependencias que ya nadie usa |
+| `apt search texto` · `apt show pkg` | busca paquetes · información: versión, tamaño, dependencias |
+| `apt policy pkg` | versión instalada, versión candidata y de qué repositorio viene |
+| `apt list --installed` | lo que tienes instalado |
+| `dpkg -L pkg` · `dpkg -S /ruta/archivo` | qué archivos instaló un paquete · qué paquete instaló un archivo |
+| `sudo apt-mark hold pkg` / `unhold` | congela su versión / la descongela |
 
 ## Práctica guiada
 
@@ -162,10 +197,39 @@ Se usa cuando una versión nueva rompe algo y necesitas tiempo para adaptarte. N
 
 ## Reto
 
-1. ¿Qué paquete instaló el comando `ss`? ¿Y `ip`?
-2. ¿Cuántos paquetes hay instalados en la VM?
-3. Instala `cowsay` y luego quítalo **sin dejar rastro**, incluidas las dependencias que ya no se usan.
-4. Escribe la línea que pondrías en un script de aprovisionamiento para instalar `nginx` y `curl` sin preguntas y sin fallar por un índice desactualizado.
+En la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+
+**1.** ¿Qué paquete instaló el comando `ss`? ¿Y `ip`?
+
+<details>
+<summary>Pista</summary>
+
+`dpkg -S /ruta/del/archivo` dice qué paquete instaló un archivo. ¿Y la ruta de `ss`? Te la da `which`. Puedes juntarlos con `$( )`, como en la clase 04.
+</details>
+
+**2.** ¿Cuántos paquetes hay instalados en la VM?
+
+<details>
+<summary>Pista</summary>
+
+`apt list --installed` los lista, uno por línea. ¿Con qué cuentas líneas?
+</details>
+
+**3.** Instala `cowsay` y luego quítalo **sin dejar rastro**, incluidas las dependencias que ya no se usan.
+
+<details>
+<summary>Pista</summary>
+
+Dos órdenes de la pieza 3 y la chuleta: la que desinstala **borrando** también la configuración, y la que quita las dependencias que ya nadie usa.
+</details>
+
+**4.** Escribe la línea que pondrías en un script de aprovisionamiento para instalar `nginx` y `curl` sin preguntas y sin fallar por un catálogo desactualizado.
+
+<details>
+<summary>Pista</summary>
+
+Está en la pieza 4 de la teoría: `apt-get`, `&&` y `-y`.
+</details>
 
 ## Cierre
 
@@ -175,6 +239,8 @@ En `notas/fase-1/clase-10.md`:
 2. ¿Por qué `sudo echo "x" >> /etc/archivo` falla y `echo "x" | sudo tee -a /etc/archivo` funciona?
 3. Acabas de lanzar una EC2 y `apt install` falla con "Could not get lock". ¿Qué pasa y qué haces?
 4. **Repaso (clase 09, sin mirar):** ¿por qué se edita sudoers con `visudo` y no con `nano` directamente?
+
+Después, escríbeme `examíname clase-10`.
 
 ## Autocorrección
 
