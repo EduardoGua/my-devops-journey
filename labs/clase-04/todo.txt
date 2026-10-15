@@ -1,0 +1,2 @@
+ls: no se puede acceder a '/no-existe': No existe el archivo o directorio
+/etc/hostname
