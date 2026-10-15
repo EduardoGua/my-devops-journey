@@ -1,0 +1,6 @@
+find: ‘/etc/cni/net.d’: Permiso denegado
+find: ‘/etc/credstore’: Permiso denegado
+find: ‘/etc/cups/ssl’: Permiso denegado
+find: ‘/etc/credstore.encrypted’: Permiso denegado
+find: ‘/etc/polkit-1/rules.d’: Permiso denegado
+find: ‘/etc/ssl/private’: Permiso denegado
