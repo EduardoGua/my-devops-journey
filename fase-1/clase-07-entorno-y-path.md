@@ -4,6 +4,19 @@
 
 > 💡 **La idea de hoy:** cada proceso nace con una **mochila de variables**, su *entorno*, que es una copia de la de su padre. Lo que exportas viaja en la mochila de tus hijos, pero un hijo nunca puede cambiar la tuya. El `PATH` es una de esas variables: la lista ordenada de carpetas donde el shell busca cada comando que escribes.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - El paso 3 de «Qué pasa cuando pulsas Enter»: el shell busca el programa (clase 01).
+> - `bash` abre un shell dentro de otro, y `exit` vuelve al primero (clase 01).
+> - `$(comando)` mete lo que imprime un comando dentro de otro (clase 04).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **variable**: una etiqueta con un valor (`REGION=us-east-1`).
+> - **entorno**: la mochila de variables que hereda cada programa.
+> - **export**: meter una variable en la mochila.
+> - **PATH**: la lista de carpetas donde el shell busca los comandos.
+> - **alias**: un atajo para un comando largo.
+> - **source**: ejecutar un archivo en tu propio shell, no en un hijo.
+
 ## Objetivo
 
 - Crear variables y entender la diferencia entre **variable del shell** y **variable de entorno** (`export`).
@@ -27,6 +40,8 @@ echo $NOMBRE        # usar: con $ delante
 echo "${NOMBRE}s"   # las llaves marcan dónde acaba el nombre: imprime «valors»
 ```
 
+**En resumen:** `NOMBRE=valor` crea la variable (sin espacios) y `$NOMBRE` la usa.
+
 ### 2. La mochila: variables del shell y variables de entorno
 
 Cada programa nace con una **mochila de variables**, su *entorno*, que es una **copia** de la mochila de quien lo lanzó (su padre).
@@ -44,6 +59,8 @@ Cada programa nace con una **mochila de variables**, su *entorno*, que es una **
 - `export` la mete **en la mochila**: desde ese momento, cada programa que lances recibe una copia.
 - El hijo recibe una **copia**: puede cambiar la suya, pero nunca la de su padre. Cuando termina, sus cambios desaparecen con él.
 
+**En resumen:** lo del bolsillo solo lo ves tú; lo que metes en la mochila con `export` lo heredan tus hijos, como copia.
+
 ### 3. El `PATH`: la lista de cajones donde el shell busca
 
 `PATH` es una variable de la mochila con una lista de carpetas separadas por `:`. Cuando escribes `python3`, el shell abre esas carpetas **en orden**, como cajones, y ejecuta el **primer** `python3` que encuentra.
@@ -57,6 +74,8 @@ Si no está en ningún cajón, ves `no se encontró la orden`, aunque el program
 
 > 🔁 **Vuelve a la clase 01.** En «Qué pasa cuando pulsas Enter», el paso 3 era «el shell busca el programa en las carpetas del PATH». Ahora conoces esa lista: el shell la recorre **en orden** y se queda con el **primer** programa que encuentra. Si dos carpetas tienen un programa con el mismo nombre, gana la que va antes. Lo comprobarás en el Rómpelo 2.
 
+**En resumen:** el shell busca cada comando en los cajones del PATH, en orden, y usa el primero que encuentra.
+
 ### 4. Comillas: tres formas de escribir un texto
 
 | Escribes | El shell… | `USER` vale `educo` → resultado |
@@ -67,6 +86,8 @@ Si no está en ningún cajón, ves `no se encontró la orden`, aunque el program
 
 Regla práctica: **pon siempre comillas dobles alrededor de las variables**: `"$ARCHIVO"`. Lo verás romperse en el Rómpelo 3.
 
+**En resumen:** las dobles sustituyen las variables; las simples lo dejan tal cual. Y siempre comillas alrededor de una variable.
+
 ### 5. Los archivos que preparan tu shell
 
 | Archivo | Se lee cuando… |
@@ -75,6 +96,8 @@ Regla práctica: **pon siempre comillas dobles alrededor de las variables**: `"$
 | `~/.profile` | inicias sesión en el equipo (también al entrar por SSH) |
 
 Si cambias `~/.bashrc`, las terminales que ya estaban abiertas no se enteran hasta que ejecutas `source ~/.bashrc`, que lo vuelve a leer en el shell actual.
+
+**En resumen:** `~/.bashrc` se lee en cada terminal nueva; `~/.profile`, al iniciar sesión.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -119,6 +142,8 @@ echo "La región es $REGION"
 echo 'La región es $REGION'
 echo "Hoy: $(date +%F), usuario: $USER"
 ```
+
+👀 **Qué deberías ver:** `us-east-1`; `La región es us-east-1`; `La región es $REGION` tal cual, por las comillas simples; y la fecha con tu usuario.
 
 ### 2. El bolsillo y la mochila
 
@@ -189,6 +214,8 @@ which python3 ls
 type -a python3
 ```
 
+👀 **Qué deberías ver:** tu PATH entero (largo y con repeticiones: lo verás en el Reto 5); después, una carpeta por línea; y dónde están `python3` y `ls`.
+
 Crea tu propio comando:
 ```bash
 mkdir -p ~/bin
@@ -209,6 +236,8 @@ saludo
 which saludo
 ```
 
+👀 **Qué deberías ver:** `Hola, educo. Son las …` con la hora, y la ruta `/home/educo/bin/saludo`.
+
 Para hacerlo permanente **no tienes que tocar nada**: ahora que `~/bin` existe, `~/.profile` lo añadirá la próxima vez que inicies sesión. Compruébalo después de cerrar sesión y volver a entrar:
 ```bash
 grep -A3 'private bin' ~/.profile     # el bloque que lo añade
@@ -227,6 +256,8 @@ journey && pwd
 alias                         # lista todos
 ```
 
+👀 **Qué deberías ver:** la lista de `ls -lah`; después, `/home/educo/my-devops-journey`; y todos tus alias, con los dos nuevos entre ellos.
+
 Para que duren, añádelos a `~/.bashrc` con `nano ~/.bashrc` y después `source ~/.bashrc`.
 
 ## Rómpelo
@@ -243,6 +274,8 @@ ls
 Esto pasa de verdad: un `cron` o un servicio de `systemd` arrancan con un PATH mínimo, y un script que funciona en tu terminal falla allí con "command not found". La solución es usar rutas completas o fijar el PATH al principio del script.
 
 **2. Suplantar un comando:**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 ```bash
 cat > ~/bin/ls <<'EOF'
 #!/bin/bash
@@ -267,56 +300,122 @@ Sin comillas, el shell parte el valor en dos argumentos: `mi` e `informe.txt`.
 
 ## Reto
 
-En `labs/clase-07/`, en la terminal. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En `labs/clase-07/`, en la terminal. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** Escribe un script `entorno.sh` que imprima `Modo: <valor de APP_ENV>`, o `Modo: sin definir` si la variable está vacía.
+
+> 🧩 **Ejemplo resuelto:** un script `saluda.sh` que imprime `Hola, <NOMBRE>`, o `Hola, desconocido` si `NOMBRE` está vacía.
+> ```bash
+> cat > saluda.sh <<'EOF'
+> #!/bin/bash
+> echo "Hola, ${NOMBRE:-desconocido}"
+> EOF
+> chmod +x saluda.sh
+> NOMBRE=Ana ./saluda.sh
+> ./saluda.sh
+> ```
+> `${NOMBRE:-desconocido}` significa «NOMBRE o, si está vacía, *desconocido*». Imprime `Hola, Ana` y después `Hola, desconocido`.
+
+**Ahora tú, con huecos:**
+```bash
+cat > entorno.sh <<'EOF'
+#!/bin/bash
+echo "Modo: ${____:-sin definir}"
+EOF
+chmod +x entorno.sh
+```
 
 <details>
 <summary>Pista</summary>
 
-Créalo con un *heredoc*, como en la práctica 3: el shebang y una línea `echo "Modo: ${APP_ENV:-sin definir}"`. `${APP_ENV:-sin definir}` significa «APP_ENV o, si está vacía, *sin definir*». No olvides `chmod +x`.
+Es el ejemplo con otra variable y otro texto por defecto.
 </details>
 
 **2.** Ejecútalo tres veces: después de `export APP_ENV=desarrollo`, con `APP_ENV=produccion` solo para ese comando, y después de `unset APP_ENV`.
 
+> 🧩 **Ejemplo resuelto:** lo mismo con `saluda.sh`.
+> ```bash
+> export NOMBRE=Luis; ./saluda.sh
+> NOMBRE=Ana ./saluda.sh
+> unset NOMBRE; ./saluda.sh
+> ```
+> `Hola, Luis` (está en la mochila), `Hola, Ana` (solo para ese comando) y `Hola, desconocido` (ya no existe).
+
+**Ahora tú, con huecos:**
+```bash
+export APP_ENV=desarrollo; ./entorno.sh
+APP_ENV=____ ./entorno.sh
+____ APP_ENV; ./entorno.sh
+```
+
 <details>
 <summary>Pista</summary>
 
-«Solo para ese comando» es la forma `VARIABLE=valor ./entorno.sh`, de la práctica 2.
+«Solo para ese comando» es la forma `VARIABLE=valor ./script`. Y para borrar una variable, el comando del ejemplo.
 </details>
 
 **3.** Haz que el alias `journey` exista en todas tus terminales nuevas.
 
+> 🧩 **Ejemplo resuelto:** hacer permanente el alias `ll`.
+> ```bash
+> nano ~/.bashrc          # al final, añade la línea:  alias ll='ls -lah'
+> source ~/.bashrc
+> ll
+> ```
+> Lo que está en `~/.bashrc` se lee en cada terminal nueva. `source` lo vuelve a leer en la que tienes abierta.
+
+**Ahora tú, con huecos:** `alias journey='____ ~/my-devops-journey'`
+
 <details>
 <summary>Pista</summary>
 
-Abre `nano ~/.bashrc`, añade al final `alias journey='cd ~/my-devops-journey'`, guarda y abre una terminal **nueva** para probarlo.
+Es el alias de la práctica 5. Añádelo con `nano` al final de `~/.bashrc` y pruébalo en una terminal **nueva**.
 </details>
 
 **4.** ¿En qué carpeta del PATH está `git`? ¿Y `docker`?
 
+> 🧩 **Ejemplo resuelto:** ¿dónde está `python3`?
+> ```bash
+> which python3
+> ```
+> En tu equipo sale `/bin/python3` (en Ubuntu, `/bin` es un enlace a `/usr/bin`).
+
+**Ahora tú, con huecos:** `which ____ ____`
+
 <details>
 <summary>Pista</summary>
 
-`which git docker`.
+`which` acepta varios nombres a la vez.
 </details>
 
 **5.** **Tu PATH real.** Cuenta las carpetas repetidas de tu PATH y busca qué líneas de `~/.bashrc` y `~/.profile` las añaden. Explica con tus palabras por qué se repiten. **No edites** esos archivos todavía.
 
+> 🧩 **Ejemplo resuelto:** contar las palabras repetidas de una lista separada por `:`.
+> ```bash
+> echo "a:b:a:c:a" | tr ':' '\n' | sort | uniq -c | sort -rn
+> ```
+> `tr ':' '\n'` pone una palabra por línea; el resto es la cadena top-N de la clase 05. Sale `3 a` arriba.
+
+**Ahora tú, con huecos:**
+```bash
+echo "$PATH" | tr ':' '\n' | ____ | uniq -c | sort -rn
+grep -n ____ ~/.bashrc ~/.profile
+```
+
 <details>
 <summary>Pista</summary>
 
-Para contar, pon una carpeta por línea con `echo "$PATH" | tr ':' '\n'` y añade la cadena top-N de la clase 05 (`| sort | uniq -c | sort -rn`). Para encontrar las líneas: `grep -n PATH ~/.bashrc ~/.profile`. La clave del porqué: ¿cuántas veces se lee `~/.bashrc`?
+El primer hueco es el que junta las líneas iguales. El segundo, la palabra que buscas en esos archivos. Para el porqué: ¿cuántas veces se lee `~/.bashrc`?
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-07.md`:
 
-1. ¿Qué diferencia hay entre `COLOR=azul` y `export COLOR=azul`? ¿Cuándo importa?
-2. Un script funciona en tu terminal, pero desde `cron` falla con "command not found". ¿Cuál es la causa más probable y cómo lo arreglas?
-3. ¿Por qué no está `.` en el PATH? ¿Qué podría pasar si estuviera al principio?
-4. **Repaso (clase 06, sin mirar):** ¿qué hacen `r`, `w` y `x` en un **directorio**?
+1. ¿Qué diferencia hay entre `COLOR=azul` y `export COLOR=azul`? ¿Cuándo importa? *(2–3 líneas. Empieza así: «Sin `export`, la variable se queda en… Con `export`… Importa cuando…»)*
+2. Un script funciona en tu terminal, pero desde `cron` falla con "command not found". ¿Cuál es la causa más probable y cómo lo arreglas? *(2 líneas. Empieza así: «Lo más probable es que cron tenga otro PATH… Lo arreglo usando…»)*
+3. ¿Por qué no está `.` en el PATH? ¿Qué podría pasar si estuviera al principio? *(2 líneas. Empieza así: «Por seguridad: si `.` estuviera al principio, al escribir `ls` en una carpeta con un archivo llamado `ls`…»)*
+4. **Repaso (clase 06, sin mirar):** ¿qué hacen `r`, `w` y `x` en un **directorio**? *(3 líneas, una por llave. Empieza así: «`r` deja… `w` deja… `x` deja…»)*
 
 Después, escríbeme `examíname clase-07`.
 

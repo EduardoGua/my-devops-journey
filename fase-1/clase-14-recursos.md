@@ -4,6 +4,19 @@
 
 > 💡 **La idea de hoy:** un servidor tiene tres recursos que se agotan. Imagínalo como una cocina: los **fuegos** son la CPU (cuánto puede hacer a la vez), la **encimera** es la memoria (lo que tiene a mano) y la **despensa** es el disco (lo que guarda). Cuando algo va lento o se cae, la primera pregunta es cuál de los tres es el cuello de botella, porque la solución es distinta para cada uno.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Los procesos, `kill` por PID y que `SIGKILL` no deja despedirse (clase 11).
+> - `top` y `ps aux --sort` para ver qué gasta más (clase 11).
+> - El log del kernel, `journalctl -k` (clase 13), y `/proc`, la ventana al kernel (clase 02).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **carga** (*load average*): cuántos procesos quieren CPU o esperan al disco, de media.
+> - **swap**: disco usado como memoria de emergencia; muy lento.
+> - **OOM killer**: el kernel matando un proceso porque se acabó la memoria.
+> - **inodo**: la ficha de cada archivo en el sistema de archivos.
+> - **montar**: colgar un disco de una carpeta del árbol, como `/datos`.
+> - **volumen EBS**: un disco de AWS que conectas a una instancia.
+
 ## Objetivo
 
 - Interpretar la **carga** (load average) y el uso de CPU, incluido el *steal* de la nube.
@@ -39,6 +52,8 @@ Las tres cifras son la media del último minuto, de los últimos 5 y de los últ
 
 Ojo: la carga cuenta también los platos que esperan ingredientes de la despensa (procesos en estado `D`, esperando al disco). Por eso una carga alta con la CPU tranquila suele significar **disco lento**.
 
+**En resumen:** compara la carga con el número de núcleos: por encima de 1 por núcleo, hay cola.
+
 ### 2. La memoria: la encimera
 
 ```bash
@@ -54,6 +69,8 @@ free -h
 
 Si aun así la encimera se llena, el kernel llama al **OOM killer** (*Out Of Memory*): elige un plato, normalmente el que más espacio ocupa, y lo **tira a la basura** con `SIGKILL` (clase 11). Ese proceso no llega a escribir nada en su log: la única pista queda en el **log del kernel**.
 
+**En resumen:** mira `available`, no `free`; y si una app muere sin dejar rastro, piensa en el OOM killer.
+
 ### 3. El disco: la despensa
 
 Dos preguntas, dos comandos:
@@ -65,6 +82,8 @@ du -sh carpeta   # ¿cuánto OCUPA esta carpeta?
 
 `df` mira la despensa desde fuera (cuánto cabe aún) y `du` cuenta lo que hay en cada estante. Normalmente cuadran. Cuando no cuadran, hay una de las dos trampas de la pieza 4.
 
+**En resumen:** `df` = cuánto queda; `du` = cuánto ocupa cada cosa.
+
 ### 4. Dos trampas del disco
 
 **Trampa 1: se acaban las fichas.** Cada archivo necesita una **ficha** en el catálogo de la despensa, llamada **inodo** (sus permisos, su dueño, dónde están sus datos). El número de fichas es fijo. Con millones de archivos diminutos se acaban las fichas aunque los estantes estén medio vacíos: `No space left on device` con `df -h` al 60 %. Se mira con `df -i`.
@@ -72,6 +91,8 @@ du -sh carpeta   # ¿cuánto OCUPA esta carpeta?
 **Trampa 2: tachado de la lista, pero alguien lo sigue usando.** Si borras un archivo que un proceso tiene **abierto**, desaparece su nombre, pero el espacio no se libera hasta que ese proceso lo cierra. `df` dice «lleno» y `du` no encuentra nada. Pasa constantemente con logs borrados a mano. Se mira con `lsof +L1`.
 
 Relacionado con las fichas: una misma ficha puede tener **varios nombres**, que se llaman **enlaces duros** (`ln original otro-nombre`; `ls -li` muestra el número de ficha y cuántos nombres tiene). El espacio solo se libera cuando desaparece el **último nombre** y **nadie** tiene el archivo abierto. Un enlace simbólico (`ln -s`, clase 02) es otra cosa: un archivo pequeño que contiene una ruta, como un acceso directo.
+
+**En resumen:** si `df` y `du` no cuadran, o se acabaron las fichas (`df -i`) o alguien sigue usando un archivo borrado (`lsof +L1`).
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -130,12 +151,16 @@ uptime
 vmstat 1 5          # columnas r (en cola), us, sy, id, wa, st
 ```
 
+👀 **Qué deberías ver:** la carga del primer minuto todavía alta (cerca de 2) aunque `stress-ng` ya terminó: es una media. En `vmstat`, la columna `id` (CPU libre) cerca de 100.
+
 ### 2. Memoria
 
 ```bash
 free -h
 ps aux --sort=-%mem | head -5
 ```
+
+👀 **Qué deberías ver:** cerca de 1 GB de memoria total, con `available` bastante mayor que `free`, y los 4 procesos que más memoria usan.
 
 Consume memoria poco a poco y observa:
 ```bash
@@ -173,6 +198,8 @@ df -i
 sudo du -xh / --max-depth=1 2>/dev/null | sort -h
 sudo du -sh /var/* 2>/dev/null | sort -h | tail -5
 ```
+
+👀 **Qué deberías ver:** tu disco (por ejemplo `sda` o `vda`); el uso de `/` en espacio y en fichas; y qué carpetas de `/` y de `/var` ocupan más (las más grandes, al final).
 
 ### 4. Llenar el disco
 
@@ -245,9 +272,13 @@ df -h /mnt/mini; df -i /mnt/mini
 cd ~ && sudo umount /mnt/mini
 ```
 
+👀 **Qué deberías ver:** `falló en el …` antes de llegar a 600, y al final `df -i` al 100 % mientras `df -h` casi no ha cambiado.
+
 "No space left on device" con casi todo el espacio libre: se acabaron los inodos. Pasa con colas de correo, sesiones de PHP, cachés con millones de archivos o `node_modules` gigantes.
 
 ### 7. Un disco nuevo: lo mismo que un volumen EBS
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 
 En AWS, para añadir espacio a una instancia creas un **volumen EBS** y lo conectas: aparece como un disco **vacío** (`/dev/nvme1n1`). Antes de usarlo hay que darle formato, montarlo y hacer el montaje permanente. En la VM simulamos ese disco con un archivo (un *loop device*):
 
@@ -327,25 +358,63 @@ Encuentra cuál fue (CPU, memoria, disco lleno o disco saturado de escrituras) c
 
 ## Reto
 
-En la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** Crea un archivo, hazle un enlace duro y un enlace simbólico, y borra el original. ¿Cuál de los dos enlaces sigue funcionando? Explícalo con `ls -li`.
+
+> 🧩 **Ejemplo resuelto:** ver que un enlace duro es la misma ficha con otro nombre.
+> ```bash
+> echo hola > a.txt
+> ln a.txt b.txt
+> ls -li a.txt b.txt
+> ```
+> Los dos nombres tienen el **mismo número de ficha** (la primera columna) y un `2`: la ficha tiene dos nombres.
+
+**Ahora tú, con huecos:**
+```bash
+echo prueba > original
+ln original duro
+ln ____ original simbolico
+rm original
+cat duro; cat simbolico
+ls -li
+```
 
 <details>
 <summary>Pista</summary>
 
-`ln original duro` y `ln -s original simbolico`. Después `rm original` y prueba `cat duro` y `cat simbolico`. `ls -li` enseña el número de ficha (inodo) de cada uno.
+El hueco es la opción de `ln` que crea un enlace **simbólico** (está en la pieza 4).
 </details>
 
 **2.** ¿Cuánto swap tiene la VM? Mira también el valor de `vm.swappiness` con `cat /proc/sys/vm/swappiness`.
 
+> 🧩 **Ejemplo resuelto:** ¿cuánta memoria tiene la VM?
+> ```bash
+> free -h | head -2
+> ```
+> La fila `Mem:` es la memoria. La de debajo es el swap: en la VM se llama `Swap:` (en tu PC, en español, sale como `Inter:`).
+
+**Ahora tú, con huecos:**
+```bash
+free -h | grep ____
+cat /proc/sys/vm/swappiness
+```
+
 <details>
 <summary>Pista</summary>
 
-El swap sale en la segunda línea de `free -h`. `swappiness` va de 0 a 100: cuanto más alto, antes empieza Linux a usar el swap.
+Busca la fila del swap por su nombre. `swappiness` va de 0 a 100: cuanto más alto, antes empieza Linux a usar el swap.
 </details>
 
 **3.** ¿Qué pasaría si en el `fstab` del paso 7 no hubieras puesto `nofail` y el disco no estuviera al arrancar?
+
+> 🧩 **Ejemplo resuelto:** mirar qué discos monta tu VM al encender.
+> ```bash
+> cat /etc/fstab
+> ```
+> Cada línea es un disco que se monta al arrancar. La cuarta columna son sus opciones: ahí es donde iría `nofail`.
+
+**Ahora tú, con huecos:** `Sin `nofail`, si el disco no está, el arranque ____ y la EC2 no llega a aceptar conexiones por ____.`
 
 <details>
 <summary>Pista</summary>
@@ -355,28 +424,44 @@ Relee el párrafo de `nofail` del paso 7.
 
 **4.** Escribe una línea que imprima la carga del último minuto, la memoria `available` en MB y el % de uso del disco `/`. Lo convertirás en un script de verdad en el bloque C.
 
+> 🧩 **Ejemplo resuelto:** una línea con dos datos: tu usuario y la carga.
+> ```bash
+> echo "user=$(whoami) load=$(cut -d' ' -f1 /proc/loadavg)"
+> ```
+> Un `echo` con un `$( )` por cada dato. `cut -d' ' -f1 /proc/loadavg` saca el primer número de la carga.
+
+**Ahora tú, con huecos:** `echo "load=$(cut -d' ' -f1 /proc/loadavg) mem=$(free -m | awk '/Mem/ {print $____}')MB disk=$(df --output=____ / | tail -1)"`
+
 <details>
 <summary>Pista</summary>
 
-Un `echo` con tres `$( )`, uno por dato: `echo "load=$(…) mem=$(…)MB disk=$(…)"`. Las tres piezas: `cut -d' ' -f1 /proc/loadavg`, `free -m | awk '/Mem/ {print $7}'` y `df --output=pcent / | tail -1`. Prueba cada pieza por separado antes de juntarlas.
+En la fila `Mem:` de `free -m`, `available` es la columna 7. Y la columna de `df` que da el porcentaje se llama `pcent`.
 </details>
 
 **5.** ¿Qué tamaño tienen los 5 archivos más grandes de todo el sistema? Ejecuta `sudo find / -xdev -type f -size +50M -exec ls -lh {} + 2>/dev/null | sort -k5 -h | tail -5` y explica cada pieza.
 
+> 🧩 **Ejemplo resuelto:** los 3 archivos más grandes de `/var/log`.
+> ```bash
+> sudo find /var/log -type f -exec ls -lh {} + 2>/dev/null | sort -k5 -h | tail -3
+> ```
+> La misma forma, sin filtro de tamaño. En tu PC salen los archivos del journal, de varias decenas de MB.
+
+**Ahora tú, con huecos:** `sudo find / -xdev -type f -size +____M -exec ls -lh {} + 2>/dev/null | sort -k5 -h | tail -____`
+
 <details>
 <summary>Pista</summary>
 
-Aquí no se pide inventarlo, sino leerlo: `find` busca archivos de más de 50 MB sin salir de este disco (`-xdev`); `-exec ls -lh {} +` los muestra con su tamaño; `sort -k5 -h` ordena por la columna 5 (el tamaño) entendiendo K, M y G; `tail -5` se queda con los 5 últimos, los más grandes.
+Aquí no se pide inventarlo, sino leerlo: `find` busca archivos de más de 50 MB sin salir de este disco (`-xdev`); `-exec ls -lh {} +` los muestra con su tamaño; `sort -k5 -h` ordena por la columna 5 (el tamaño) entendiendo K, M y G; y `tail` se queda con los últimos, los más grandes.
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-14.md`:
 
-1. La carga es 4,0 en una máquina de 2 núcleos, pero la CPU está al 10 %. ¿Qué sospechas y cómo lo confirmas?
-2. Una app Java se reinicia sola de vez en cuando y en su log no hay ningún error. ¿Qué miras y qué buscas?
-3. `df -h` dice 100 % en `/`, pero `du` solo suma la mitad. Explica las dos causas posibles que viste hoy y cómo distinguirlas.
-4. **Repaso (clase 13, sin mirar):** ¿con qué comando ves los errores del arranque anterior del sistema?
+1. La carga es 4,0 en una máquina de 2 núcleos, pero la CPU está al 10 %. ¿Qué sospechas y cómo lo confirmas? *(2–3 líneas. Empieza así: «Sospecho del disco, porque la carga cuenta también… Lo confirmaría con…»)*
+2. Una app Java se reinicia sola de vez en cuando y en su log no hay ningún error. ¿Qué miras y qué buscas? *(2 líneas. Empieza así: «Miraría el log del kernel con…, buscando…, porque el OOM killer…»)*
+3. `df -h` dice 100 % en `/`, pero `du` solo suma la mitad. Explica las dos causas posibles que viste hoy y cómo distinguirlas. *(3 líneas. Empieza así: «Una causa es un archivo borrado que… (lo veo con…). La otra…»)*
+4. **Repaso (clase 13, sin mirar):** ¿con qué comando ves los errores del arranque anterior del sistema? *(1 línea con el comando. Empieza así: `journalctl -b …`)*
 
 Después, escríbeme `examíname clase-14`.
 

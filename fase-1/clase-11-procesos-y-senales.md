@@ -4,6 +4,18 @@
 
 > 💡 **La idea de hoy:** un **programa** es una receta guardada en el disco; un **proceso** es esa receta *mientras se cocina*, con su número (PID), su dueño y su padre. Para hablar con un proceso le envías **señales**: primero se le pide por favor que termine (`SIGTERM`) y solo si no hace caso se le fuerza (`SIGKILL`).
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - El paso 4 de «Qué pasa cuando pulsas Enter»: el kernel crea un proceso (clase 01).
+> - `/proc` es una ventana al kernel: sus archivos no están en el disco (clase 02).
+> - nginx funciona en tu VM desde la clase 10.
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **proceso**: un programa en ejecución.
+> - **PID**: el número único de cada proceso; **PPID**, el de su padre.
+> - **señal**: un aviso del kernel a un proceso (`SIGTERM`, `SIGKILL`…).
+> - **primer / segundo plano**: ocupando tu terminal, o funcionando por detrás mientras la usas.
+> - **master / worker**: en nginx, el proceso jefe y los que atienden a los clientes.
+
 ## Objetivo
 
 - Entender qué es un proceso: PID, padre, usuario, estado.
@@ -36,6 +48,8 @@ systemd (1)
 
 > 🔁 **Vuelve a la clase 01.** El paso 4 de «Qué pasa cuando pulsas Enter» era «el kernel crea un proceso nuevo». Ese proceso es **hijo de tu shell**. Por dentro, el shell se **clona** (`fork`) y el clon se **convierte** en el programa que pediste (`exec`). Por eso el hijo hereda la mochila de variables de la clase 07. Lo verás en la práctica: `sleep 60 &` y `ps -o pid,ppid,cmd`. El PPID (el padre) del `sleep` es el PID de tu shell (`echo $$`).
 
+**En resumen:** un programa es la receta; un proceso, la receta cocinándose, con su PID y su padre.
+
 ### 2. Ver qué se está cocinando
 
 Tres formas de mirar la cocina:
@@ -47,6 +61,8 @@ top             # en directo, ordenado por lo que más CPU gasta (q para salir)
 ```
 
 En la columna `STAT` de `ps` verás sobre todo dos estados: **R** (*running*, cocinando ahora) y **S** (*sleeping*, esperando algo: que llegue una petición, que pulses una tecla). Lo normal es que casi todo esté en S. Los demás estados están en la chuleta.
+
+**En resumen:** `ps aux` es una foto fija, `pstree` el árbol de familia y `top` el directo.
 
 ### 3. Señales: mensajes al cocinero
 
@@ -61,6 +77,8 @@ Una **señal** es un aviso que el kernel entrega a un proceso. Cuatro que usará
 
 El proceso puede **atrapar** las señales y reaccionar (despedirse, guardar datos)… todas menos `SIGKILL`, que no se puede atrapar. Por eso el orden correcto es: **`kill PID` → esperar unos segundos → solo si sigue vivo, `kill -9 PID`**.
 
+**En resumen:** primero `kill PID` (por favor); solo si no hace caso, `kill -9 PID` (apagón).
+
 ### 4. Primer y segundo plano
 
 Normalmente, un comando ocupa tu terminal hasta que termina: está en **primer plano**. Puedes mandarlo a **segundo plano** para seguir usando la terminal mientras se cocina:
@@ -72,6 +90,8 @@ fg %1             # traer el trabajo 1 al primer plano
 ```
 
 `Ctrl+Z` **pausa** el que está en primer plano (no lo mata) y `bg %1` lo deja seguir en segundo plano. `nohup comando &` hace que siga vivo aunque cierres la terminal.
+
+**En resumen:** `&` lo manda al segundo plano, `jobs` los lista, `fg` trae uno de vuelta y `Ctrl+Z` pausa el que tienes delante.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -125,6 +145,8 @@ pstree -p | head -20
 ps -ef --forest | grep -A3 [n]ginx
 ```
 
+👀 **Qué deberías ver:** el PID de tu shell; las primeras líneas de la lista de procesos; cuántos hay; el árbol que empieza en `systemd(1)`; y los procesos de nginx colgando de su master.
+
 (El truco `[n]ginx` evita que `grep` se encuentre a sí mismo en la lista.)
 
 🔮 **Predice:** ¿con qué usuario corre el proceso nginx *master* y con cuál los *workers*? ¿Por qué crees que es así?
@@ -145,6 +167,8 @@ sudo ls -l /proc/$PID/cwd /proc/$PID/exe
 cat /proc/loadavg
 ```
 
+👀 **Qué deberías ver:** la carpeta del proceso en `/proc`; su estado (`State:`); su carpeta de trabajo y su programa (dos flechas `->`); y la carga del sistema: tres números y dos contadores.
+
 ### 3. Un proceso que devora CPU
 
 ```bash
@@ -159,6 +183,8 @@ En `top`: mira `%CPU` de `yes`, pulsa `P` (ordenar por CPU) y `q` para salir. De
 kill %1                 # %1 = el trabajo 1 de este shell
 jobs
 ```
+
+👀 **Qué deberías ver:** en `top`, `yes` arriba del todo, cerca del 100 % de CPU; después del `kill`, un aviso `Terminated` y `jobs` vacío.
 
 ### 4. TERM frente a KILL
 
@@ -203,6 +229,8 @@ bg %1                   # sigue en segundo plano
 jobs                    # Running
 fg %1                   # vuelve al primer plano
 ```
+
+👀 **Qué deberías ver:** primero `Stopped`, después `Running` y, con `fg`, el `sleep` vuelve a ocupar la terminal.
 `Ctrl+C` para terminarlo.
 
 ### 6. SIGHUP para recargar: nginx
@@ -229,6 +257,8 @@ curl -s -o /dev/null -w "%{http_code}\n" localhost
 El master detecta la muerte del worker y **lanza otro**. La web sigue respondiendo. Es *auto-reparación* a pequeña escala; Kubernetes hace lo mismo con contenedores.
 
 **2. Una conexión que se corta mata los trabajos:**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 Abre una terminal **nueva** en tu PC, entra con `multipass shell servidor-01` y ejecuta:
 ```bash
 sleep 1000 &
@@ -253,48 +283,95 @@ Aunque el master esté parado, los workers suelen seguir atendiendo, y `curl` pu
 
 ## Reto
 
-En la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** ¿Qué proceso tiene el PID 1 y cuánto tiempo lleva vivo?
+
+> 🧩 **Ejemplo resuelto:** ¿cuánto lleva vivo tu propio shell?
+> ```bash
+> ps -o pid,etime,cmd -p $$
+> ```
+> `$$` es el PID de tu shell; `-o pid,etime,cmd` elige las columnas: el PID, el tiempo que lleva vivo (`etime`) y el comando.
+
+**Ahora tú, con huecos:** `ps -o pid,etime,cmd -p ____`
 
 <details>
 <summary>Pista</summary>
 
-`ps -o pid,etime,cmd -p 1`. `etime` (*elapsed time*) es el tiempo que lleva vivo.
+El PID que pide el reto está en el enunciado.
 </details>
 
 **2.** Lanza tres `sleep 500 &` y termínalos **todos** con un solo comando, sin afectar a otros `sleep` que pudiera haber. ¿Qué riesgo tiene `pkill` en un servidor real?
 
+> 🧩 **Ejemplo resuelto:** con dos `sleep 400`.
+> ```bash
+> sleep 400 &
+> sleep 400 &
+> pgrep -af "sleep 400"
+> pkill -f "sleep 400"
+> ```
+> `pgrep -af` enseña **antes** qué coincidiría; `pkill -f` manda la señal a todos los que coinciden con ese texto.
+
+**Ahora tú, con huecos:**
+```bash
+pgrep -af "____"
+pkill -f "____"
+```
+
 <details>
 <summary>Pista</summary>
 
-Antes de matar, mira qué coincide: `pgrep -af "sleep 500"`. Después, `pkill -f "sleep 500"`. Para el riesgo: ¿qué pasaría con `pkill python` en un servidor con varias apps en Python?
+Para el riesgo: ¿qué pasaría con `pkill python` en un servidor con varias aplicaciones en Python?
 </details>
 
 **3.** Lanza dos `yes > /dev/null &`, uno con `nice -n 19` delante y otro sin él. En `top`, compara su `NI` y su `%CPU`. ¿Qué pasa? Termina los dos.
 
+> 🧩 **Ejemplo resuelto:** lanzar un solo `yes` con la prioridad más baja y comprobarla.
+> ```bash
+> nice -n 19 yes > /dev/null &
+> ps -o pid,ni,cmd -C yes
+> kill %1
+> ```
+> La columna `NI` sale con 19: la prioridad más baja. Solo se nota cuando dos procesos compiten por la CPU.
+
+**Ahora tú, con huecos:**
+```bash
+____ -n 19 yes > /dev/null &
+yes > /dev/null &
+top                  # mira las columnas NI y %CPU; sal con q
+pkill ____
+```
+
 <details>
 <summary>Pista</summary>
 
-`nice -n 19 yes > /dev/null &` y `yes > /dev/null &`. En `top`, la columna `NI` es la prioridad (19 = la más baja). Para terminarlos: `pkill yes`.
+El primer hueco es el comando que baja la prioridad. El último, el nombre del programa que quieres terminar.
 </details>
 
 **4.** Encuentra los 5 procesos que más memoria usan.
 
+> 🧩 **Ejemplo resuelto:** los 3 procesos que más CPU usan.
+> ```bash
+> ps aux --sort=-%cpu | head -4
+> ```
+> `--sort=-%cpu` ordena por CPU, de mayor a menor (el `-` es «al revés»). `head -4` porque la primera línea es la cabecera, como el `total` de la clase 04.
+
+**Ahora tú, con huecos:** `ps aux --sort=-%____ | head -____`
+
 <details>
 <summary>Pista</summary>
 
-`ps aux --sort=-%mem` ordena por memoria, de mayor a menor. Añade `| head -6`: 6 y no 5, porque la primera línea es la cabecera (como el `total` de la clase 04).
+En `ps aux`, la columna de la memoria se llama `%MEM`.
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-11.md`:
 
-1. ¿Qué diferencia hay entre programa y proceso? Usa nginx como ejemplo.
-2. ¿Por qué se envía primero `SIGTERM` y solo después `SIGKILL`? ¿Qué pasa en Kubernetes o ECS al desplegar una versión nueva?
-3. ¿Por qué nginx usa un master como root y workers como www-data?
-4. **Repaso (clase 10, sin mirar):** ¿qué diferencia hay entre `apt remove` y `apt purge`?
+1. ¿Qué diferencia hay entre programa y proceso? Usa nginx como ejemplo. *(2–3 líneas. Empieza así: «El programa es… El proceso es… De nginx corren…»)*
+2. ¿Por qué se envía primero `SIGTERM` y solo después `SIGKILL`? ¿Qué pasa en Kubernetes o ECS al desplegar una versión nueva? *(3 líneas. Empieza así: «SIGTERM deja que la app… SIGKILL… En Kubernetes, al desplegar, primero… y si no…»)*
+3. ¿Por qué nginx usa un master como root y workers como www-data? *(2 líneas. Empieza así: «El master necesita ser root para… Los workers corren como www-data porque…»)*
+4. **Repaso (clase 10, sin mirar):** ¿qué diferencia hay entre `apt remove` y `apt purge`? *(1–2 líneas. Empieza así: «`remove` desinstala pero deja… `purge`…»)*
 
 Después, escríbeme `examíname clase-11`.
 

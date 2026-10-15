@@ -4,6 +4,18 @@
 
 > 💡 **La idea de hoy:** una **máquina virtual** es un ordenador completo (con su propio kernel, su disco y su IP) que vive dentro del tuyo. Puedes crearla, romperla y volver atrás con un **snapshot** en segundos. Una instancia EC2 de AWS es exactamente eso, solo que el ordenador anfitrión está en un centro de datos de Amazon.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Terminal, shell y kernel son piezas distintas (clase 01): hoy tendrás un kernel nuevo, el de la VM.
+> - Mirar el prompt `usuario@máquina` antes de cada comando (clase 01): desde hoy, de verdad importa.
+> - `ls`, `cat`, los pipes y las redirecciones funcionan igual dentro de la VM: es otro Ubuntu (clases 02 a 04).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **máquina virtual (VM)**: un ordenador completo que vive dentro del tuyo.
+> - **hipervisor**: el programa que reparte el hardware real entre las VMs (en tu PC, KVM).
+> - **host** y **guest**: tu PC (el anfitrión) y la VM (el invitado).
+> - **snapshot**: un punto de guardado del disco de la VM.
+> - **instancia**: el nombre que le da AWS a una VM en la nube.
+
 ## Objetivo
 
 - Crear, usar, parar y destruir un servidor Ubuntu virtual con **Multipass**.
@@ -49,6 +61,8 @@ Un **contenedor** (Docker, fase 5) es otra cosa: comparte el kernel del host. Po
 
 Ya comprobé que tu equipo soporta virtualización por hardware (`/dev/kvm` existe y la CPU tiene las extensiones). Con 7 GB de RAM puedes mantener **dos VMs de 1 GB** encendidas a la vez sin problema.
 
+**En resumen:** una VM es un ordenador completo dentro del tuyo; una EC2 es lo mismo, en un centro de datos de Amazon.
+
 ### El snapshot: tu punto de guardado
 
 Un **snapshot** es como el **punto de guardado de un videojuego**: congela el disco de la VM tal como está. Si después rompes algo, cargas la partida guardada y vuelves a ese momento en segundos. Durante todo el bloque B harás uno antes de cada experimento peligroso. En AWS se hace lo mismo con los discos de las EC2 (*EBS snapshots*).
@@ -60,6 +74,8 @@ Tres palabras que no conviene confundir, porque en AWS una de ellas te sigue cos
 | `stop` | **apaga** la VM; el disco se conserva | *Stop*: no pagas CPU, **sí** el disco |
 | `delete` | la manda a la **papelera**: aún se puede recuperar | (no existe en AWS) |
 | `delete --purge` | la **destruye** para siempre | *Terminate* |
+
+**En resumen:** antes de romper algo, guarda partida. Y en AWS, `stop` sigue cobrando el disco.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -111,6 +127,8 @@ multipass list
 multipass info servidor-01
 ```
 
+👀 **Qué deberías ver:** la VM en `Running`, con una IPv4 del tipo `10.x.x.x`, su versión de Ubuntu y su disco.
+
 Anota en tu cierre: la **IP** (IPv4), la versión de Ubuntu y el disco.
 
 ### 3. Entrar
@@ -136,6 +154,8 @@ cloud-init status        # el sistema de primer arranque (como en EC2)
 sudo whoami              # el usuario ubuntu tiene sudo sin contraseña (como en EC2)
 exit
 ```
+
+👀 **Qué deberías ver:** `ubuntu`, `servidor-01`, un kernel distinto del de tu PC, una IP `10.x.x.x`, alrededor de 1 GB de memoria y 10 GB de disco, `status: done` y, en el último, `root`.
 
 ### 3b. ¿Tiene internet tu servidor?
 
@@ -172,6 +192,8 @@ multipass exec servidor-01 -- uptime
 multipass exec servidor-01 -- df -h /
 ```
 
+👀 **Qué deberías ver:** cuánto lleva encendida la VM y su disco, sin haber entrado en ella.
+
 Muy útil para scripts: el `--` separa las opciones de multipass del comando que se ejecuta dentro.
 
 ### 5. Pasar archivos
@@ -181,6 +203,8 @@ echo "hola desde el host" > /tmp/saludo.txt
 multipass transfer /tmp/saludo.txt servidor-01:/home/ubuntu/
 multipass exec servidor-01 -- cat /home/ubuntu/saludo.txt
 ```
+
+👀 **Qué deberías ver:** `hola desde el host`: el archivo viajó de tu PC a la VM.
 
 ### 6. Parar, arrancar y snapshots
 
@@ -192,11 +216,15 @@ multipass list --snapshots
 multipass start servidor-01
 ```
 
+👀 **Qué deberías ver:** `servidor-01` en `Stopped`; después, el snapshot `limpio` en la lista; y al final, la VM otra vez en `Running`.
+
 Un **snapshot** congela el estado del disco. Antes de cada laboratorio peligroso harás uno, y si destrozas el servidor, vuelves atrás en segundos. Los snapshots solo se pueden hacer con la VM **parada**.
 
 ## Rómpelo
 
 **1. Destroza algo y vuelve atrás:**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 ```bash
 multipass shell servidor-01
 sudo mv /usr/bin/ls /usr/bin/ls.roto
@@ -235,48 +263,86 @@ En AWS, *Terminate* equivale a `delete --purge`: no hay vuelta atrás.
 
 ## Reto
 
-En tu PC y en la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En tu PC y en la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** ¿Cuántas IPs tiene `servidor-01`? ¿Y tu PC? ¿Ves en tu PC alguna interfaz que antes no existía?
+
+> 🧩 **Ejemplo resuelto:** ver las interfaces de red de la VM sin entrar en ella.
+> ```bash
+> multipass exec servidor-01 -- ip -br addr
+> ```
+> `lo` es la interfaz interna de la propia máquina (`127.0.0.1`); la otra (`ens3` o parecida) es la de la red virtual, con su `10.x.x.x`.
+
+**Ahora tú, con huecos:** `ip -br ____          # ahora en tu PC: busca una interfaz que empiece por mp`
 
 <details>
 <summary>Pista</summary>
 
-`ip -br addr` en tu PC, y en la VM sin entrar: `multipass exec servidor-01 -- ip -br addr`. En tu PC, busca una interfaz cuyo nombre empiece por `mp`.
+Es el mismo comando del ejemplo, pero en tu PC, sin `multipass exec`.
 </details>
 
 **2.** Desde tu PC, haz `ping -c 3` a la IP de `servidor-01`. ¿Responde?
 
+> 🧩 **Ejemplo resuelto:** hacerle ping a tu propio PC.
+> ```bash
+> ping -c 3 127.0.0.1
+> ```
+> `-c 3` envía tres pruebas y para. Cada línea `64 bytes from…` es una respuesta.
+
+**Ahora tú, con huecos:** `ping -c 3 ____`
+
 <details>
 <summary>Pista</summary>
 
-La IP te la da `multipass list`.
+La IP de la VM te la da `multipass list`.
 </details>
 
 **3.** Sin entrar en la VM, averigua cuánto tiempo lleva encendida y qué versión de kernel tiene.
 
+> 🧩 **Ejemplo resuelto:** ver la memoria de la VM sin entrar.
+> ```bash
+> multipass exec servidor-01 -- free -h
+> ```
+> `multipass exec servidor-01 --` ejecuta dentro de la VM lo que pongas detrás.
+
+**Ahora tú, con huecos:**
+```bash
+multipass exec servidor-01 -- ____
+multipass exec servidor-01 -- ____
+```
+
 <details>
 <summary>Pista</summary>
 
-`multipass exec servidor-01 --` seguido de `uptime`, y después de `uname -r`.
+Los dos comandos de la clase 01: el que dice cuánto lleva encendida la máquina y el que da la versión del kernel (`uname` con una opción).
 </details>
 
-**4.** Deja `servidor-01` **encendido** y con el snapshot `limpio` creado: lo usarás en las próximas clases.
+**4.** Deja `servidor-01` **encendido** y con el snapshot `limpio` creado: lo usarás en las próximas clases. (Si ya lo creaste en la práctica 6, solo compruébalo).
+
+> 🧩 **Ejemplo resuelto:** guardar partida con el nombre `prueba`.
+> ```bash
+> multipass stop servidor-01
+> multipass snapshot servidor-01 --name prueba
+> multipass start servidor-01
+> ```
+> La VM tiene que estar **parada** para guardar partida: por eso primero `stop` y al final `start`.
+
+**Ahora tú, con huecos:** `multipass list --____`
 
 <details>
 <summary>Pista</summary>
 
-Los snapshots se hacen con la VM parada: `stop`, `snapshot` y `start`, como en la práctica 6. Comprueba con `multipass list --snapshots`.
+La opción de `multipass list` que enseña los snapshots está en la chuleta.
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-08.md`:
 
-1. ¿Qué es una máquina virtual y qué hace el hipervisor? ¿Qué tiene que ver con EC2?
-2. ¿Para qué sirve un snapshot? Describe una situación en el trabajo en la que te salvaría.
-3. ¿Qué diferencia hay entre `stop`, `delete` y `delete --purge`? ¿Cuál de ellas sigue costando dinero en AWS (piensa en el disco)?
-4. **Repaso (clase 07, sin mirar):** ¿por qué un comando que funciona en tu terminal puede fallar dentro de un servicio o un cron?
+1. ¿Qué es una máquina virtual y qué hace el hipervisor? ¿Qué tiene que ver con EC2? *(3 líneas. Empieza así: «Una VM es… El hipervisor… Una EC2 es…»)*
+2. ¿Para qué sirve un snapshot? Describe una situación en el trabajo en la que te salvaría. *(2 líneas. Empieza así: «Un snapshot guarda… Me salvaría si antes de…»)*
+3. ¿Qué diferencia hay entre `stop`, `delete` y `delete --purge`? ¿Cuál de ellas sigue costando dinero en AWS (piensa en el disco)? *(3 líneas, una por comando. Empieza así: «`stop` apaga… `delete`… `delete --purge`… En AWS sigue costando…»)*
+4. **Repaso (clase 07, sin mirar):** ¿por qué un comando que funciona en tu terminal puede fallar dentro de un servicio o un cron? *(2 líneas. Empieza así: «Porque un servicio o cron arranca con otro entorno, sin mi… Se arregla con…»)*
 
 Después, escríbeme `examíname clase-08`.
 

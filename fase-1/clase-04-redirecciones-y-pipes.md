@@ -4,6 +4,19 @@
 
 > 💡 **La idea de hoy:** imagina cada programa como un depósito con **una entrada y dos mangueras de salida**. Por la manguera **1** salen los datos que pediste; por la **2**, los errores. Las dos apuntan a la pantalla, pero tú puedes **apuntarlas a otro sitio** (eso es *redirigir*) o **empalmar** la manguera 1 de un programa con la entrada del siguiente (eso es un *pipe*, `|`). Y al terminar, cada programa deja una **nota** con el resultado: 0 si todo fue bien.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - `>` y `>>` para escribir en un archivo (clase 03: lo explicaste en tu cierre).
+> - El shell prepara las cosas **antes** de lanzar el programa, como con los comodines (clase 03).
+> - Mirar quién se queja en un error: `lsss` frente a `ls /esto-no-existe` (clase 01).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **stdout** (la manguera 1): por donde salen los datos.
+> - **stderr** (la manguera 2): por donde salen los errores.
+> - **redirigir**: apuntar una manguera a otro sitio, como un archivo o la papelera.
+> - **pipe** (`|`): empalmar la manguera 1 de un programa con la entrada del siguiente.
+> - **código de salida**: la nota que deja un programa al terminar (0 = todo bien).
+> - **`/dev/null`**: la papelera sin fondo.
+
 ## Objetivo
 
 - Entender las tres conexiones de todo programa: la entrada y las dos mangueras de salida.
@@ -40,6 +53,8 @@ ls: no se puede acceder a '/no-existe': No existe el archivo o directorio     �
 /etc/hostname                                                                 ← manguera 1
 ```
 
+**En resumen:** los datos salen por la 1, los errores por la 2, y las dos van a la pantalla salvo que digas otra cosa.
+
 ### Cómo leer un mensaje de error
 
 Lo que sale por la manguera 2 casi siempre sigue el mismo molde: **quién se queja: sobre qué: por qué**.
@@ -55,6 +70,8 @@ El mensaje te dice **dónde buscar**:
 - Si quien se queja es `bash`, o el mensaje es `nombre: no se encontró la orden`, el programa ni siquiera arrancó: el problema está en **cómo escribiste la orden** (el nombre, las comillas o el permiso para ejecutarla).
 
 Es lo que viste en la clase 01 con `ls /esto-no-existe` frente a `lsss`.
+
+**En resumen:** lee primero **quién** se queja: te dice dónde buscar.
 
 ### 2. Redirigir: apuntar una manguera a otro sitio
 
@@ -81,6 +98,8 @@ comando > archivo 2>&1        # primero mueves la 1; después la 2 copia su nuev
 comando &> archivo            # atajo de bash que hace lo mismo
 ```
 
+**En resumen:** `>` mueve la manguera 1, `2>` mueve la 2, y `> archivo 2>&1` manda las dos al archivo.
+
 ### 3. Pipes: empalmar programas
 
 ```
@@ -94,6 +113,8 @@ comando &> archivo            # atajo de bash que hace lo mismo
 Ojo: el pipe **solo empalma la manguera 1**. La 2 sigue apuntando a la pantalla, así que los errores no pasan al siguiente programa: los ves tú.
 
 `tee` es la **T de fontanería** (de ahí su nombre): deja pasar el agua y, además, saca una copia hacia un archivo. `ls /etc | tee lista.txt | wc -l` cuenta las cosas de `/etc` **y** guarda la lista en `lista.txt`.
+
+**En resumen:** `|` pasa los datos de un programa al siguiente; los errores no pasan.
 
 ### 4. La nota que deja cada programa: el código de salida
 
@@ -111,12 +132,16 @@ Con esa nota puedes decidir qué se ejecuta después:
 | `a \|\| b` | «haz `a` y, **si falló**, haz `b`» |
 | `a ; b` | «haz `a` y después `b`, pase lo que pase» |
 
+**En resumen:** 0 = bien; `&&` significa «si salió bien» y `||`, «si falló».
+
 ### 5. `$( )`: «pon aquí lo que imprima este comando»
 
 ```bash
 echo "Hoy es $(date +%A)"
 ```
 Antes de ejecutar `echo`, el shell ejecuta `date +%A`, coge lo que imprime (el día de la semana) y lo pone en su lugar.
+
+**En resumen:** `$(comando)` se sustituye por lo que imprime ese comando.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -200,6 +225,12 @@ grep zzzz /etc/passwd ; echo "nota: $?"
 grep root /no-existe  ; echo "nota: $?"
 ```
 
+<details>
+<summary>Qué deberías ver</summary>
+
+Las notas, en orden: `0`, `2`, `0`, `1` y `2`.
+</details>
+
 Fíjate en `grep`: deja **1** si no encontró nada y **2** si hubo un error de verdad (el archivo no existe). Un script bien hecho distingue los dos casos.
 
 Ahora usa la nota para decidir:
@@ -208,6 +239,8 @@ mkdir prueba && echo "creado"
 mkdir prueba && echo "creado"          # ahora mkdir falla: el echo no se ejecuta
 mkdir prueba || echo "ya existía"      # falla, así que se ejecuta lo de después de ||
 ```
+
+👀 **Qué deberías ver:** `creado`; después, solo el error de `mkdir` (sin «creado»); y después, el error y `ya existía`.
 
 Y una línea que junta todo lo de hoy. Léela por partes antes de ejecutarla:
 ```bash
@@ -233,6 +266,8 @@ cut -d: -f7 /etc/passwd | sort | uniq -c                  # paso 3: cuenta cuán
 cut -d: -f7 /etc/passwd | sort | uniq -c | sort -rn       # paso 4: de más a menos
 ```
 
+👀 **Qué deberías ver:** arriba del todo, `/usr/sbin/nologin` con un número grande (en tu equipo, 42), y más abajo `/bin/bash` con 2.
+
 - `cut -d: -f7`: «corta cada línea por los dos puntos (`:`) y quédate con el trozo 7», que en `/etc/passwd` es el shell de cada cuenta.
 - `uniq -c`: junta las líneas iguales **que están seguidas** y las cuenta. Por eso antes hace falta `sort`.
 - `sort -rn`: ordena por número (`n`) de mayor a menor (`r`, *reverse*).
@@ -252,6 +287,8 @@ ls -l /etc | tee listado.txt | wc -l
 head -3 listado.txt
 ```
 
+👀 **Qué deberías ver:** un número (en tu equipo, unas 240 líneas) y después las tres primeras líneas de `listado.txt`, empezando por `total`.
+
 El número de líneas sale en pantalla **y** la lista completa quedó guardada en `listado.txt`. Lo usarás desde la clase 10 para escribir archivos del sistema con `sudo`.
 
 ### 5. `$( )`: meter el resultado de un comando dentro de otro
@@ -261,6 +298,8 @@ echo "Soy $(whoami) en $(hostname) y hay $(ls /etc | wc -l) cosas en /etc"
 cp listado.txt "listado-$(date +%F).txt"
 ls
 ```
+
+👀 **Qué deberías ver:** una frase con tu usuario, el nombre de tu equipo y un número; y, en el `ls`, un archivo nuevo `listado-` con la fecha de hoy.
 
 `date +%F` produce la fecha como año-mes-día (`2026-10-14`): nombres con fecha que además se ordenan bien con `ls`, perfectos para backups.
 
@@ -279,6 +318,8 @@ Bien hecho: escribe en otro archivo y después `mv`, o deja que lo haga `sort` c
 🔮 Y con `>>` en lugar de `>`, ¿qué quedaría? `>>` no vacía nada: `sort` lee `c a b` y añade `a b c` al final. El archivo acaba con seis líneas.
 
 **2. El orden de `2>&1`:**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 
 🔮 **Predice:** ¿acabará el error dentro de `mal.txt`?
 
@@ -319,38 +360,70 @@ La nota es 0 aunque `cat` falló. En un pipe, `$?` solo guarda la nota del **úl
 
 ## Reto
 
-Cada respuesta en **una sola línea**, empalmando con `|` tantos programas como necesites (eso es un *pipeline*). En la terminal. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+Cada respuesta en **una sola línea**, empalmando con `|` tantos programas como necesites (eso es un *pipeline*). En la terminal. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** ¿Cuántos usuarios de `/etc/passwd` usan `/bin/bash` como shell?
+
+> 🧩 **Ejemplo resuelto:** ¿cuántas cuentas usan `/usr/sbin/nologin`?
+> ```bash
+> cut -d: -f7 /etc/passwd | grep "nologin" | wc -l
+> ```
+> `cut` saca el shell de cada cuenta, `grep` deja pasar solo los que contienen `nologin` y `wc -l` cuenta las líneas que quedan. En tu equipo sale 42.
+
+**Ahora tú, con huecos:** `cut -d: -f7 /etc/passwd | grep "____" | wc -l`
 
 <details>
 <summary>Pista</summary>
 
-Tres piezas, como en la práctica 3: saca el trozo 7 de cada línea (`cut -d: -f7 /etc/passwd`), deja pasar solo los `/bin/bash` (`grep`) y cuenta las líneas (`wc -l`).
+Cambia solo lo que buscas: en lugar de `nologin`, el shell que pide el reto.
 </details>
 
 **2.** Lista las 5 cosas más grandes de `/etc`, sean archivos o carpetas.
 
+> 🧩 **Ejemplo resuelto:** las 3 cosas más grandes de `/var/log`.
+> ```bash
+> ls -lS /var/log | head -4
+> ```
+> `ls -lS` ordena por tamaño, de mayor a menor. `head -4` y no `-3`, porque la primera línea es `total`, que no es ninguna de las cosas de la carpeta.
+
+**Ahora tú, con huecos:** `ls -lS /etc | head -____`
+
 <details>
 <summary>Pista</summary>
 
-`ls -lS /etc` las ordena por tamaño, de mayor a menor. Quédate con el principio con `head`. Mira bien la primera línea que sale: ¿es una de las cosas de `/etc`?
+Si quieres 5 cosas y la primera línea es `total`, ¿cuántas líneas necesitas?
 </details>
 
 **3.** Guarda en `errores-find.txt` **solo** los errores de `find /etc -name "*.conf"` (los de permiso denegado) y tira los resultados a la papelera.
 
+> 🧩 **Ejemplo resuelto:** lo contrario: guardar **solo los resultados** en `resultados.txt` y tirar los errores a la papelera.
+> ```bash
+> find /etc -name "*.conf" > resultados.txt 2> /dev/null
+> ```
+> `>` manda la manguera 1 (los resultados) al archivo, y `2>` manda la 2 (los errores) a la papelera.
+
+**Ahora tú, con huecos:** `find /etc -name "*.conf" ____ errores-find.txt ____ /dev/null`
+
 <details>
 <summary>Pista</summary>
 
-Los resultados salen por la manguera 1 y los errores por la 2. Una va al archivo con `2>` y la otra a la papelera con `> /dev/null`.
+Es el ejemplo al revés: ahora los errores (manguera 2, `2>`) van al archivo, y los resultados (manguera 1, `>`) a la papelera.
 </details>
 
 **4.** Escribe una línea que cree el directorio `backup-<fecha de hoy>` y, **solo si se creó**, copie dentro `/etc/hostname`.
 
+> 🧩 **Ejemplo resuelto:** crear la carpeta `prueba-<fecha de hoy>` y, solo si se creó, escribir «creada».
+> ```bash
+> mkdir "prueba-$(date +%F)" && echo "creada"
+> ```
+> `$(date +%F)` mete la fecha en el nombre, y `&&` hace que el `echo` solo se ejecute si `mkdir` salió bien. Ejecútalo dos veces: la segunda, `mkdir` falla (la carpeta ya existe) y no sale «creada».
+
+**Ahora tú, con huecos:** `mkdir "backup-$(date +%F)" ____ cp /etc/hostname "backup-____/"`
+
 <details>
 <summary>Pista</summary>
 
-Dos piezas unidas con `&&` («si salió bien, haz…»): un `mkdir` con `$(date +%F)` en el nombre, y un `cp` hacia esa misma carpeta.
+El primer hueco es el «si salió bien» de la pieza 4. El segundo, la misma fecha que pusiste en el nombre de la carpeta.
 </details>
 
 ## Cierre
@@ -361,10 +434,10 @@ bash ~/my-devops-journey/recursos/nueva-nota.sh 04
 ```
 Y responde en `notas/fase-1/clase-04.md`:
 
-1. ¿Qué son stdout y stderr? ¿Por qué conviene que sean flujos separados?
-2. Explica qué hace `comando > log.txt 2>&1` y por qué `comando 2>&1 > log.txt` no hace lo mismo.
-3. ¿Qué significa un código de salida 0? ¿Por qué le importa a un pipeline de CI/CD?
-4. **Repaso (clase 03, sin mirar):** ¿por qué `rm` es peligroso con comodines y qué haces antes de usarlo?
+1. ¿Qué son stdout y stderr? ¿Por qué conviene que sean flujos separados? *(2–3 líneas. Empieza así: «stdout es la manguera… y stderr es… Conviene separarlas porque…»)*
+2. Explica qué hace `comando > log.txt 2>&1` y por qué `comando 2>&1 > log.txt` no hace lo mismo. *(3–4 líneas. Empieza así: «En la primera, la manguera 1 va primero a… y después la 2… En la segunda, la 2 copia la dirección de la 1 cuando todavía…»)*
+3. ¿Qué significa un código de salida 0? ¿Por qué le importa a un pipeline de CI/CD? *(2 líneas. Empieza así: «Un 0 significa… Si un paso de un pipeline deja otra nota…»)*
+4. **Repaso (clase 03, sin mirar):** ¿por qué `rm` es peligroso con comodines y qué haces antes de usarlo? *(2 líneas. Empieza así: «Porque el shell convierte el comodín en… y rm… Antes uso… para…»)*
 
 Después, escríbeme `examíname clase-04`.
 

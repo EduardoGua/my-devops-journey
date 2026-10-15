@@ -4,6 +4,19 @@
 
 > 💡 **La idea de hoy:** entrar por SSH es como **firmar en la puerta**. Tu llave **privada** es tu firma: nunca sale de tu PC. Tu llave **pública** es una muestra de esa firma, que dejas en cada servidor para que pueda comprobar que eres tú. Y el servidor también se identifica con su propio sello (su *huella*), para que sepas que no hablas con un impostor.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Los permisos `700` y `600`, y que `~/.ssh` ya existe en tu PC (clase 06).
+> - Ana y Luis en la VM (clase 09), y los intentos de entrada de bots que viste en el journal (clase 13).
+> - `systemctl restart` y `journalctl -u` sobre el servicio `ssh` (clases 12 y 13).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **par de llaves**: la privada (tu firma) y la pública (su muestra).
+> - **passphrase**: la contraseña que protege tu llave privada en el disco.
+> - **huella** (*fingerprint*): un resumen corto que identifica el sello de un servidor.
+> - **known_hosts**: la lista de servidores que tu PC ya conoce.
+> - **túnel**: llevar un puerto de tu PC hasta otro de un servidor, a través de SSH.
+> - **bastión**: un servidor que hace de puerta para llegar a otros que no están en internet.
+
 ## Objetivo
 
 - Entender cómo funciona SSH: llaves de usuario, llaves del servidor y `known_hosts`.
@@ -30,11 +43,15 @@ Al conectarte, el servidor te pone delante un documento único (un *reto*); tu P
 
 Por eso la pública no es peligrosa (con una muestra no se puede firmar) y la privada sí: quien la tenga **es** tú para todos esos servidores. Una *passphrase* la protege en el disco: si te la roban, no sirve sin la frase.
 
+**En resumen:** la privada firma y nunca sale de tu PC; la pública es la muestra que dejas en los servidores.
+
 ### 2. El servidor también se identifica
 
 El servidor tiene su propio par de llaves, su **sello** (*host key*). La primera vez que te conectas, tu PC te enseña la **huella** de ese sello (*fingerprint*) y te pregunta si te fías. Si dices que sí, la apunta en `~/.ssh/known_hosts`.
 
 Las siguientes veces la compara. Si un día la huella **cambia**, SSH se niega a conectar y avisa a gritos: podría ser un impostor en medio (un ataque *man-in-the-middle*) o, simplemente, un servidor reinstalado. Nunca se acepta sin averiguar cuál de las dos es.
+
+**En resumen:** la primera vez apuntas el sello del servidor; si un día cambia, no aceptes sin averiguar por qué.
 
 Las dos piezas juntas:
 
@@ -56,6 +73,8 @@ Si alguien más pudiera leer tu firma o cambiar la lista de muestras, SSH no se 
 | `authorized_keys` | `600` (o `644`) |
 | la casa del usuario | sin escritura para grupo ni otros |
 
+**En resumen:** `~/.ssh` en `700` y la llave privada en `600`: si no, SSH no se fía.
+
 ### 4. Cerrar la puerta a los demás
 
 La configuración del servidor SSH está en `/etc/ssh/sshd_config`. Cuatro ajustes la hacen mucho más segura:
@@ -70,6 +89,8 @@ La configuración del servidor SSH está en `/etc/ssh/sshd_config`. Cuatro ajust
 Ubuntu lee también los archivos de `/etc/ssh/sshd_config.d/*.conf`, y **la primera vez que aparece un ajuste es la que gana**. Por eso tus cambios van en un archivo con un número bajo (`00-…`).
 
 **Regla de supervivencia:** al cambiar la configuración de SSH, **deja abierta una sesión** y prueba desde **otra**. Si te equivocas, aún tienes la primera para arreglarlo. En una EC2 sin otra forma de entrar, un error aquí significa perder la instancia.
+
+**En resumen:** sin contraseñas, sin root y solo los usuarios de la lista. Y siempre con una sesión de seguridad abierta.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -115,6 +136,8 @@ ls -l ~/.ssh/lab_ed25519*
 cat ~/.ssh/lab_ed25519.pub
 ```
 
+👀 **Qué deberías ver:** dos archivos, la privada (`-rw-------`) y la `.pub` (`-rw-r--r--`), y una sola línea que empieza por `ssh-ed25519` y termina en `lab-servidor-01`.
+
 Una línea: tipo, la llave y el comentario. Eso es lo único que viaja al servidor.
 
 ### 2. Instalar la pública en la VM
@@ -125,6 +148,8 @@ La imagen de Multipass no permite contraseñas, así que usamos `multipass exec`
 multipass exec servidor-01 -- bash -c "echo '$(cat ~/.ssh/lab_ed25519.pub)' >> ~/.ssh/authorized_keys"
 multipass exec servidor-01 -- cat /home/ubuntu/.ssh/authorized_keys
 ```
+
+👀 **Qué deberías ver:** dos líneas: la llave de Multipass y la tuya, que acaba en `lab-servidor-01`.
 
 Verás dos llaves: la de Multipass y la tuya.
 
@@ -153,6 +178,8 @@ ssh-add ~/.ssh/lab_ed25519
 ssh-add -l
 ssh -i ~/.ssh/lab_ed25519 ubuntu@$IP hostname
 ```
+
+👀 **Qué deberías ver:** `Identity added…`, tu llave en la lista del agente, y `servidor-01` sin que te pida la passphrase.
 
 ### 5. `~/.ssh/config`: alias
 
@@ -186,6 +213,8 @@ rsync -avz /tmp/web/ servidor-01:/tmp/web/
 rsync -avz /tmp/web/ servidor-01:/tmp/web/      # la 2.ª vez no copia nada: solo transfiere diferencias
 ```
 
+👀 **Qué deberías ver:** `informe local`; la copia de `nginx.conf` en tu `/tmp`; y, en el segundo `rsync`, ningún archivo en la lista: no había nada nuevo que copiar.
+
 ### 7. Un túnel
 
 `miapp` (clase 12) escucha en el puerto 8080 de la VM. Imagina que el firewall no deja llegar a él desde fuera:
@@ -194,6 +223,8 @@ ssh -N -L 9090:localhost:8080 servidor-01 &
 curl -s localhost:9090
 kill %1
 ```
+
+👀 **Qué deberías ver:** `<h1>Mi app en servidor-01</h1>`: tu PC llegó al puerto 8080 de la VM por el túnel.
 
 Tu PC abrió su puerto **9090** y lo envió, cifrado, por SSH hasta el **8080** de la VM. Así se accede en AWS a una base de datos en una subred privada a través de un **bastión**: `ssh -L 5432:mi-db.xxxx.rds.amazonaws.com:5432 bastion`.
 
@@ -223,6 +254,8 @@ Desde **tu PC**, en una terminal nueva:
 ssh servidor-01 whoami                                      # debe funcionar
 ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no ubuntu@$IP   # debe rechazar
 ```
+
+👀 **Qué deberías ver:** `ubuntu` en el primero, y `Permission denied (publickey)` en el segundo.
 
 ### 9. Acceso para Ana
 
@@ -267,6 +300,8 @@ ssh servidor-01
 ```
 
 **3. Echarse a uno mismo:**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 Con tu sesión de seguridad abierta, cambia `AllowUsers ubuntu ana` por `AllowUsers ana` en `00-endurecido.conf` y reinicia ssh. Intenta `ssh servidor-01` desde una terminal nueva: rechazado. **`multipass shell` también deja de funcionar**, porque usa SSH con el usuario `ubuntu` por debajo. Arréglalo **desde la sesión que dejaste abierta**:
 ```bash
 sudo sed -i 's/^AllowUsers ana$/AllowUsers ubuntu ana/' /etc/ssh/sshd_config.d/00-endurecido.conf
@@ -276,40 +311,86 @@ Si hubieras cerrado todas las sesiones, la única salida sería restaurar un sna
 
 ## Reto
 
-En tu PC y en la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En tu PC y en la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** Añade a `~/.ssh/config` una entrada `ana-lab` para entrar como Ana con `ssh ana-lab`.
+
+> 🧩 **Ejemplo resuelto:** la entrada `servidor-01` de la práctica 5.
+> ```bash
+> Host servidor-01
+>     HostName 10.x.x.x
+>     User ubuntu
+>     IdentityFile ~/.ssh/lab_ed25519
+>     IdentitiesOnly yes
+> ```
+> El nombre del alias (`Host`), a qué IP va, con qué usuario y con qué llave.
+
+**Ahora tú, con huecos:**
+```bash
+Host ____
+    HostName 10.x.x.x
+    User ____
+    IdentityFile ~/.ssh/____
+    IdentitiesOnly yes
+```
 
 <details>
 <summary>Pista</summary>
 
-Copia el bloque `Host servidor-01` de la práctica 5 y cambia tres líneas: el nombre del `Host`, el `User` y el `IdentityFile` (la llave de Ana).
+Tres cambios respecto al ejemplo: el nombre del alias, el usuario y la llave de Ana (la que creaste en la práctica 9).
 </details>
 
 **2.** Usa `rsync` para «desplegar» una carpeta local `web/` en `/var/www/html/` de la VM, y comprueba el resultado en el navegador con `http://IP`.
 
+> 🧩 **Ejemplo resuelto:** el `rsync` de la práctica 6.
+> ```bash
+> rsync -avz /tmp/web/ servidor-01:/tmp/web/
+> ssh servidor-01 ls /tmp/web
+> ```
+> `rsync` copia la carpeta a la VM, y `ssh servidor-01 comando` ejecuta algo allí para comprobarlo.
+
+**Ahora tú, con huecos:**
+```bash
+rsync -avz web/ servidor-01:/tmp/web/
+# y dentro de la VM:
+sudo cp -r /tmp/web/* /var/www/____/
+```
+
 <details>
 <summary>Pista</summary>
 
-`ubuntu` no puede escribir en `/var/www/html/`. Lo más sencillo: `rsync -avz web/ servidor-01:/tmp/web/` y, dentro de la VM, `sudo cp -r /tmp/web/* /var/www/html/`.
+`ubuntu` no puede escribir en `/var/www/html/`, así que copias primero a `/tmp` y después, con `sudo`, a su sitio. El hueco es la última carpeta de esa ruta.
 </details>
 
 **3.** **Incidente simulado:** alguien sube por error la llave **privada** `ana_lab` a un repo público. Escribe en orden los pasos para cerrar el incidente y ejecútalos en la VM.
 
+> 🧩 **Ejemplo resuelto:** el paso «revisar»: ¿quién ha entrado con llave en los últimos 7 días?
+> ```bash
+> sudo journalctl -u ssh --since "7 days ago" --no-pager | grep "Accepted publickey"
+> ```
+> Cada línea es una entrada con llave: quién, desde qué IP y cuándo.
+
+**Ahora tú, con huecos:**
+```bash
+1. Revocar:    sudo nano /home/ana/.ssh/authorized_keys   → borra la línea que termina en ____
+2. Reemplazar: ssh-keygen -t ed25519 -f ~/.ssh/ana_lab_v2 -C "ana-v2"   → pega en el servidor la nueva llave ____
+3. Revisar:    el comando del ejemplo, buscando "Accepted publickey for ____"
+```
+
 <details>
 <summary>Pista</summary>
 
-Tres verbos, en este orden: **revocar** (quitar esa muestra de firma del servidor: `sudo nano /home/ana/.ssh/authorized_keys` y borra la línea que termina en `ana`), **reemplazar** (un par de llaves nuevo, como en la práctica 9) y **revisar** (¿alguien la usó? Busca `Accepted publickey for ana` en `journalctl -u ssh`).
+Tres verbos, en este orden: **revocar** (quitar del servidor la muestra de la llave filtrada), **reemplazar** (una llave nueva, como en la práctica 9) y **revisar** (si alguien la usó).
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-15.md`:
 
-1. ¿Por qué la llave pública se puede compartir y la privada no? Explica qué hace cada una al conectar.
-2. ¿Qué significa el aviso `REMOTE HOST IDENTIFICATION HAS CHANGED` y qué haces cuando lo ves?
-3. Una llave privada se publicó en GitHub. ¿Por qué borrar el archivo del repo **no** cierra el incidente? ¿Qué pasos sí lo cierran?
-4. **Repaso (clase 14, sin mirar):** `df` dice que el disco está lleno pero `du` no encuentra el espacio. ¿Qué compruebas?
+1. ¿Por qué la llave pública se puede compartir y la privada no? Explica qué hace cada una al conectar. *(3 líneas. Empieza así: «La pública es la muestra…, así que con ella nadie puede… La privada firma…, y quien la tenga…»)*
+2. ¿Qué significa el aviso `REMOTE HOST IDENTIFICATION HAS CHANGED` y qué haces cuando lo ves? *(2 líneas. Empieza así: «Que el sello del servidor no coincide con el que apunté… Antes de aceptar, compruebo…»)*
+3. Una llave privada se publicó en GitHub. ¿Por qué borrar el archivo del repo **no** cierra el incidente? ¿Qué pasos sí lo cierran? *(3 líneas. Empieza así: «Porque Git guarda… y los bots… Lo cierran: revocar…, reemplazar… y revisar…»)*
+4. **Repaso (clase 14, sin mirar):** `df` dice que el disco está lleno pero `du` no encuentra el espacio. ¿Qué compruebas? *(2 líneas. Empieza así: «Un archivo borrado que un proceso sigue usando, con `lsof +L1`. Y si es *No space left* con espacio libre…»)*
 
 Después, escríbeme `examíname clase-15`.
 

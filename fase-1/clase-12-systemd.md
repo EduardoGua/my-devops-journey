@@ -4,6 +4,18 @@
 
 > 💡 **La idea de hoy:** `systemd` es el **encargado del edificio**: al encender arranca los servicios en orden, los vigila y los vuelve a levantar si se caen. Tú le dejas las instrucciones en un archivo *unit* (qué ejecutar, con qué usuario, qué hacer si falla) y él se ocupa. Dos preguntas que nunca debes confundir: ¿está funcionando **ahora**? (`start`) y ¿arrancará **después de reiniciar**? (`enable`).
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - El PID 1 es `systemd`, el padre de todos los procesos (clase 11).
+> - `SIGTERM` y `SIGKILL`: pedir por favor y el apagón (clase 11).
+> - El usuario de servicio `appsvc` y los permisos de una carpeta (clases 09 y 06).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **servicio**: un programa que debe estar siempre funcionando, como nginx.
+> - **unit** (ficha): el archivo con las instrucciones de un servicio.
+> - **demonio** (*daemon*): un programa que trabaja en segundo plano, sin terminal.
+> - **habilitar** (`enable`): que arranque solo cada vez que se enciende el servidor.
+> - **drop-in**: un archivo pequeño que cambia solo unas líneas de una ficha.
+
 ## Objetivo
 
 - Gestionar servicios con `systemctl`: arrancar, parar, reiniciar, recargar, activar en el arranque.
@@ -26,6 +38,8 @@ Cinco piezas, con la imagen del encargado del edificio de *La idea de hoy*.
 - mientras funcionan, los **vigila** y los vuelve a levantar si se caen;
 - y apunta todo lo que dicen en su registro, el *journal* (clase 13).
 
+**En resumen:** systemd arranca los servicios, los vigila y los vuelve a levantar si se caen.
+
 ### 2. Las fichas de instrucciones: las *units*
 
 Cada cosa que gestiona el encargado tiene una **ficha de instrucciones**, una *unit*. Hoy usarás dos tipos:
@@ -38,6 +52,8 @@ Las fichas viven en dos sitios, y esto importa:
 |-------|---------|-------------|
 | `/usr/lib/systemd/system/` | las fichas **del fabricante**, que instalan los paquetes | **No**: una actualización las sobrescribe |
 | `/etc/systemd/system/` | **las tuyas** y tus cambios | **Sí**: tienen prioridad sobre las del fabricante |
+
+**En resumen:** cada servicio tiene su ficha; las del fabricante no se tocan, y las tuyas van en `/etc/systemd/system/`.
 
 ### 3. Leer una ficha
 
@@ -70,6 +86,8 @@ Tres secciones: `[Unit]` dice **qué es** y cuándo arrancarlo; `[Service]` dice
 
 ⚠️ Los comentarios (`#`) van **en su propia línea**. Un `#` al final de una línea con valor **no** es un comentario: pasaría a formar parte del valor.
 
+**En resumen:** `[Unit]` dice qué es, `[Service]` cómo ejecutarlo e `[Install]` si arranca al encender.
+
 ### 4. Hablar con el encargado: `systemctl`
 
 Lo esencial son seis órdenes:
@@ -89,6 +107,8 @@ La confusión más cara del oficio es la de `start` y `enable`. Son dos pregunta
 
 Arrancas un servicio a mano, compruebas que funciona y te vas… pero no lo habilitaste. Semanas después la EC2 se reinicia y la web no vuelve. Por eso se usa `sudo systemctl enable --now x`: lo habilita **y** lo arranca.
 
+**En resumen:** `start` = ahora; `enable` = al encender. Casi siempre quieres las dos: `enable --now`.
+
 ### 5. Para entrevistas: qué pasa al encender un servidor
 
 ```
@@ -97,6 +117,8 @@ firmware (BIOS/UEFI) ─► gestor de arranque (GRUB) ─► kernel (+ initramfs
 ```
 
 En una EC2 no ves la pantalla, pero sí la **consola del sistema** (*Get system log* / *EC2 serial console*). Ahí se diagnostica una instancia que no arranca, por ejemplo por un `fstab` roto (clase 14).
+
+**En resumen:** firmware → GRUB → kernel → systemd → servicios.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -160,6 +182,8 @@ systemctl list-units --type=service --state=running --no-pager
 systemctl list-units --failed --no-pager
 ```
 
+👀 **Qué deberías ver:** `active` y `enabled`; la ficha de nginx entera; la lista de servicios en marcha; y, si todo va bien, `0 loaded units listed` en los fallidos.
+
 ### 2. Parar, arrancar y recargar
 
 🔮 **Predice:** tras `stop`, ¿qué devolverá `curl`?
@@ -172,6 +196,12 @@ curl -s -o /dev/null -w "%{http_code}\n" localhost
 sudo systemctl reload nginx
 systemctl status nginx --no-pager | head -5
 ```
+
+<details>
+<summary>Qué deberías ver</summary>
+
+`no responde` tras el `stop`; `200` tras el `start`; y nginx otra vez `active (running)` después del `reload`.
+</details>
 
 ### 3. Tu propio servicio
 
@@ -200,6 +230,8 @@ curl -s localhost:8080
 ps -o user,pid,cmd -C python3
 ```
 
+👀 **Qué deberías ver:** `active (running)`; tu página, `<h1>Mi app en servidor-01</h1>`; y el proceso de python3 con el usuario `appsvc`.
+
 Comprueba que el proceso corre como `appsvc`, no como root.
 
 ### 4. Auto-reparación
@@ -212,6 +244,12 @@ sleep 1; systemctl status miapp --no-pager | head -5
 sleep 3; systemctl status miapp --no-pager | head -5
 curl -s localhost:8080
 ```
+
+<details>
+<summary>Qué deberías ver</summary>
+
+Al segundo, `activating (auto-restart)`; a los 3 segundos, otra vez `active (running)` con **otro** PID; y tu página respondiendo.
+</details>
 
 systemd detectó la muerte, esperó `RestartSec=3` y lo levantó con un **PID nuevo**.
 
@@ -287,6 +325,8 @@ sudo chown appsvc:appsvc /srv/miapp && sudo chmod 755 /srv/miapp && sudo systemc
 ```
 
 **3. Un bucle de reinicios:**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 ```bash
 sudo systemctl edit miapp
 ```
@@ -311,40 +351,100 @@ sudo systemctl restart miapp && systemctl is-active miapp
 
 ## Reto
 
-En la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** Con un drop-in, cambia el `RestartSec` de `miapp` a 10 sin tocar el archivo original. Comprueba el resultado.
+
+> 🧩 **Ejemplo resuelto:** cambiar con un drop-in la descripción de `miapp`.
+> ```bash
+> sudo systemctl edit miapp
+> # entre los comentarios, escribe estas dos líneas:
+> #   [Unit]
+> #   Description=Mi app de prueba
+> systemctl cat miapp
+> ```
+> `systemctl edit` crea el drop-in y recarga solo las fichas. `systemctl cat` enseña la ficha original y, debajo, tu cambio.
+
+**Ahora tú, con huecos:**
+```bash
+sudo systemctl edit miapp
+# entre los comentarios:
+#   [____]
+#   RestartSec=____
+systemctl cat miapp
+```
 
 <details>
 <summary>Pista</summary>
 
-`sudo systemctl edit miapp` abre un archivo casi vacío. Escribe entre los comentarios `[Service]` y, debajo, `RestartSec=10`. Guarda y mira el resultado con `systemctl cat miapp`.
+`RestartSec` vive en la sección de la ficha que dice **cómo ejecutarlo** (pieza 3).
 </details>
 
 **2.** Elige tres servicios de `systemctl list-unit-files --type=service --state=enabled` y comprueba con `systemctl is-active` si están funcionando ahora. ¿Alguno está habilitado pero no activo? ¿Por qué podría ser?
 
+> 🧩 **Ejemplo resuelto:** las dos preguntas sobre nginx.
+> ```bash
+> systemctl is-enabled nginx
+> systemctl is-active nginx
+> ```
+> `enabled` (arrancará al encender) y `active` (funciona ahora): dos respuestas independientes.
+
+**Ahora tú, con huecos:**
+```bash
+systemctl list-unit-files --type=service --state=enabled
+systemctl is-active ____
+```
+
 <details>
 <summary>Pista</summary>
 
-`systemctl is-active nombre` responde `active` o `inactive`. Recuerda las dos preguntas de la pieza 4: ¿abrirá al encender? y ¿está abierto ahora? Pueden tener respuestas distintas.
+Copia un nombre de la lista en el hueco, y repite con otros dos. Recuerda las dos preguntas de la pieza 4: pueden tener respuestas distintas.
 </details>
 
 **3.** (El más largo.) Crea un **timer** que cada minuto añada la fecha y la carga del sistema a `/var/log/latido.log`. Necesitas dos fichas: `latido.service` (`Type=oneshot`, con `ExecStart=/bin/sh -c 'echo "$(date) $(cat /proc/loadavg)" >> /var/log/latido.log'`) y `latido.timer` (con `[Timer] OnCalendar=minutely` y `[Install] WantedBy=timers.target`).
 
+> 🧩 **Ejemplo resuelto:** un servicio que escribe la fecha **una vez**, sin timer.
+> ```bash
+> sudo nano /etc/systemd/system/hola.service
+> #   [Unit]
+> #   Description=Escribe la fecha una vez
+> #
+> #   [Service]
+> #   Type=oneshot
+> #   ExecStart=/bin/sh -c 'date >> /var/log/hola.log'
+> sudo systemctl daemon-reload
+> sudo systemctl start hola
+> cat /var/log/hola.log
+> ```
+> `Type=oneshot` significa «haz tu trabajo y termina». Cada `start` añade una línea. A `latido.service` le basta con eso; el timer solo le dice **cuándo**.
+
+**Ahora tú, con huecos:**
+```bash
+# /etc/systemd/system/latido.timer
+[Unit]
+Description=Latido cada minuto
+
+[Timer]
+OnCalendar=____
+
+[Install]
+WantedBy=____
+```
+
 <details>
 <summary>Pista</summary>
 
-Crea cada ficha con `sudo nano /etc/systemd/system/latido.service` (y `latido.timer`), con la forma `[Unit]`/`[Service]` del ejemplo de la teoría. El `.service` no necesita `[Install]`: lo arranca el timer. Después, `sudo systemctl daemon-reload` y `sudo systemctl enable --now latido.timer`. Comprueba con `systemctl list-timers` y, pasado un minuto, con `cat /var/log/latido.log`.
+Los dos valores están en el enunciado. `latido.service` es como `hola.service`, pero con el `ExecStart` del enunciado. Después: `sudo systemctl daemon-reload`, `sudo systemctl enable --now latido.timer`, `systemctl list-timers` y, pasado un minuto, `cat /var/log/latido.log`.
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-12.md`:
 
-1. Diferencia entre `start` y `enable`. Cuenta el incidente típico que provoca confundirlos.
-2. Un servicio no arranca. Escribe tus **tres primeros comandos** y qué buscas en cada uno.
-3. ¿Por qué tu servicio corre con `User=appsvc` y no como root? ¿Qué gana la seguridad?
-4. **Repaso (clase 11, sin mirar):** ¿qué hace `SIGHUP` en nginx y qué comando de systemctl lo usa?
+1. Diferencia entre `start` y `enable`. Cuenta el incidente típico que provoca confundirlos. *(3 líneas. Empieza así: «`start` lo arranca… `enable` hace que… El incidente: alguien… y cuando la máquina se reinicia…»)*
+2. Un servicio no arranca. Escribe tus **tres primeros comandos** y qué buscas en cada uno. *(3 líneas, una por comando. Empieza así: «1. `systemctl status x`, para ver… 2. `journalctl -u x`, para… 3. …»)*
+3. ¿Por qué tu servicio corre con `User=appsvc` y no como root? ¿Qué gana la seguridad? *(2 líneas. Empieza así: «Por mínimo privilegio: si alguien ataca la app, solo consigue…»)*
+4. **Repaso (clase 11, sin mirar):** ¿qué hace `SIGHUP` en nginx y qué comando de systemctl lo usa? *(1–2 líneas. Empieza así: «SIGHUP hace que nginx… y lo usa `systemctl …`»)*
 
 Después, escríbeme `examíname clase-12`.
 

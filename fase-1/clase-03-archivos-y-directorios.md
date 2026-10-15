@@ -4,6 +4,19 @@
 
 > 💡 **La idea de hoy:** crear, copiar, mover y borrar son cuatro verbos con una misma trampa: **Linux no pregunta y no tiene papelera**. Por eso el hábito profesional es *mirar antes de tocar*: `pwd` para saber dónde estás, `echo` para ver qué abarca un comodín y una copia `.bak` antes de editar algo importante.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Moverte con `cd` y con rutas absolutas y relativas (clase 02).
+> - Leer una línea de `ls -l` (clase 02).
+> - El shell interpreta lo que escribes **antes** de lanzar el programa (clase 01).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **comodín** (`*`, `?`): un patrón que el shell convierte en una lista de archivos.
+> - **sobrescribir**: reemplazar un archivo que ya existía, perdiendo lo que tenía.
+> - **recursivo** (`-r`): que actúa también sobre todo lo que hay dentro de una carpeta.
+> - **copia de seguridad** (`.bak`): una copia de un archivo antes de tocarlo.
+> - **tarball** (`.tar.gz`): muchos archivos empaquetados y comprimidos en uno.
+> - **nano**: el editor de texto sencillo de la terminal.
+
 ## Objetivo
 
 - Crear, copiar, mover, renombrar y borrar archivos y directorios **sin miedo y sin accidentes**.
@@ -311,10 +324,10 @@ La tabla de `tar` de la práctica 8: **c** crear, **t** listar, **x** extraer, s
 
 En `notas/fase-1/clase-03.md`:
 
-1. Diferencia entre `>` y `>>` al escribir en un archivo (adelanto de la clase 04: ya lo usaste en la práctica). Pon un ejemplo de un archivo de un servidor real que `>` destrozaría.
-2. ¿Por qué `echo patrón` antes de `rm patrón` es buena idea? ¿Quién expande el `*`?
-3. ¿Para qué sirve `tail -f` en operaciones? Describe una situación concreta.
-4. **Repaso (clase 02, sin mirar):** desde `/var/log/nginx`, ¿a dónde te lleva `cd ../..`? ¿Y `cd /`?
+1. Diferencia entre `>` y `>>` al escribir en un archivo (adelanto de la clase 04: ya lo usaste en la práctica). Pon un ejemplo de un archivo de un servidor real que `>` destrozaría. *(2 líneas. Empieza así: «`>` vacía el archivo y… `>>`… Por ejemplo, `> /etc/passwd` destrozaría…»)*
+2. ¿Por qué `echo patrón` antes de `rm patrón` es buena idea? ¿Quién expande el `*`? *(2 líneas. Empieza así: «Porque quien expande el `*` es el…, y `echo` me enseña…»)*
+3. ¿Para qué sirve `tail -f` en operaciones? Describe una situación concreta. *(2 líneas. Empieza así: «Para ver un log en directo mientras… Por ejemplo: `tail -f …` mientras…»)*
+4. **Repaso (clase 02, sin mirar):** desde `/var/log/nginx`, ¿a dónde te lleva `cd ../..`? ¿Y `cd /`? *(1 línea. Empieza así: «`cd ../..` me lleva a… y `cd /`, a…»)*
 
 Después, escríbeme `examíname clase-03`.
 

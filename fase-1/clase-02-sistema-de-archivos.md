@@ -4,6 +4,19 @@
 
 > 💡 **La idea de hoy:** Linux guarda todo en **un único árbol** que empieza en `/`, y cada cosa vive en su barrio: la configuración en `/etc`, los logs en `/var/log`, tus archivos en `/home`. Una ruta es una dirección: la **absoluta** funciona desde cualquier sitio, como una dirección postal completa; la **relativa** depende de dónde estás, como «la tercera puerta a la derecha».
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Escribir comandos con opciones y argumentos (clase 01).
+> - `pwd` dice dónde estás (clase 01).
+> - `man` y `--help` para pedir ayuda (clase 01).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **raíz** (`/`): el principio del único árbol de carpetas.
+> - **ruta absoluta / relativa**: desde la raíz / desde donde estás.
+> - **directorio padre** (`..`): la carpeta de un nivel más arriba.
+> - **oculto**: un archivo cuyo nombre empieza por punto (`.bashrc`).
+> - **enlace simbólico**: un acceso directo a otro archivo o carpeta.
+> - **montar**: colgar un disco de una carpeta del árbol.
+
 ## Objetivo
 
 - Conocer el árbol de directorios de Linux y **qué vive en cada sitio** de un servidor.
@@ -242,10 +255,10 @@ Cuenta cuántas carpetas tienes que subir desde `cajon` hasta llegar a `clase-02
 
 En `notas/fase-1/clase-02.md`:
 
-1. ¿Qué es `..` y en qué se diferencia de `/`? Da un ejemplo con rutas reales.
-2. Llegas a un servidor desconocido con una web caída. ¿En qué dos directorios miras primero y por qué?
-3. ¿Qué tienen de especial `/proc` y `/dev`? ¿Qué significa "en Linux todo es un archivo"?
-4. **Repaso (clase 01, sin mirar):** ¿Qué hace el shell y en qué se diferencia de la terminal?
+1. ¿Qué es `..` y en qué se diferencia de `/`? Da un ejemplo con rutas reales. *(2 líneas. Empieza así: «`..` es… y `/` es… Por ejemplo, desde `/home/educo/proyectos`…»)*
+2. Llegas a un servidor desconocido con una web caída. ¿En qué dos directorios miras primero y por qué? *(2 líneas. Empieza así: «En `/etc`, porque ahí está…; y en `/var/log`, porque…»)*
+3. ¿Qué tienen de especial `/proc` y `/dev`? ¿Qué significa "en Linux todo es un archivo"? *(2–3 líneas. Empieza así: «No están en el disco: los genera… `/proc`… `/dev`… «Todo es un archivo» significa…»)*
+4. **Repaso (clase 01, sin mirar):** ¿Qué hace el shell y en qué se diferencia de la terminal? *(2 líneas. Empieza así: «El shell es el programa que… La terminal es…»)*
 
 Después, escríbeme `examíname clase-02`.
 

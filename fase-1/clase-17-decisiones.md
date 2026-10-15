@@ -4,6 +4,18 @@
 
 > 💡 **La idea de hoy:** `if` no entiende de «verdadero» o «falso»: **ejecuta un comando y mira su código de salida**. Si es 0, entra en `then`. Los corchetes `[[ ]]` son solo otro comando que responde 0 o 1. Con eso, tu script comprueba antes de actuar y, si algo no cuadra, **falla pronto y con un mensaje claro** en vez de romper algo a medias.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - La nota de salida de cada programa (`$?`), y `&&` y `||` (clase 04).
+> - Tu script `tamano.sh` y `${1:?mensaje}` (clase 16).
+> - Los comodines, como `servidor-*` (clase 03), y `^` y `$` en `grep` (clase 05).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **condición**: la pregunta que decide qué camino se ejecuta.
+> - **rama**: cada camino posible de un `if` o de un `case`.
+> - **health check**: una comprobación automática de que algo funciona.
+> - **fallar pronto**: comprobar al principio y salir con un mensaje claro si falta algo.
+> - **expresión regular** (`=~`): un patrón más potente que un comodín.
+
 ## Objetivo
 
 - Entender que `if` **no evalúa expresiones**: ejecuta un comando y mira su código de salida.
@@ -34,6 +46,8 @@ fi
 
 No hay corchetes porque no hacen falta: `grep` ya deja su nota. Para encadenar varios casos existe `elif` («y si no, si…»):
 
+**En resumen:** `if comando; then …` entra si la nota del comando es 0.
+
 ```bash
 if [[ $USO -ge 90 ]]; then echo "crítico"
 elif [[ $USO -ge 80 ]]; then echo "aviso"
@@ -55,6 +69,8 @@ Los números se comparan con letras (`-eq` *equal*, `-lt` *less than*, `-ge` *gr
 
 Verás también corchetes **simples**, `[ … ]`: es la versión clásica, que funciona en cualquier `sh` pero es más frágil con las variables vacías. En tus scripts de bash, usa siempre los dobles.
 
+**En resumen:** `[[ ]]` pregunta sobre archivos (`-f`, `-d`), texto (`==`, `-z`) o números (`-lt`, `-ge`).
+
 ### 3. `(( ))`: cuentas con números enteros
 
 ```bash
@@ -63,6 +79,8 @@ TOTAL=$(( A + B * 2 ))                            # calcular
 ```
 
 Dentro de `(( ))` no hace falta el `$` delante de las variables, y `<` y `>` sí comparan números. Solo trabaja con **enteros**: nada de decimales.
+
+**En resumen:** `(( ))` compara y calcula con números enteros.
 
 ### 4. `case`: elegir entre varias opciones
 
@@ -79,6 +97,8 @@ esac
 
 Cada opción termina en `;;`. `|` separa alternativas («esto o aquello») y `*` es «cualquier otra cosa».
 
+**En resumen:** `case` elige un camino según el valor, con `*)` para «cualquier otra cosa».
+
 ### 5. Fallar pronto: el portero en la entrada
 
 Un buen script comprueba **al principio** que tiene todo lo que necesita, como un portero que revisa en la entrada en vez de echarte a mitad de la fiesta:
@@ -93,6 +113,8 @@ command -v tar > /dev/null || { echo "Error: falta tar" >&2; exit 1; }
 ```
 
 Cada línea se lee «comprueba esto **o** (`||`) quéjate y sal». `{ …; }` agrupa varios comandos para hacerlos juntos, y `command -v tar` deja nota 0 si el programa `tar` existe. Es mucho mejor que fallar a mitad del trabajo con un error confuso y las cosas a medias.
+
+**En resumen:** comprueba al principio y, si falta algo, sal con un mensaje claro.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -139,6 +161,12 @@ if echo hola; then echo "echo devolvió 0"; fi
 if ping -c1 -W1 1.1.1.1 > /dev/null 2>&1; then echo "hay internet"; fi
 ```
 
+<details>
+<summary>Qué deberías ver</summary>
+
+`existe`; `no existe`; `hola` seguido de `echo devolvió 0`; y `hay internet` si tienes conexión.
+</details>
+
 ### 2. Comprobaciones
 
 ```bash
@@ -157,6 +185,8 @@ NOMBRE="servidor-01"
 USO=85
 (( USO >= 80 )) && echo "disco por encima del 80 %"
 ```
+
+👀 **Qué deberías ver:** `es un archivo`, `no es un directorio`, `no puedo escribirlo`, `está vacía`, `es un servidor`, `y su nombre tiene el formato correcto` y `disco por encima del 80 %`.
 
 `[[ -w /etc/hostname ]]` dice que no: el archivo es de root (clase 06).
 
@@ -188,6 +218,12 @@ echo "$RUTA ocupa $TAMANO"
 ./tamano.sh /no-existe ; echo "código: $?"
 ./tamano.sh ~/my-devops-journey ; echo "código: $?"
 ```
+
+<details>
+<summary>Qué deberías ver</summary>
+
+`Error: /no-existe no existe` y `código: 1`; después, el tamaño de tu carpeta y `código: 0`.
+</details>
 
 Ahora el script dice la verdad: quien lo use (una persona, cron o un pipeline) sabe que falló.
 
@@ -223,6 +259,12 @@ Las opciones de `curl`:
 ./revisar-url.sh https://example.com/no-existe ; echo "código: $?"
 ./revisar-url.sh https://no-existe.invalid ; echo "código: $?"
 ```
+
+<details>
+<summary>Qué deberías ver</summary>
+
+`UP 200` con código 0; `DOWN 404` con código 1; y `DOWN 000` con código 1.
+</details>
 
 `000` significa que **no hubo respuesta HTTP**: el nombre no se resolvió, la conexión se rechazó o se agotó el tiempo. Recuérdalo: lo verás a menudo en los logs de Vigía.
 
@@ -261,6 +303,12 @@ chmod +x servicio.sh
 ./servicio.sh reiniciar ; echo "código: $?"
 ```
 
+<details>
+<summary>Qué deberías ver</summary>
+
+`inactivo` y `código: 3`; `arrancado`, `activo` y `código: 0`; `parado`; y el mensaje de uso con `código: 2`.
+</details>
+
 El código 3 para "inactivo" no es casual: `systemctl status` usa la misma convención (clase 12). Compruébalo con `systemctl status apt-daily.service > /dev/null; echo $?`.
 
 ## Rómpelo
@@ -273,6 +321,8 @@ VACIA=""
 `[: =: se esperaba un operador unario`. Sin comillas, `$VACIA` desaparece y `[` recibe `[ = x ]`, que no tiene sentido. Con `[ "$VACIA" = "x" ]` o con `[[ $VACIA == x ]]` funciona. Es una de las razones para preferir `[[ ]]`.
 
 **2. Comparar números como si fueran texto:**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 ```bash
 [[ 10 < 9 ]] && echo "¿10 es menor que 9?"
 [[ 10 -lt 9 ]] || echo "con -lt, no"
@@ -294,48 +344,114 @@ Error de sintaxis. `if` ya ejecuta comandos: se escribe `if grep -q root /etc/pa
 
 ## Reto
 
-En `labs/clase-17/`. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En `labs/clase-17/`. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** En una sola línea: si `~/.bashrc` existe y no está vacío, imprime cuántas líneas tiene.
+
+> 🧩 **Ejemplo resuelto:** si `/etc/hostname` existe y no está vacío, enseña su contenido.
+> ```bash
+> [[ -s /etc/hostname ]] && cat /etc/hostname
+> ```
+> `-s` pregunta «¿existe y no está vacío?»; `&&` ejecuta el `cat` solo si la respuesta es «sí».
+
+**Ahora tú, con huecos:** `[[ -____ ~/.bashrc ]] && wc -l < ____`
 
 <details>
 <summary>Pista</summary>
 
-`[[ -s archivo ]]` pregunta «¿existe y no está vacío?». Después, `&&` y `wc -l < ~/.bashrc` (con `<`, `wc` imprime solo el número).
+La misma pregunta del ejemplo. Con `<`, `wc -l` imprime solo el número, sin el nombre del archivo.
 </details>
 
 **2.** `revisar-servicio.sh <servicio>`: con `systemctl is-active --quiet "$1"`, imprime `OK: <servicio> activo` y sale con 0, o `CAÍDO: <servicio>` y sale con 1. Sin argumento, mensaje de uso y salida con 2. Pruébalo con `cron` (activo en tu Ubuntu) y con un nombre inventado.
 
+> 🧩 **Ejemplo resuelto:** la misma decisión, en una sola línea y para `cron`.
+> ```bash
+> if systemctl is-active --quiet cron; then echo "cron va"; else echo "cron caído"; fi
+> ```
+> `--quiet` hace que no imprima nada: solo deja la nota, y el `if` decide con ella.
+
+**Ahora tú, con huecos:**
+```bash
+#!/bin/bash
+SERVICIO="${1:-}"
+[[ -n $SERVICIO ]] || { echo "Uso: $0 <servicio>" >&2; exit ____; }
+if systemctl is-active --quiet "$SERVICIO"; then
+  echo "OK: $SERVICIO activo"
+else
+  echo "CAÍDO: $SERVICIO"
+  exit ____
+fi
+```
+
 <details>
 <summary>Pista</summary>
 
-La estructura `if comando; then … else … fi` de la pieza 1, con `systemctl is-active --quiet "$1"` como comando. Para el argumento que falta, el portero de la pieza 5.
+Los dos números de salida están en el enunciado: uno para «uso incorrecto» y otro para «caído».
 </details>
 
 **3.** `es-par.sh <número>`: comprueba que el argumento es un número entero positivo con `[[ $N =~ ^[0-9]+$ ]]` («solo dígitos, del principio al final»). Si no lo es, sale con 2 y un mensaje de uso. Si lo es, imprime `par` o `impar`.
 
+> 🧩 **Ejemplo resuelto:** ¿es 9 múltiplo de 3?
+> ```bash
+> N=9
+> if (( N % 3 == 0 )); then echo "múltiplo de 3"; fi
+> ```
+> Dentro de `(( ))`, `%` es el **resto** de dividir: `9 % 3` es 0, así que es múltiplo.
+
+**Ahora tú, con huecos:**
+```bash
+#!/bin/bash
+N="${1:-}"
+[[ $N =~ ^[0-9]+$ ]] || { echo "Uso: $0 <número entero positivo>" >&2; exit 2; }
+if (( N % ____ == 0 )); then echo "par"; else echo "____"; fi
+```
+
 <details>
 <summary>Pista</summary>
 
-Dentro de `(( ))`, `%` es el **resto** de dividir: `7 % 2` es 1 y `8 % 2` es 0. Un número es par si el resto de dividirlo entre 2 es 0: `(( N % 2 == 0 ))`. Para validar, copia la línea del portero de la pieza 5.
+Un número es par si el resto de dividirlo entre 2 es 0.
 </details>
 
 **4.** Mejora `revisar-url.sh` con `case`: `-h` o `--help` muestran el uso, y sin argumento revisa `https://example.com`.
 
+> 🧩 **Ejemplo resuelto:** un `case` que distingue «no me diste nada» de «me diste algo».
+> ```bash
+> cat > opcion.sh <<'EOF'
+> #!/bin/bash
+> case "${1:-}" in
+>   "")  echo "no me diste nada" ;;
+>   *)   echo "me diste: $1" ;;
+> esac
+> EOF
+> chmod +x opcion.sh
+> ./opcion.sh
+> ./opcion.sh hola
+> ```
+> `""` es la opción «vacío» y `*`, cualquier otra cosa. Imprime `no me diste nada` y después `me diste: hola`.
+
+**Ahora tú, con huecos:**
+```bash
+case "${1:-}" in
+  -h|--help) echo "Uso: $0 [url]"; exit 0 ;;
+  ____)      URL=https://example.com ;;
+  *)         URL="____" ;;
+esac
+```
+
 <details>
 <summary>Pista</summary>
 
-Un `case "${1:-}" in` con tres opciones: `-h|--help)`, `"")` (no llegó nada) y `*)` (cualquier otra cosa: es la URL).
+El primer hueco es la opción «vacío» del ejemplo. En el segundo, la URL es lo que llegó como primer argumento.
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-17.md`:
 
-1. ¿Qué evalúa exactamente `if`? Pon un ejemplo sin corchetes.
-2. ¿Por qué conviene validar los argumentos y las dependencias al principio de un script?
-3. ¿Qué diferencia hay entre `[[ 10 < 9 ]]` y `(( 10 < 9 ))`?
-4. **Repaso (clase 16, sin mirar):** ¿qué hace `${1:?mensaje}` y para qué sirve?
+1. ¿Qué evalúa exactamente `if`? Pon un ejemplo sin corchetes. *(2 líneas. Empieza así: «`if` ejecuta un comando y mira su… Por ejemplo: `if grep -q …`»)*
+2. ¿Por qué conviene validar los argumentos y las dependencias al principio de un script? *(2 líneas. Empieza así: «Para fallar pronto: si falta algo, el script se para antes de…, en vez de…»)*
+3. ¿Qué diferencia hay entre `[[ 10 < 9 ]]` y `(( 10 < 9 ))`? *(2 líneas. Empieza así: «`[[ 10 < 9 ]]` compara como texto, así que…; `(( 10 < 9 ))` compara números, así que…»)*
+4. **Repaso (clase 16, sin mirar):** ¿qué hace `${1:?mensaje}` y para qué sirve? *(1–2 líneas. Empieza así: «Si falta `$1`, imprime… y sale con error. Sirve para…»)*
 
 Después, escríbeme `examíname clase-17`.
 

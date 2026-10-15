@@ -4,6 +4,17 @@
 
 > 💡 **La idea de hoy:** cuando escribes un comando trabajan tres piezas en cadena: la **terminal** muestra el texto y recoge tus teclas, el **shell** entiende lo que pediste y lanza el programa, y el **kernel** es el único que toca el hardware. Saber qué pieza se queja te dice dónde buscar el fallo.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Nada de Linux todavía, y no hace falta: solo saber usar un ordenador y escribir con el teclado.
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **terminal**: la ventana donde escribes comandos.
+> - **shell** (bash): el programa que entiende lo que escribes y lanza otros programas.
+> - **kernel**: el núcleo del sistema; el único que toca el hardware.
+> - **prompt**: el texto que espera tu comando (`educo@miequipo:~$`).
+> - **comando, opción y argumento**: qué programa, cómo actúa y sobre qué (`ls -l /etc`).
+> - **distribución**: el kernel Linux más sus programas (Ubuntu, Amazon Linux…).
+
 ## Objetivo
 
 Al terminar sabrás:
@@ -269,10 +280,10 @@ El comando de la práctica 4 que te dice «qué es» un nombre: `type`.
 
 Crea `notas/fase-1/clase-01.md` (plantilla en [`../notas/Notas.md`](../notas/Notas.md)) y responde **con tus palabras**:
 
-1. ¿Qué diferencia hay entre terminal, shell y kernel? Usa tu propia analogía.
-2. Escribes `ls -l /etc` y pulsas Enter. Cuenta en 3–5 pasos qué ocurre hasta que ves la lista.
-3. `lsss` y `ls /esto-no-existe` fallan de forma distinta. ¿Quién da cada error y por qué?
-4. *(Calentamiento, sin clase previa)* ¿Por qué un Cloud/DevOps necesita dominar la terminal si AWS tiene consola web?
+1. ¿Qué diferencia hay entre terminal, shell y kernel? Usa tu propia analogía. *(3 líneas. Empieza así: «La terminal es como… El shell es… El kernel es…»)*
+2. Escribes `ls -l /etc` y pulsas Enter. Cuenta en 3–5 pasos qué ocurre hasta que ves la lista. *(3–5 pasos numerados. Empieza así: «1. La terminal le pasa lo que escribí al shell. 2. El shell…»)*
+3. `lsss` y `ls /esto-no-existe` fallan de forma distinta. ¿Quién da cada error y por qué? *(2 líneas. Empieza así: «`lsss` lo da el shell porque… `ls /esto-no-existe` lo da `ls` porque…»)*
+4. *(Calentamiento, sin clase previa)* ¿Por qué un Cloud/DevOps necesita dominar la terminal si AWS tiene consola web? *(2 líneas. Empieza así: «Porque los servidores no tienen…, y la automatización…»)*
 
 Después, escríbeme `examíname clase-01`.
 

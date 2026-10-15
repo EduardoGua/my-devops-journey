@@ -4,6 +4,18 @@
 
 > 💡 **La idea de hoy:** `apt` funciona como una **tienda de aplicaciones con catálogo**. `apt update` descarga el catálogo al día (qué programas hay y en qué versión) y `apt install` trae el programa junto con todo lo que necesita para funcionar (sus *dependencias*), después de comprobar su firma para saber que viene de la tienda oficial.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - `sudo` ejecuta un comando como root (clase 09).
+> - `&&` ejecuta lo segundo solo si lo primero salió bien (clase 04).
+> - `which` dice dónde está un programa, y `$( )` mete su resultado dentro de otro comando (clases 07 y 04).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **paquete** (`.deb`): una caja con un programa listo para instalar.
+> - **repositorio**: la tienda de donde salen los paquetes.
+> - **índice** o catálogo: la lista de lo que hay en la tienda y en qué versión.
+> - **dependencia**: otro paquete que un programa necesita para funcionar.
+> - **firma**: el sello que demuestra que un paquete viene de la tienda oficial.
+
 ## Objetivo
 
 - Instalar, actualizar, quitar y purgar software con `apt`.
@@ -39,12 +51,16 @@ Cuatro piezas, con la imagen de la tienda de *La idea de hoy*.
 - `apt update` descarga el **catálogo** nuevo. **No instala nada.**
 - `apt install` mira el catálogo, descarga el programa y lo instala.
 
+**En resumen:** `apt update` actualiza el catálogo; `apt install` trae el programa.
+
 ### 2. Paquetes, dependencias y firmas
 
 - Un **paquete** (`.deb`) es una caja con el programa, su configuración por defecto y una etiqueta con su versión y lo que necesita.
 - Lo que necesita son sus **dependencias**: otros paquetes sin los que no funciona. `apt` las trae solas.
 - Cada caja viene **firmada**: `apt` comprueba la firma y rechaza lo que no venga de la tienda oficial o haya sido manipulado.
 - Por debajo, quien instala de verdad las cajas es `dpkg`. `apt` es el dependiente amable que lo organiza todo.
+
+**En resumen:** un paquete es una caja con etiqueta: su versión, sus dependencias y su firma.
 
 ### 3. Los cinco del día a día
 
@@ -58,6 +74,8 @@ sudo apt purge nginx         # 5. desinstalar y BORRAR también su configuració
 
 `remove` frente a `purge` es como devolver un mueble guardando o tirando las instrucciones de montaje: con `remove`, si lo reinstalas, recupera tu configuración. Lo verás en el Rómpelo 1.
 
+**En resumen:** update, install, upgrade, remove y purge: con esos cinco haces casi todo.
+
 ### 4. `apt` para ti, `apt-get` para los scripts
 
 `apt` es para usarlo a mano: tiene colores y barras de progreso. En **scripts** y **Dockerfiles** se usa `apt-get`, porque su salida no cambia entre versiones, con `-y` para que no pregunte nada:
@@ -65,6 +83,8 @@ sudo apt purge nginx         # 5. desinstalar y BORRAR también su configuració
 ```bash
 sudo apt-get update && sudo apt-get install -y nginx
 ```
+
+**En resumen:** a mano, `apt`; en scripts, `apt-get … -y`, y siempre después de un `update`.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -107,6 +127,8 @@ sudo apt update
 apt list --upgradable | head
 ```
 
+👀 **Qué deberías ver:** los archivos de repositorios; el de Ubuntu por dentro (líneas `URIs:` y `Suites:`); `apt update` descargando catálogos (`Hit`, `Get`); y los paquetes que tienen versión nueva.
+
 ### 2. Instalar nginx
 
 🔮 **Predice:** después de instalarlo, ¿estará nginx ya funcionando o tendrás que arrancarlo tú?
@@ -117,6 +139,12 @@ sudo apt install -y nginx
 curl -s localhost | head -5
 systemctl status nginx --no-pager
 ```
+
+<details>
+<summary>Qué deberías ver</summary>
+
+La ficha de nginx, la instalación, el principio de su página de bienvenida (`<!DOCTYPE html>`…) y nginx en `active (running)`: ya funciona solo.
+</details>
 
 En Ubuntu, instalar un servicio suele **arrancarlo y activarlo** automáticamente. (En otras distribuciones, como Amazon Linux, no.)
 
@@ -129,6 +157,8 @@ dpkg -S /usr/sbin/nginx
 dpkg -S "$(which curl)"
 ls /etc/nginx/
 ```
+
+👀 **Qué deberías ver:** la versión instalada y de qué repositorio viene, varios archivos de `/etc/nginx`, el nombre del paquete que instaló cada archivo y las carpetas de configuración de nginx.
 
 `nginx` es un paquete pequeño que **depende** de otros (`nginx-common`…). Mira la línea `Depends` de `apt show nginx`.
 
@@ -146,6 +176,8 @@ sudo apt install -y htop tree jq net-tools dnsutils traceroute tcpdump netcat-op
 sudo apt upgrade -y
 cat /var/run/reboot-required 2>/dev/null || echo "no hace falta reiniciar"
 ```
+
+👀 **Qué deberías ver:** la lista de paquetes que se actualizaron y, al final, `no hace falta reiniciar` o `*** System restart required ***`.
 
 Si se actualizó el kernel, el nuevo **no se usa hasta reiniciar**. En producción, reiniciar se planifica.
 
@@ -178,6 +210,8 @@ sudo cp /tmp/nginx.conf.bak /etc/nginx/nginx.conf
 (Has usado `sudo tee -a`: `sudo echo "x" >> /etc/archivo` **no funciona**, porque la redirección `>>` la hace tu shell, que no es root. `tee` sí se ejecuta como root y escribe el archivo.)
 
 **2. El bloqueo de apt:**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 Abre **dos** `multipass shell servidor-01`. En la primera: `sudo apt install -y cowsay` y, mientras corre, en la segunda: `sudo apt install -y sl`.
 Verás `Could not get lock /var/lib/dpkg/lock-frontend`: solo puede haber un apt a la vez. En una EC2 recién creada pasa mucho, porque `unattended-upgrades` o `cloud-init` están usando apt en los primeros minutos. **No se borra el archivo de lock**: se espera a que el otro proceso termine.
 
@@ -197,48 +231,87 @@ Se usa cuando una versión nueva rompe algo y necesitas tiempo para adaptarte. N
 
 ## Reto
 
-En la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** ¿Qué paquete instaló el comando `ss`? ¿Y `ip`?
+
+> 🧩 **Ejemplo resuelto:** ¿qué paquete instaló `curl`?
+> ```bash
+> dpkg -S "$(which curl)"
+> ```
+> `which curl` da la ruta del programa (`/usr/bin/curl`) y `dpkg -S` dice qué paquete instaló ese archivo: `curl`.
+
+**Ahora tú, con huecos:** `dpkg -S "$(which ____)"`
 
 <details>
 <summary>Pista</summary>
 
-`dpkg -S /ruta/del/archivo` dice qué paquete instaló un archivo. ¿Y la ruta de `ss`? Te la da `which`. Puedes juntarlos con `$( )`, como en la clase 04.
+Ejecútalo dos veces, una con cada nombre. Hazlo en la VM: en tu PC, por cómo es tu PATH, `which` puede dar `/bin/…` y `dpkg` solo conoce la ruta `/usr/bin/…`.
 </details>
 
 **2.** ¿Cuántos paquetes hay instalados en la VM?
 
+> 🧩 **Ejemplo resuelto:** ¿cuántos paquetes tienen una versión nueva disponible?
+> ```bash
+> apt list --upgradable 2>/dev/null | wc -l
+> ```
+> `apt list` saca un paquete por línea, `2>/dev/null` tira un aviso que `apt` escribe por la manguera 2 y `wc -l` cuenta. La primera línea es `Listing...`, así que el número real es uno menos.
+
+**Ahora tú, con huecos:** `apt list --____ 2>/dev/null | wc -l`
+
 <details>
 <summary>Pista</summary>
 
-`apt list --installed` los lista, uno por línea. ¿Con qué cuentas líneas?
+La opción de `apt list` que enseña lo instalado está en la chuleta.
 </details>
 
 **3.** Instala `cowsay` y luego quítalo **sin dejar rastro**, incluidas las dependencias que ya no se usan.
 
+> 🧩 **Ejemplo resuelto:** instalar el paquete `sl` (un tren que cruza tu terminal), probarlo y quitarlo.
+> ```bash
+> sudo apt install -y sl
+> /usr/games/sl
+> sudo apt remove -y sl
+> ```
+> `remove` quita el programa, pero deja su configuración. En el reto quieres borrarlo **todo**.
+
+**Ahora tú, con huecos:**
+```bash
+sudo apt install -y cowsay
+sudo apt ____ -y cowsay
+sudo apt ____ -y
+```
+
 <details>
 <summary>Pista</summary>
 
-Dos órdenes de la pieza 3 y la chuleta: la que desinstala **borrando** también la configuración, y la que quita las dependencias que ya nadie usa.
+El primer hueco desinstala borrando también la configuración. El segundo quita las dependencias que ya nadie usa. Los dos están en la chuleta.
 </details>
 
 **4.** Escribe la línea que pondrías en un script de aprovisionamiento para instalar `nginx` y `curl` sin preguntas y sin fallar por un catálogo desactualizado.
 
+> 🧩 **Ejemplo resuelto:** la línea para instalar `jq` en un script.
+> ```bash
+> sudo apt-get update && sudo apt-get install -y jq
+> ```
+> Primero el catálogo, y solo si salió bien (`&&`), la instalación sin preguntas (`-y`).
+
+**Ahora tú, con huecos:** `sudo apt-get ____ && sudo apt-get install ____ nginx curl`
+
 <details>
 <summary>Pista</summary>
 
-Está en la pieza 4 de la teoría: `apt-get`, `&&` y `-y`.
+Es el ejemplo con otros dos paquetes.
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-10.md`:
 
-1. ¿Qué diferencia hay entre `apt update` y `apt upgrade`?
-2. ¿Por qué `sudo echo "x" >> /etc/archivo` falla y `echo "x" | sudo tee -a /etc/archivo` funciona?
-3. Acabas de lanzar una EC2 y `apt install` falla con "Could not get lock". ¿Qué pasa y qué haces?
-4. **Repaso (clase 09, sin mirar):** ¿por qué se edita sudoers con `visudo` y no con `nano` directamente?
+1. ¿Qué diferencia hay entre `apt update` y `apt upgrade`? *(2 líneas. Empieza así: «`apt update` descarga…, pero no… `apt upgrade`…»)*
+2. ¿Por qué `sudo echo "x" >> /etc/archivo` falla y `echo "x" | sudo tee -a /etc/archivo` funciona? *(2–3 líneas. Empieza así: «Porque el `>>` lo hace mi shell, que no es root, antes de… Con `tee`, quien abre el archivo es…»)*
+3. Acabas de lanzar una EC2 y `apt install` falla con "Could not get lock". ¿Qué pasa y qué haces? *(2 líneas. Empieza así: «Otro proceso, como cloud-init o las actualizaciones automáticas, está usando… Yo esperaría a que…, sin borrar…»)*
+4. **Repaso (clase 09, sin mirar):** ¿por qué se edita sudoers con `visudo` y no con `nano` directamente? *(1–2 líneas. Empieza así: «Porque `visudo` comprueba…, y un error en sudoers…»)*
 
 Después, escríbeme `examíname clase-10`.
 
@@ -259,7 +332,7 @@ Después, escríbeme `examíname clase-10`.
 ```bash
 dpkg -S "$(which ss)"      # iproute2
 dpkg -S "$(which ip)"      # iproute2
-apt list --installed 2>/dev/null | wc -l     # o: dpkg -l | grep -c '^ii'
+apt list --installed 2>/dev/null | wc -l     # menos 1, por la línea «Listing...»; o: dpkg -l | grep -c '^ii'
 sudo apt install -y cowsay && sudo apt purge -y cowsay && sudo apt autoremove -y
 sudo apt-get update && sudo apt-get install -y nginx curl
 ```

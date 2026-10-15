@@ -4,6 +4,19 @@
 
 > 💡 **La idea de hoy:** en un servidor hay dos preguntas distintas: **¿quién eres?** (autenticación: tu contraseña o tu llave) y **¿qué puedes hacer?** (autorización: tus grupos, tus permisos y las reglas de sudo). Funciona como un hotel: en recepción comprueban tu identidad una vez y te dan una tarjeta que solo abre tu habitación. La regla de oro es el **mínimo privilegio**, la misma que aplicarás con IAM en AWS.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Los tres juegos de llaves (dueño, grupo y resto) y los permisos en números, como `750` (clase 06).
+> - La umask, el molde con el que nacen los archivos (clase 06).
+> - `bash -c '…'` lanza un shell hijo que ejecuta lo que va entre comillas (clase 07).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **autenticación**: demostrar quién eres (con una contraseña o una llave).
+> - **autorización**: lo que te dejan hacer una vez dentro.
+> - **sudo**: ejecutar un comando como root, si la lista te lo permite.
+> - **sudoers**: esa lista: quién puede usar `sudo` y para qué.
+> - **usuario de servicio**: una cuenta para un programa, no para una persona (`www-data`).
+> - **setgid** en una carpeta: el sello de equipo que pone su grupo a todo lo que se crea dentro.
+
 ## Objetivo
 
 - Crear, modificar, bloquear y borrar usuarios y grupos.
@@ -31,6 +44,8 @@ En un hotel, la recepción comprueba **quién eres** una vez (tu documento) y te
 
 Primero se autentica y después se autoriza. Puedes haber entrado (autenticado) y aun así no tener permiso para leer un archivo concreto (no autorizado).
 
+**En resumen:** autenticación = ¿quién eres?; autorización = ¿qué puedes hacer? Primero una y después la otra.
+
 ### 2. El registro de huéspedes: `/etc/passwd`
 
 Linux apunta a cada usuario en una línea de `/etc/passwd`:
@@ -53,6 +68,8 @@ Las contraseñas no están ahí, sino cifradas en `/etc/shadow`, que solo puede 
 
 No todos los usuarios son personas. `www-data` (el de nginx) o `nobody` son **usuarios de servicio**: su shell es `/usr/sbin/nologin`, porque existen para ser **dueños de procesos y archivos**, no para que alguien entre con ellos. Ya lo viste en la clase 04: son la mayoría de las cuentas.
 
+**En resumen:** cada usuario es una línea de `/etc/passwd`; las contraseñas están en `/etc/shadow` y los grupos en `/etc/group`.
+
 ### 3. Dar de alta y organizar en equipos
 
 Los cuatro comandos que más usarás:
@@ -65,6 +82,8 @@ id ana                         # ver quién es Ana y en qué equipos está
 ```
 
 ⚠️ En `usermod -aG`, la `-a` significa **añadir**. Sin ella, `-G` **sustituye** todos los grupos de la persona por los que pongas, y la saca de los demás. Es uno de los errores más típicos (lo provocarás en el Rómpelo 2).
+
+**En resumen:** `adduser` da de alta, `groupadd` crea un equipo y `usermod -aG` añade a alguien a él (¡con la `-a`!).
 
 ### 4. `sudo`: la llave maestra, con registro
 
@@ -84,6 +103,8 @@ ana  ALL=(root)  /usr/bin/journalctl, /usr/bin/systemctl restart nginx
 ```
 
 La lista se edita **siempre con `visudo`**, que revisa que lo que escribiste es correcto antes de guardar. Un error en sudoers puede dejar a **todo el mundo** sin `sudo`. Las reglas propias van en archivos aparte, dentro de `/etc/sudoers.d/`.
+
+**En resumen:** `sudo` presta la llave maestra solo a quien está en la lista, y apunta cada uso. La lista se edita con `visudo`.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -117,6 +138,8 @@ La lista se edita **siempre con `visudo`**, que revisa que lo que escribiste es 
 ## Práctica guiada
 
 ```bash
+
+👀 **Qué deberías ver:** Ana y Luis con `devs` entre sus grupos, Carla sin él, y una línea `devs:x:…:ana,luis`.
 multipass shell servidor-01
 ```
 
@@ -131,6 +154,8 @@ grep -E '^(root|www-data|nobody|ubuntu):' /etc/passwd
 getent group sudo
 sudo head -3 /etc/shadow
 ```
+
+👀 **Qué deberías ver:** tu usuario, `ubuntu`, que está en el grupo `sudo`; las últimas cuentas del sistema; las líneas de root, www-data, nobody y ubuntu; y, gracias a `sudo`, las tres primeras líneas de `/etc/shadow`.
 
 ### 2. Crea un equipo
 
@@ -155,6 +180,8 @@ sudo chown root:devs /srv/proyecto
 sudo chmod 2770 /srv/proyecto
 ls -ld /srv/proyecto
 ```
+
+👀 **Qué deberías ver:** `drwxrws---`, con dueño `root` y grupo `devs`. La `s` en el juego del grupo es el sello de equipo.
 
 El `2` inicial activa el **setgid** en el directorio (verás una `s` en el grupo). Funciona como un **sello de equipo**: todo lo que se crea dentro sale con el sello `devs`, en vez del grupo personal de quien lo crea. Sin él, los archivos de Ana serían del grupo `ana` y Luis no podría editarlos.
 
@@ -212,6 +239,8 @@ ana ALL=(root) /usr/bin/journalctl
 sudo chmod 440 /etc/sudoers.d/ana
 sudo -l -U ana
 ```
+
+👀 **Qué deberías ver:** en la lista de Ana aparece la regla nueva: `(root) /usr/bin/journalctl`.
 
 Pruébalo **siendo** Ana. `su` pide la contraseña de Ana:
 ```bash
@@ -272,6 +301,8 @@ Cuando alguien deja la empresa, primero se **bloquea** (es reversible y se conse
 
 
 **5. El comodín y sudo:**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 ```bash
 sudo ls /srv/proyecto
 sudo rm /srv/proyecto/*.txt
@@ -280,48 +311,101 @@ sudo ls /srv/proyecto
 🔮 ¿Se borró algo? No: `rm` se queja de que no existe `'/srv/proyecto/*.txt'`. El comodín lo expande **tu shell** (usuario `ubuntu`) **antes** de ejecutar `sudo`, y tu shell no puede leer `/srv/proyecto`, así que deja el patrón tal cual (clase 03). Es la misma trampa que `sudo echo … >> archivo` (clase 10). Si quieres que el comodín lo expanda root: `sudo bash -c 'rm /srv/proyecto/*.txt'`. No lo ejecutes ahora: necesitas esos archivos.
 ## Reto
 
-En la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** Crea el usuario de servicio `appsvc`: sin casa, con shell `/usr/sbin/nologin` y como usuario de sistema. Comprueba que nadie puede entrar con él.
+
+> 🧩 **Ejemplo resuelto:** mirar cómo es `www-data`, otro usuario de servicio.
+> ```bash
+> grep "^www-data:" /etc/passwd
+> ```
+> Su UID está por debajo de 1000 (es del sistema) y su shell es `/usr/sbin/nologin`: así son los usuarios de servicio.
+
+**Ahora tú, con huecos:**
+```bash
+sudo useradd --____ --no-create-home --shell ____ appsvc
+sudo su - appsvc
+```
 
 <details>
 <summary>Pista</summary>
 
-`sudo useradd` con tres opciones: `--system` (usuario de servicio), `--no-create-home` (sin casa) y `--shell /usr/sbin/nologin`. Para probar que no se puede entrar: `sudo su - appsvc`.
+El primer hueco es la opción que lo hace «de sistema». El segundo, el shell que no deja entrar, el mismo de `www-data`.
 </details>
 
 **2.** Crea, **como Ana**, el archivo `/srv/proyecto/config.txt`, y deja sus permisos para que los de `devs` puedan leerlo pero **solo Ana** pueda modificarlo.
 
+> 🧩 **Ejemplo resuelto:** crear, como Luis, `/srv/proyecto/notas.txt`, que solo pueda leer y escribir él.
+> ```bash
+> sudo -u luis touch /srv/proyecto/notas.txt
+> sudo chmod 600 /srv/proyecto/notas.txt
+> sudo ls -l /srv/proyecto/notas.txt
+> ```
+> `sudo -u luis` crea el archivo **como Luis**, así que él es el dueño. `600`: él lee y escribe; el grupo y el resto, nada.
+
+**Ahora tú, con huecos:**
+```bash
+sudo -u ____ touch /srv/proyecto/config.txt
+sudo chmod ____ /srv/proyecto/config.txt
+```
+
 <details>
 <summary>Pista</summary>
 
-Para crearlo como Ana: `sudo -u ana touch …`. Así Ana es la dueña, y el sello de equipo (setgid) le pone el grupo `devs`. Después, `sudo chmod` en números: dueña lee y escribe (6), grupo solo lee (4) y los demás nada (0).
+Dueña, leer y escribir: 6. Grupo, solo leer: 4. Los demás, nada: 0.
 </details>
 
 **3.** Da a Luis permiso para ejecutar con sudo **solo** `apt update`, sin `apt install`. Pruébalo.
 
+> 🧩 **Ejemplo resuelto:** la regla de Ana de la práctica 4.
+> ```bash
+> sudo visudo -f /etc/sudoers.d/ana
+> # dentro:  ana ALL=(root) /usr/bin/journalctl
+> ```
+> Quién (`ana`), en qué máquinas (`ALL`), como quién (`root`) y qué comando exacto.
+
+**Ahora tú, con huecos:**
+```bash
+sudo visudo -f /etc/sudoers.d/luis
+# dentro:  luis ALL=(root) /usr/bin/apt ____
+```
+
 <details>
 <summary>Pista</summary>
 
-Copia la forma de la regla de Ana de la práctica 4, en su propio archivo (`sudo visudo -f /etc/sudoers.d/luis`), con el comando y su argumento: `/usr/bin/apt update`. Para probar: `su - luis` y después `sudo apt update` y `sudo apt install cowsay`.
+Escribir el argumento detrás del comando limita la regla a ese argumento exacto. Para probar: `su - luis`, y después `sudo apt update` (funciona) y `sudo apt install cowsay` (denegado).
 </details>
 
 **4.** Borra a Carla con su casa y comprueba que no queda rastro en `/etc/passwd` ni en `/home`.
 
+> 🧩 **Ejemplo resuelto:** dar de alta y de baja a un usuario de prueba, `temporal`.
+> ```bash
+> sudo useradd -m temporal
+> sudo userdel -r temporal
+> grep temporal /etc/passwd; ls /home
+> ```
+> `-m` le crea casa al darlo de alta; `-r` la borra al darlo de baja. El `grep` no imprime nada y en `/home` no queda su carpeta.
+
+**Ahora tú, con huecos:**
+```bash
+sudo userdel -____ carla
+grep carla /etc/passwd; ls /home
+```
+
 <details>
 <summary>Pista</summary>
 
-En la chuleta: `userdel` con la opción que borra también su casa. Después, `grep carla /etc/passwd` y `ls /home`.
+La misma opción del ejemplo para darle de baja.
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-09.md`:
 
-1. Diferencia entre autenticación y autorización, con un ejemplo de **este** laboratorio para cada una.
-2. ¿Para qué sirve el setgid (`2770`) en `/srv/proyecto`? ¿Qué pasaría sin él? ¿Y por qué Luis no pudo escribir en `borrador.txt` aunque el grupo era correcto?
-3. ¿Por qué darle a Ana solo `journalctl` en sudoers es mejor que meterla en el grupo `sudo`? Relaciónalo con IAM en AWS.
-4. **Repaso (clase 08, sin mirar):** ¿qué diferencia hay entre parar y terminar una instancia en AWS, y cuál sigue costando dinero?
+1. Diferencia entre autenticación y autorización, con un ejemplo de **este** laboratorio para cada una. *(2–3 líneas. Empieza así: «La autenticación es… En el lab, cuando… La autorización es… En el lab, cuando…»)*
+2. ¿Para qué sirve el setgid (`2770`) en `/srv/proyecto`? ¿Qué pasaría sin él? ¿Y por qué Luis no pudo escribir en `borrador.txt` aunque el grupo era correcto? *(3 líneas. Empieza así: «El setgid hace que… Sin él, los archivos… Luis no pudo escribir en el borrador porque nació con…»)*
+3. ¿Por qué darle a Ana solo `journalctl` en sudoers es mejor que meterla en el grupo `sudo`? Relaciónalo con IAM en AWS. *(2 líneas. Empieza así: «Por mínimo privilegio: si roban la cuenta de Ana… En AWS es igual: …»)*
+4. **Repaso (clase 08, sin mirar):** ¿qué diferencia hay entre parar y terminar una instancia en AWS, y cuál sigue costando dinero? *(2 líneas. Empieza así: «Parar (*stop*) apaga…, pero… Terminar…»)*
 
 Después, escríbeme `examíname clase-09`.
 

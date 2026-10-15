@@ -4,6 +4,18 @@
 
 > 💡 **La idea de hoy:** los logs son la **caja negra** del servidor: cuando algo falla, son la única forma de saber qué pasó y cuándo. Casi todo acaba en el *journal* de systemd, que consultas con `journalctl` filtrando por servicio, por hora y por gravedad hasta dar con la línea que lo explica.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Las mangueras 1 y 2 de cada programa (clase 04).
+> - `tail -f` para seguir un archivo en directo (clase 03) y la cadena top-N para contar (clase 05).
+> - `miapp` y nginx funcionando como servicios en tu VM (clases 10 y 12).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **journal**: el registro central de systemd; se lee con `journalctl`.
+> - **gravedad** (o prioridad): cómo de importante es un mensaje (`err`, `warning`, `info`…).
+> - **rotación**: renombrar, comprimir y borrar los logs viejos.
+> - **rsyslog**: el programa que copia el journal en archivos de texto de `/var/log`.
+> - **log estructurado**: un log con campos que tienen nombre, como en JSON.
+
 ## Objetivo
 
 - Saber **dónde** están los logs de un servidor Linux y quién los escribe.
@@ -45,6 +57,8 @@ Tres caminos:
 
 Lo que un servicio escribe por sus **mangueras 1 y 2** (clase 04) acaba en el journal sin configurar nada. Por eso tu `miapp` de la clase 12 ya tiene logs. Docker y Kubernetes funcionan igual: **la app escribe por sus mangueras y la plataforma recoge**.
 
+**En resumen:** casi todo va al journal (`journalctl`); algunas apps, como nginx, escriben además sus propios archivos en `/var/log`.
+
 ### 2. La gravedad de cada mensaje
 
 Cada línea del journal lleva una etiqueta de gravedad. Las tres que más usarás:
@@ -56,6 +70,8 @@ Cada línea del journal lleva una etiqueta de gravedad. Las tres que más usará
 | **info** (6) | información normal |
 
 Por encima de `err` están `crit`, `alert` y `emerg` (el sistema está en peligro), y por debajo de `info`, `debug` (detalle para depurar). Al filtrar, `journalctl -p err` te enseña `err` **y todo lo más grave**.
+
+**En resumen:** `-p err` te enseña los errores y todo lo más grave.
 
 ### 3. Buscar en el journal: cuatro filtros
 
@@ -70,9 +86,13 @@ journalctl -u nginx -f                  # en DIRECTO, como tail -f (Ctrl+C para 
 
 Combinados: `journalctl -u nginx -p err --since "1 hour ago"` son «los errores de nginx de la última hora». Añade `-n 20` para ver solo las 20 últimas líneas y `--no-pager` para que no se abra el visor.
 
+**En resumen:** estrecha con `-u` (qué servicio), `--since` (desde cuándo) y `-p` (qué gravedad).
+
 ### 4. La rotación: que los logs no llenen el disco
 
 Los logs crecen sin parar. `logrotate`, cada día o cada semana, renombra `access.log` → `access.log.1`, comprime los viejos (`.gz`) y borra los más antiguos. Su configuración está en `/etc/logrotate.d/`. Para leer un log comprimido sin descomprimirlo: `zcat`, `zgrep` y `zless` (clase 03).
+
+**En resumen:** logrotate renombra, comprime y borra los logs viejos para que no llenen el disco.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -117,6 +137,8 @@ journalctl --disk-usage
 journalctl -n 20 --no-pager
 ```
 
+👀 **Qué deberías ver:** los archivos de `/var/log` con su tamaño; `access.log` y `error.log` de nginx; cuánto ocupa el journal; y sus 20 últimas líneas.
+
 ### 2. Tus servicios en el journal
 
 ```bash
@@ -124,6 +146,8 @@ journalctl -u miapp -n 20 --no-pager
 journalctl -u nginx --since "1 hour ago" --no-pager
 journalctl -b -p warning --no-pager | tail -20
 ```
+
+👀 **Qué deberías ver:** las líneas de arranque de `miapp`; lo que ha dicho nginx en la última hora (quizá nada: `-- No entries --`); y los avisos desde que encendiste la VM.
 
 ### 3. Generar tráfico y seguirlo en directo
 
@@ -149,6 +173,8 @@ sudo awk '{print $9}' /var/log/nginx/access.log | sort | uniq -c | sort -rn
 sudo grep " 404 " /var/log/nginx/access.log | tail -3
 ```
 
+👀 **Qué deberías ver:** un `200` y unos 21 `404` (la página que no existe y las 20 `pagina-N`), y las tres últimas líneas con 404.
+
 ### 4. Intentos de login fallidos
 
 Desde **tu PC**, intenta entrar con usuarios que no existen (es tu propia VM, es seguro):
@@ -173,6 +199,8 @@ logger -p user.warning "Prueba de aviso desde la clase 13"
 journalctl -n 3 --no-pager
 journalctl -p warning --since "1 min ago" --no-pager
 ```
+
+👀 **Qué deberías ver:** tu mensaje `Prueba de aviso desde la clase 13` entre las últimas líneas, y también entre los avisos.
 
 En un script, `logger` es la forma correcta de dejar rastro de lo que hace.
 
@@ -216,6 +244,8 @@ sudo nginx -t && sudo systemctl restart nginx
 ```
 
 **2. ¿Qué pasó en el arranque anterior?**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 ```bash
 sudo reboot
 ```
@@ -229,48 +259,90 @@ Si `-b -1` dice que no hay datos, el journal de esta VM **no es persistente** y 
 
 ## Reto
 
-En la VM. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** Muestra **solo** los errores de nginx de la última hora.
+
+> 🧩 **Ejemplo resuelto:** los avisos de `miapp` de las dos últimas horas.
+> ```bash
+> journalctl -u miapp -p warning --since "2 hours ago" --no-pager
+> ```
+> Tres filtros juntos: el servicio (`-u`), la gravedad (`-p`) y desde cuándo (`--since`).
+
+**Ahora tú, con huecos:** `journalctl -u ____ -p ____ --since "1 hour ago" --no-pager`
 
 <details>
 <summary>Pista</summary>
 
-Los tres filtros de la pieza 3 juntos: el servicio (`-u`), la gravedad (`-p err`) y el tiempo (`--since "1 hour ago"`).
+Cambia el servicio y la gravedad: la de los errores está en la pieza 2.
 </details>
 
 **2.** ¿Cuántas veces se ha usado `sudo` hoy en la VM?
 
+> 🧩 **Ejemplo resuelto:** ¿cuántas líneas ha escrito `miapp` hoy?
+> ```bash
+> journalctl -u miapp --since today --no-pager | wc -l
+> ```
+> `--since today` filtra desde medianoche y `wc -l` cuenta las líneas.
+
+**Ahora tú, con huecos:** `journalctl _COMM=sudo --since today --no-pager | grep -c ____`
+
 <details>
 <summary>Pista</summary>
 
-`journalctl _COMM=sudo --since today` enseña las líneas de `sudo`. Cada uso deja una línea con `COMMAND=`: cuéntalas con `grep -c COMMAND`.
+Cada uso de `sudo` deja una línea con la palabra `COMMAND=`. Cuenta solo esas, no todas.
 </details>
 
 **3.** Haz que `miapp` escriba un mensaje en el journal al arrancar: añade con un drop-in `ExecStartPre=/bin/echo "miapp arrancando en el puerto 8080"`, reinicia y encuéntralo.
 
+> 🧩 **Ejemplo resuelto:** el drop-in del reto 1 de la clase 12.
+> ```bash
+> sudo systemctl edit miapp
+> #   [Service]
+> #   RestartSec=10
+> ```
+> El mismo mecanismo: en la sección `[Service]` de un drop-in caben varias líneas.
+
+**Ahora tú, con huecos:**
+```bash
+sudo systemctl edit miapp
+#   [Service]
+#   ____=/bin/echo "miapp arrancando en el puerto 8080"
+sudo systemctl restart miapp
+journalctl -u miapp -n 5 --no-pager
+```
+
 <details>
 <summary>Pista</summary>
 
-`sudo systemctl edit miapp`, como en el reto 1 de la clase 12: `[Service]` y debajo la línea `ExecStartPre=…`. Después `sudo systemctl restart miapp` y `journalctl -u miapp -n 5`.
+El nombre de la línea está en el enunciado: es lo que se ejecuta **antes** (*pre*) de arrancar.
 </details>
 
 **4.** (El más difícil.) ¿Qué IP ha intentado entrar por SSH más veces?
 
+> 🧩 **Ejemplo resuelto:** sacar el último trozo de una línea, y el penúltimo.
+> ```bash
+> echo "uno dos tres cuatro" | awk '{print $NF}'
+> echo "uno dos tres cuatro" | awk '{print $(NF-1)}'
+> ```
+> En `awk`, `NF` es el número de trozos de la línea: `$NF` es el último (`cuatro`) y `$(NF-1)`, el penúltimo (`tres`).
+
+**Ahora tú, con huecos:** `sudo journalctl -u ssh --no-pager | grep "Invalid user" | awk '{print $(NF-____)}' | sort | uniq -c | sort -rn | head -3`
+
 <details>
 <summary>Pista</summary>
 
-Primero mira una línea real: `sudo journalctl -u ssh --no-pager | grep "Invalid user" | tail -1`. Termina en `… from 10.x.x.x port 51234`: la IP es la **tercera palabra empezando por el final**. En `awk`, `NF` es el número de trozos de la línea, así que `$(NF-2)` es el antepenúltimo. Con eso, la cadena top-N de la clase 05.
+Mira una línea real: `… from 10.x.x.x port 51234`. Contando desde el final, la IP es la tercera palabra: el último es `$NF`, el penúltimo `$(NF-1)`, el antepenúltimo…
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-13.md`:
 
-1. ¿Qué diferencia hay entre el journal de systemd y los archivos de `/var/log`? ¿Cómo llegan ahí los logs de tu `miapp`?
-2. La web dio errores ayer entre las 14:00 y las 14:30. Escribe los comandos para investigarlo con journal y con el log de nginx.
-3. ¿Por qué en la nube los logs se envían fuera del servidor (CloudWatch Logs)? Da dos razones.
-4. **Repaso (clase 12, sin mirar):** ¿qué diferencia hay entre `systemctl start` y `enable`?
+1. ¿Qué diferencia hay entre el journal de systemd y los archivos de `/var/log`? ¿Cómo llegan ahí los logs de tu `miapp`? *(3 líneas. Empieza así: «El journal guarda… y se lee con… Los archivos de `/var/log`… Los logs de miapp llegan porque…»)*
+2. La web dio errores ayer entre las 14:00 y las 14:30. Escribe los comandos para investigarlo con journal y con el log de nginx. *(2–3 comandos, con una línea de explicación cada uno. Empieza así: `journalctl -u nginx --since "AAAA-MM-DD 14:00" --until …`)*
+3. ¿Por qué en la nube los logs se envían fuera del servidor (CloudWatch Logs)? Da dos razones. *(2 líneas. Empieza así: «Primera: si la instancia muere o se reinicia… Segunda: con muchas instancias…»)*
+4. **Repaso (clase 12, sin mirar):** ¿qué diferencia hay entre `systemctl start` y `enable`? *(1–2 líneas. Empieza así: «`start` lo arranca ahora; `enable`…»)*
 
 Después, escríbeme `examíname clase-13`.
 

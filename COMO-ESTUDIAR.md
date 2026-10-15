@@ -47,15 +47,17 @@ Si una clase dura 90 minutos o más, o es de VM (arrancar la máquina y retomar 
 | Sección | Para qué |
 |---------|----------|
 | 💡 **La idea de hoy** | La clase en dos frases y con una imagen cotidiana. Léela antes de empezar: es el gancho del que cuelga todo lo demás |
+| 📚 **Lo que ya sabes** | Las 2 o 3 cosas de clases anteriores que vas a usar hoy. Si alguna no te suena, repásala antes de seguir |
+| 🔤 **Palabras nuevas** | Los términos nuevos de la clase, cada uno en una línea sencilla, para que la jerga no te frene |
 | **Objetivo** | Lo que sabrás hacer al terminar |
 | **Por qué importa** | Dónde lo usarás en Cloud/DevOps y en AWS |
-| **Teoría** | Lo justo para entender la práctica, en piezas cortas y en orden: cada una se apoya en la anterior |
+| **Teoría** | Lo justo para entender la práctica, en piezas cortas y en orden: cada una se apoya en la anterior y termina con un **En resumen** de una línea |
 | **✋ Antes de practicar** | Tres preguntas rápidas, sin mirar, para comprobar que tienes la base. Si fallas una, relee esa pieza |
 | **Tu chuleta** | Todos los comandos de la clase en una tabla. Para consultar mientras practicas, no para memorizarla de golpe |
-| **Práctica guiada** | Comandos paso a paso. Antes de los importantes verás 🔮 **Predice**: piensa (o escribe) qué crees que pasará *antes* de ejecutarlo |
+| **Práctica guiada** | Comandos paso a paso. Antes de los importantes verás 🔮 **Predice**: piensa (o escribe) qué crees que pasará *antes* de ejecutarlo. Detrás, 👀 **Qué deberías ver**, para saber que vas bien |
 | **Rómpelo** | Provocas un fallo y lo diagnosticas. Es la parte que más enseña |
-| **Reto** | Un problema sin guía, para comprobar que lo entendiste y no solo lo seguiste. Se hace **en la terminal**: en tus notas solo marcas cada punto con ✅ o ❌ y apuntas el que te costó, sin copiar los comandos |
-| **Cierre** | 3 preguntas de esta clase + 1 de repaso de una clase anterior |
+| **Reto** | Un problema para comprobar que lo entendiste y no solo lo seguiste. Cada punto sube en tres escalones: 🧩 un **ejemplo resuelto** parecido, el mismo reto **con huecos** (`____`) y una **pista** escondida. Se hace **en la terminal**: en tus notas solo marcas cada punto con ✅ o ❌ |
+| **Cierre** | 3 preguntas de esta clase + 1 de repaso de una clase anterior. Cada una dice cuánto escribir y cómo empezar la frase |
 | **Autocorrección** | Las respuestas, escondidas. Ábrelas **después** de escribir las tuyas |
 | **Inglés** | Vocabulario y una frase de entrevista |
 

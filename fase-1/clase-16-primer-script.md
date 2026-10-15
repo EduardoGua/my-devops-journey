@@ -4,6 +4,18 @@
 
 > 💡 **La idea de hoy:** un script es una **receta escrita**: los mismos comandos que escribirías a mano, guardados en un archivo para que se ejecuten igual cada vez. Recibe ingredientes (los **argumentos** `$1`, `$2`…), entrega el resultado por stdout, las quejas por stderr y, al terminar, un **código de salida** que dice si salió bien.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Crear un archivo con un *heredoc*: `cat > archivo <<'EOF'` … `EOF` (clase 07).
+> - El permiso `x` para ejecutar (clase 06) y la nota de salida, `$?` (clase 04).
+> - Las variables, `${VAR:-defecto}` y las comillas dobles (clase 07).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **script**: un archivo con comandos que se ejecutan en orden.
+> - **shebang** (`#!`): la primera línea, que dice qué programa interpreta el archivo.
+> - **argumento**: lo que escribes detrás del nombre del script (`$1`, `$2`…).
+> - **expansión de parámetros**: las «tijeras» de bash para recortar el texto de una variable.
+> - **código de salida propio**: la nota que tu script deja con `exit N`.
+
 ## Objetivo
 
 - Escribir un script ejecutable: el *shebang*, el permiso `x` y las tres formas de lanzarlo.
@@ -36,6 +48,8 @@ El **shebang** (`#!`) tiene que ser la **primera línea**, desde el primer cará
 
 > 🔁 **Vuelve a la clase 01.** En el paso 4 de «Qué pasa cuando pulsas Enter», el kernel ejecuta un programa. Un programa compilado, como `ls`, sabe ejecutarlo directamente. Un script, en cambio, es solo texto: el `#!` es la nota que le dice al kernel a qué programa pasárselo. Y si el archivo no tiene `x` (clase 06), el kernel se niega justo en ese paso: `Permiso denegado`.
 
+**En resumen:** un script es un archivo de texto con `#!/bin/bash` en la primera línea y permiso `x`.
+
 ### 2. Tres formas de lanzarlo
 
 | Forma | ¿Necesita `x`? | ¿Usa el shebang? | ¿Dónde corre? |
@@ -45,6 +59,8 @@ El **shebang** (`#!`) tiene que ser la **primera línea**, desde el primer cará
 | `source hola.sh` | no | no | **en tu shell actual** (clase 07) |
 
 Lo normal es `./hola.sh`. `source` solo se usa para cargar variables o funciones en tu propio shell, como viste en la clase 07.
+
+**En resumen:** `./script` y `bash script` corren en un hijo; `source script`, en tu propio shell.
 
 ### 3. Los ingredientes: los argumentos
 
@@ -62,6 +78,8 @@ Lo que escribes detrás del nombre del script le llega numerado:
 | `"$@"` | todos, **cada uno por separado**, aunque tengan espacios. Siempre entre comillas |
 | `$0` | el nombre con el que se llamó al script |
 
+**En resumen:** `$1`, `$2`… son los argumentos; `$#`, cuántos llegaron; `"$@"`, todos.
+
 ### 4. Valores por defecto y argumentos obligatorios
 
 Dos formas de escribir una variable que usarás en casi todos tus scripts:
@@ -72,6 +90,8 @@ RUTA="${1:?Uso: $0 <ruta>}"       # si no me das $1, me quejo y termino con erro
 ```
 
 `:-` significa «**o, si no hay**»; `:?`, «**y si no hay, error**». La segunda es la forma más corta de declarar un argumento obligatorio: el script se para antes de hacer nada.
+
+**En resumen:** `${1:-defecto}` pone un valor si falta; `${1:?mensaje}` para el script si falta.
 
 ### 5. Las tijeras: recortar texto sin otros programas
 
@@ -92,6 +112,8 @@ Y con `ARCHIVO="backup-2026-10-12.tar.gz"`, la diferencia entre uno y dos símbo
 
 Cómo recordarlo: en el teclado, `#` está a la **izquierda** de `$` (corta por delante) y `%` a la **derecha** (corta por detrás). **Un** símbolo corta lo mínimo; **dos**, lo máximo. Y `${#ARCHIVO}`, con el `#` delante del nombre, no recorta: cuenta las letras (`24`).
 
+**En resumen:** `#` corta por delante y `%` por detrás; uno corta lo mínimo y dos, lo máximo.
+
 ### 6. Datos, mensajes y la nota de salida
 
 Tu script tiene las mismas dos mangueras y la misma nota que cualquier programa (clase 04):
@@ -103,6 +125,8 @@ exit 2                           # la nota: 0 = bien, 1 = fallo, 2 = uso incorre
 ```
 
 `>&2` significa «manda esto por la manguera 2». Así, si alguien hace `./script.sh > datos.txt`, los errores siguen saliendo en pantalla y no ensucian los datos.
+
+**En resumen:** datos por la 1, mensajes por la 2 (`>&2`) y una nota al salir (`exit N`).
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -156,6 +180,12 @@ chmod +x hola.sh
 bash hola.sh Ana
 ```
 
+<details>
+<summary>Qué deberías ver</summary>
+
+`Permiso denegado` en el primer intento; después del `chmod`, `Hola, mundo…`, `Hola, Eduardo…` y `Hola, Ana…`, con la fecha y el nombre de tu equipo.
+</details>
+
 El primer intento da `Permiso denegado`: el archivo aún no tenía `x` (clase 06).
 
 ### 2. Argumentos y `"$@"`
@@ -181,6 +211,12 @@ chmod +x args.sh
 ./args.sh
 ```
 
+<details>
+<summary>Qué deberías ver</summary>
+
+2 argumentos; otra vez 2 (con `[mi informe.txt]` entero, en una sola línea); y 0 argumentos, con `<ninguno>` y `→ []`.
+</details>
+
 Las comillas al llamar al script deciden qué es **un** argumento: `"mi informe.txt"` llega como uno solo. Sin argumentos, `printf` usa su formato una vez con el hueco vacío, y por eso ves `→ []`.
 
 ### 3. Recortar texto con la expansión de parámetros
@@ -199,6 +235,12 @@ echo "${ARCHIVO#*.}"
 echo "${ARCHIVO##*.}"
 echo "${#ARCHIVO}"
 ```
+
+<details>
+<summary>Qué deberías ver</summary>
+
+`ejemplo.com/salud`, `https://ejemplo.com`, `https:`, `ejemplo.com`, `backup-2026-10-12`, `tar.gz`, `gz` y `24`.
+</details>
 
 Sacar el host de una URL en dos pasos es justo lo que hará Vigía para medir el DNS (clase 35).
 
@@ -247,6 +289,12 @@ cat datos.txt
 ./avisa.sh 2>/dev/null
 ```
 
+<details>
+<summary>Qué deberías ver</summary>
+
+En el primero, solo el aviso en pantalla y `código: 3`; en `datos.txt`, `dato útil`; y en el último, solo `dato útil`.
+</details>
+
 ### 6. Ver el script por dentro con `bash -x`
 
 ```bash
@@ -264,6 +312,8 @@ NOMBRE = Eduardo
 `NOMBRE: no se encontró la orden` (dentro de un script: `NOMBRE: orden no encontrada`). Bash entiende "ejecuta el programa `NOMBRE` con los argumentos `=` y `Eduardo`". En una asignación no puede haber espacios: `NOMBRE=Eduardo`.
 
 **2. `$@` sin comillas:**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 ```bash
 cat > sin-comillas.sh <<'EOF'
 #!/bin/bash
@@ -304,48 +354,117 @@ chmod +x typo.sh && ./typo.sh
 
 ## Reto
 
-En `labs/clase-16/`. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En `labs/clase-16/`. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** Ejecuta `./tamano.sh /no-existe; echo $?` y explica en tus notas por qué ese resultado es un problema.
+
+> 🧩 **Ejemplo resuelto:** ¿qué nota deja `ls` cuando le pides algo que no existe?
+> ```bash
+> ls /no-existe; echo $?
+> ```
+> Deja `2`: avisa de que falló, así que un script que use `ls` puede enterarse.
+
+**Ahora tú, con huecos:** `./tamano.sh /no-existe deja la nota ____, que significa «todo fue ____», aunque la ruta no existe.`
 
 <details>
 <summary>Pista</summary>
 
-¿Qué nota deja? ¿Qué pensaría cron, o un pipeline de CI, al verla?
+¿Qué pensaría cron, o un pipeline de CI, al ver esa nota?
 </details>
 
 **2.** Escribe `extension.sh <archivo>`, que imprima el nombre sin extensión y la extensión, usando solo las tijeras (sin `cut`): `./extension.sh informe.final.pdf` → `nombre: informe.final · extensión: pdf`.
 
+> 🧩 **Ejemplo resuelto:** solo la extensión de `foto.vacaciones.jpg`.
+> ```bash
+> F=foto.vacaciones.jpg
+> echo "${F##*.}"
+> ```
+> `##*.` corta por delante lo máximo, hasta el **último** punto: queda `jpg`.
+
+**Ahora tú, con huecos:**
+```bash
+cat > extension.sh <<'EOF'
+#!/bin/bash
+ARCHIVO="${1:?Uso: $0 <archivo>}"
+echo "nombre: ${ARCHIVO____} · extensión: ${ARCHIVO##*.}"
+EOF
+chmod +x extension.sh
+./extension.sh informe.final.pdf
+```
+
 <details>
 <summary>Pista</summary>
 
-Pieza 5 de la teoría. El nombre es cortar por **detrás** lo mínimo, desde el último punto (`%.*`). La extensión es cortar por **delante** lo máximo, hasta el último punto (`##*.`).
+Para el nombre, corta por **detrás** lo mínimo, desde el último punto: `%` y el patrón `.*`.
 </details>
 
 **3.** Haz que `tamano.sh` acepte un segundo argumento **opcional**: la etiqueta que se muestra. `./tamano.sh ~/Descargas "Mis descargas"` → `Mis descargas ocupa 1,2G`. Sin segundo argumento, muestra la ruta como hasta ahora.
 
+> 🧩 **Ejemplo resuelto:** una variable que, si está vacía, toma el valor de otra.
+> ```bash
+> NOMBRE=""
+> SALUDO="${NOMBRE:-$USER}"
+> echo "$SALUDO"
+> ```
+> Como `NOMBRE` está vacía, `SALUDO` toma el valor de `$USER`: imprime `educo`.
+
+**Ahora tú, con huecos:**
+```bash
+ETIQUETA="${2:-____}"
+echo "$____ ocupa ${TAMANO:-?}"
+```
+
 <details>
 <summary>Pista</summary>
 
-Una variable nueva con un valor por defecto de la pieza 4: `ETIQUETA="${2:-…}"`. Si no llega un segundo argumento, ¿qué quieres mostrar en su lugar?
+Si no llega un segundo argumento, ¿qué querías mostrar hasta ahora? La variable que guarda la ruta. Y el `echo` tiene que usar la nueva variable.
 </details>
 
 **4.** Escribe `info.sh`, que imprima en cuatro líneas el nombre del equipo, la versión del kernel (`uname -r`), cuánto tiempo lleva encendido (`uptime -p`) y el porcentaje de uso del disco `/` (`df --output=pcent / | tail -1`). Guarda cada valor en una variable antes de imprimirlo.
 
+> 🧩 **Ejemplo resuelto:** un script con dos datos.
+> ```bash
+> cat > mini-info.sh <<'EOF'
+> #!/bin/bash
+> HOST="$(hostname)"
+> USUARIO="$(whoami)"
+> echo "Equipo:  $HOST"
+> echo "Usuario: $USUARIO"
+> EOF
+> chmod +x mini-info.sh && ./mini-info.sh
+> ```
+> Cada dato se guarda en su variable con `$( )` y después se imprime.
+
+**Ahora tú, con huecos:**
+```bash
+cat > info.sh <<'EOF'
+#!/bin/bash
+HOST="$(hostname)"
+KERNEL="$(____)"
+ENCENDIDO="$(____)"
+DISCO="$(df --output=pcent / | tail -1)"
+echo "Equipo:    $HOST"
+echo "Kernel:    $KERNEL"
+echo "Encendido: $ENCENDIDO"
+echo "Disco /:   $DISCO usado"
+EOF
+chmod +x info.sh && ./info.sh
+```
+
 <details>
 <summary>Pista</summary>
 
-Cada valor en su variable con `$( )`: `KERNEL="$(uname -r)"`. Después, cuatro `echo`. Crea el archivo con un *heredoc*, como en la clase 07.
+Los dos comandos que faltan están en el enunciado.
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-16.md`:
 
-1. ¿Qué es el shebang? ¿Qué pasa si lo olvidas y el script lo lanza `cron`, que usa `/bin/sh`?
-2. ¿Qué diferencia hay entre `"$@"` y `$@`? ¿Cuándo se nota?
-3. ¿Por qué los mensajes de error van a stderr y los datos a stdout?
-4. **Repaso (clase 15, sin mirar):** ¿qué guardas en `~/.ssh/config` y qué te ahorra?
+1. ¿Qué es el shebang? ¿Qué pasa si lo olvidas y el script lo lanza `cron`, que usa `/bin/sh`? *(2–3 líneas. Empieza así: «El shebang es la primera línea… Si lo olvido, cron lo ejecuta con `sh`, y falla en…»)*
+2. ¿Qué diferencia hay entre `"$@"` y `$@`? ¿Cuándo se nota? *(2 líneas. Empieza así: «`"$@"` entrega cada argumento…; `$@` sin comillas… Se nota cuando un argumento tiene…»)*
+3. ¿Por qué los mensajes de error van a stderr y los datos a stdout? *(2 líneas. Empieza así: «Para que los datos se puedan… sin que se cuele… Los errores siguen…»)*
+4. **Repaso (clase 15, sin mirar):** ¿qué guardas en `~/.ssh/config` y qué te ahorra? *(2 líneas. Empieza así: «Guardo bloques `Host` con… Me ahorra escribir…»)*
 
 Después, escríbeme `examíname clase-16`.
 

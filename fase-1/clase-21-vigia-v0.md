@@ -4,6 +4,18 @@
 
 > 💡 **La idea de hoy:** juntas todo el bloque C en una herramienta de verdad: un script que revisa tus webs, anota cada resultado y se ejecuta solo. La meta no es un script perfecto, sino uno **probado**: que aguante los casos difíciles y que sepas explicar en una entrevista.
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - `curl -s -o /dev/null -w '%{http_code}'` y tu `revisar-url.sh` (clase 17).
+> - Leer una lista línea a línea con `while read`, saltando vacías y comentarios (clase 18).
+> - La plantilla con `set -euo pipefail` y los fallos que esperas (clase 19), y cron con rutas absolutas (clase 20).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **monitor de disponibilidad** (*uptime monitor*): un programa que comprueba cada poco si unas webs responden.
+> - **UP / DOWN**: la web respondió bien / no respondió o respondió con error.
+> - **tiempo de respuesta** (latencia): cuánto tardó la web en contestar.
+> - **etiqueta** (*tag*) de Git: un nombre fijo para una versión, como `v0`.
+> - **entregable**: lo que tiene que quedar hecho para dar la versión por cerrada.
+
 ## Qué es Vigía
 
 **Vigía** es un monitor de disponibilidad de sitios web: revisa una lista de URLs cada pocos minutos, guarda si respondieron y cuánto tardaron, y avisa cuando algo se cae. Es tu proyecto de portafolio y **crece en cada fase** de la Ruta 2.0:
@@ -104,6 +116,46 @@ URLS="${1:-$DIR/urls.txt}"
 <details><summary>Pista 5 — si quieres hacer cuentas con los tiempos</summary>
 
 La v0 no lo necesita, pero si calculas medias con `awk`, ojo: tu Ubuntu está en español, y `awk` lee `0.261` como `0` porque espera una coma decimal. Pruébalo: `echo 0.261 | awk '{print $1 * 1000}'` frente a `echo 0.261 | LC_ALL=C awk '{print $1 * 1000}'`. En scripts que hacen cuentas con decimales, usa `LC_ALL=C`.
+</details>
+
+<details><summary>Pista 6 — el esqueleto con huecos (ábrela solo si las anteriores no bastan)</summary>
+
+La forma completa de `vigia.sh`, con ocho huecos. Cada hueco usa algo de las clases 16 a 20:
+
+```bash
+#!/bin/bash
+# vigia.sh — revisa una lista de URLs y registra código HTTP, tiempo y estado
+# Uso: vigia.sh [archivo-de-urls]     (por defecto, urls.txt junto al script)
+set -euo pipefail
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+URLS="${1:-$DIR/____}"                       # la lista por defecto (pista 4)
+LOG="${VIGIA_LOG:-$HOME/____}"               # el log por defecto (requisito R7)
+TIMEOUT=10
+
+revisar() {   # revisar <url> → escribe una línea en el log; devuelve 1 si está caída
+  local url="$1" resultado codigo tiempo estado
+  resultado="$(curl -s -o /dev/null -w '%{http_code} %{time_total}' --max-time "$TIMEOUT" "$url")" || ____
+  read -r codigo tiempo <<< "$resultado"
+  if [[ $codigo == [23]* ]]; then estado=UP; else estado=____; fi
+  echo "$(date -Is) $url $codigo $tiempo $estado" >> "$LOG"
+  [[ $estado == UP ]]
+}
+
+main() {
+  [[ -r $URLS ]] || { echo "Error: no puedo leer $URLS" >&2; exit ____; }
+  local url caidas=0
+  while read -r url || [[ -n $url ]]; do
+    [[ -z $url || $url == \#* ]] && continue
+    revisar "$url" || caidas=$(( caidas ____ 1 ))
+  done < "$URLS"
+  (( caidas == ____ ))
+}
+
+____ "$@"
+```
+
+Si después de rellenarlo algo no te queda claro, la solución de referencia de la autocorrección lo explica línea a línea.
 </details>
 
 ## Rómpelo: pruébalo antes de darlo por bueno
@@ -211,10 +263,10 @@ Una **etiqueta** (*tag*) es un nombre fijo para un commit: la rama `main` avanza
 
 En `notas/fase-1/clase-21.md`:
 
-1. ¿Qué hace tu script cuando una URL no resuelve? ¿Por qué no se detiene, a pesar de `set -e`?
-2. ¿Qué diferencia hay entre "el script terminó bien" y "todos los sitios están bien"? ¿Cómo lo refleja tu código de salida?
-3. Nombra tres limitaciones de la v0 y qué versión futura de Vigía resuelve cada una (mira la tabla del principio).
-4. **Repaso (clase 20, sin mirar):** ¿por qué un `%` puede romper una línea de crontab sin dejar rastro en tu log?
+1. ¿Qué hace tu script cuando una URL no resuelve? ¿Por qué no se detiene, a pesar de `set -e`? *(2–3 líneas. Empieza así: «`curl` no recibe respuesta, imprime `000` y devuelve… El `|| true`… y la llamada a `revisar` está a la izquierda de un `||`, donde…»)*
+2. ¿Qué diferencia hay entre "el script terminó bien" y "todos los sitios están bien"? ¿Cómo lo refleja tu código de salida? *(3 líneas. Empieza así: «Que el script termine bien significa que… Que los sitios estén bien es… Por eso uso tres códigos: 0…, 1… y 2…»)*
+3. Nombra tres limitaciones de la v0 y qué versión futura de Vigía resuelve cada una (mira la tabla del principio). *(3 líneas, una por limitación. Empieza así: «1. Solo funciona con mi portátil encendido: lo resuelve la v… 2. … 3. …»)*
+4. **Repaso (clase 20, sin mirar):** ¿por qué un `%` puede romper una línea de crontab sin dejar rastro en tu log? *(2 líneas. Empieza así: «Cron convierte el `%` en… y corta el comando, así que la redirección al log…»)*
 
 Después, escríbeme `examíname clase-21`: además del cierre, reviso tu `vigia.sh` y tu README como lo haría quien te entreviste.
 

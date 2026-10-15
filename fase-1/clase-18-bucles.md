@@ -4,6 +4,18 @@
 
 > 💡 **La idea de hoy:** un bucle es decir «**haz esto con cada uno**»: con cada servidor de una lista, con cada archivo o con cada línea de un archivo. Y en operaciones hay una variante imprescindible: «**reinténtalo, pero no para siempre**».
 
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Los comodines, como `*.log` (clase 03).
+> - `if`, `[[ ]]`, la nota de salida y `$(( ))` para hacer cuentas (clase 17).
+> - Tu `revisar-url.sh` (clase 17) y lanzar algo en segundo plano con `&` (clase 11).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **bucle**: repetir algo con cada elemento, o mientras se cumpla algo.
+> - **vuelta** (iteración): cada pasada del bucle, con un elemento distinto.
+> - **reintento con límite**: volver a probar algo, pero solo N veces.
+> - **subshell**: un shell hijo; en un pipe, cada parte corre en uno.
+> - **backoff**: esperar cada vez más entre reintentos.
+
 ## Objetivo
 
 - Repetir una acción sobre una lista, sobre archivos o con un contador.
@@ -44,6 +56,8 @@ for (( i = 1; i <= 5; i++ )); do echo "intento $i"; done   # i vale 1, 2, 3, 4 y
 for i in {1..5}; do echo "intento $i"; done                # lo mismo, si el límite es fijo
 ```
 
+**En resumen:** `for X in lista` hace algo con cada elemento: palabras, archivos o números.
+
 ### 2. `while`: mientras pase algo
 
 `while` repite **mientras** un comando deje nota 0, igual que `if` decide con la nota (clase 17):
@@ -57,6 +71,8 @@ done
 `curl -f` (*fail*) hace que una respuesta de error de la web (un 404 o un 500) cuente como fallo; sin `-f`, `curl` solo falla si no puede conectar.
 
 Ese ejemplo tiene un problema grave: si el servicio no arranca nunca, **espera para siempre**. Todo bucle de espera necesita un **límite** de intentos: lo construirás en la práctica 5.
+
+**En resumen:** `while` repite mientras el comando salga bien. Ponle siempre un límite.
 
 ### 3. Leer un archivo línea a línea
 
@@ -83,9 +99,13 @@ Pieza a pieza:
 
 (`read` recorta los espacios del principio y del final de cada línea: es lo que quieres para una lista de URLs. Si algún día necesitas la línea **exacta**, usa `IFS= read -r LINEA`).
 
+**En resumen:** `while read -r L … done < archivo` hace algo con cada línea, saltándose las vacías y los comentarios.
+
 ### 4. ¿Bucle o `awk`?
 
 Para **analizar texto** (contar, filtrar, sumar columnas), la cadena de montaje de la clase 05 es mucho más rápida. Usa un bucle cuando tengas que **hacer algo** con cada elemento: lanzar una petición, comprimir un archivo o conectarte a un servidor.
+
+**En resumen:** para contar o filtrar, la cadena de montaje; para **hacer algo** con cada elemento, un bucle.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -126,6 +146,8 @@ for F in /etc/*.conf; do echo "$F"; done | head -5
 for (( i = 3; i > 0; i-- )); do echo "$i…"; sleep 1; done; echo "¡despegue!"
 ```
 
+👀 **Qué deberías ver:** `ping a web-01`, `web-02` y `db-01`; cinco archivos `.conf` de `/etc`; y la cuenta atrás 3, 2, 1 con `¡despegue!`.
+
 ### 2. Un archivo de configuración
 
 ```bash
@@ -140,6 +162,8 @@ EOF
 printf 'https://github.com' >> urls.txt
 cat -A urls.txt
 ```
+
+👀 **Qué deberías ver:** cada línea termina en `$`, menos la última (`https://github.com`): no tiene salto de línea.
 
 `cat -A` muestra los finales de línea como `$`. La última línea (`github.com`) **no** tiene `$`: no termina en salto de línea. Pasa a menudo con archivos editados a mano.
 
@@ -167,6 +191,12 @@ chmod +x leer.sh
 ./leer.sh urls.txt
 ```
 
+<details>
+<summary>Qué deberías ver</summary>
+
+4 URLs numeradas de 1 a 4, con Wikipedia **sin** los espacios de delante y GitHub incluida, y `Total: 4 URLs`.
+</details>
+
 ### 4. Bucle + la clase 17
 
 ```bash
@@ -175,6 +205,8 @@ while read -r URL || [[ -n $URL ]]; do
   ../clase-17/revisar-url.sh "$URL"
 done < urls.txt
 ```
+
+👀 **Qué deberías ver:** una línea `UP` o `DOWN` por URL: `no-existe.invalid` sale `DOWN 000`.
 
 Esto ya se parece mucho a Vigía. En la clase 21 le añadirás el tiempo de respuesta, un log, robustez y cron.
 
@@ -207,6 +239,12 @@ Primero contra algo que no existe. 🔮 **Predice:** ¿cuánto tardará y qué c
 ./esperar-url.sh http://localhost:8018 3 ; echo "código: $?"
 ```
 
+<details>
+<summary>Qué deberías ver</summary>
+
+Tres intentos fallidos, unos 6 segundos en total, `ERROR: … no respondió tras 3 intentos` y `código: 1`.
+</details>
+
 Ahora un servidor que "tarda en arrancar": lo lanzas en segundo plano con 5 segundos de retraso (clase 11) y esperas por él.
 
 ```bash
@@ -214,6 +252,8 @@ Ahora un servidor que "tarda en arrancar": lo lanzas en segundo plano con 5 segu
 ./esperar-url.sh http://localhost:8018 6 ; echo "código: $?"
 pkill -f "http.server 8018"
 ```
+
+👀 **Qué deberías ver:** unos intentos fallidos y después `OK: … responde (intento 4)`, con `código: 0`.
 
 `pkill -f` busca en la línea de comandos completa, así que encuentra el `python3` aunque lo hayas lanzado dentro de un paréntesis.
 
@@ -224,6 +264,8 @@ df -h --output=target,pcent | tail -n +2 | while read -r MONTAJE USO; do
   echo "$MONTAJE está al $USO"
 done
 ```
+
+👀 **Qué deberías ver:** una línea por disco, como `/ está al 58%`.
 
 `tail -n +2` salta la cabecera y `read` reparte cada línea en dos variables.
 
@@ -240,6 +282,8 @@ cd ..
 Con `$(ls)` salen tres elementos: `informe`, `final.txt` y `notas.txt`. El shell parte la salida de `ls` por los espacios. El comodín `*` no la parte.
 
 **2. La variable que se pierde:**
+
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 ```bash
 N=0
 cat urls.txt | while read -r L; do N=$(( N + 1 )); done
@@ -261,30 +305,99 @@ Imprime el patrón tal cual: si un comodín no coincide con nada, bash lo deja s
 
 ## Reto
 
-En `labs/clase-18/`. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En `labs/clase-18/`. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** Cambia `esperar-url.sh` para que la pausa crezca: 1, 2, 4, 8… segundos (*backoff exponencial*). ¿Por qué crees que los clientes de AWS reintentan así y no a intervalos fijos?
+
+> 🧩 **Ejemplo resuelto:** una variable que se duplica en cada vuelta.
+> ```bash
+> P=1
+> for i in 1 2 3 4; do echo "pausa: $P"; P=$(( P * 2 )); done
+> ```
+> Imprime `pausa: 1`, `2`, `4` y `8`: después de usarla, cada vuelta la multiplica por 2.
+
+**Ahora tú, con huecos:**
+```bash
+PAUSA=1
+for (( i = 1; i <= MAX; i++ )); do
+  if curl -fs -o /dev/null --max-time 2 "$URL"; then
+    echo "OK: $URL responde (intento $i)"
+    exit 0
+  fi
+  echo "intento $i/$MAX: espero $PAUSA s" >&2
+  sleep "$____"
+  PAUSA=$(( PAUSA * ____ ))
+done
+```
 
 <details>
 <summary>Pista</summary>
 
-Una variable `PAUSA=1` antes del bucle. Dentro, `sleep "$PAUSA"` y después `PAUSA=$(( PAUSA * 2 ))`. Para el porqué: imagina mil clientes reintentando a la vez contra un servicio que intenta recuperarse.
+Es el ejemplo dentro del bucle de `esperar-url.sh`. Para el porqué: imagina mil clientes reintentando a la vez contra un servicio que intenta recuperarse.
 </details>
 
 **2.** `comprimir-logs.sh <carpeta>`: comprime con `gzip` cada `*.log` de la carpeta que ocupe más de 1 KB e imprime qué hizo. Si no hay logs, no debe hacer nada raro. Prepara la prueba con `head -c 2000 /dev/urandom > grande.log` y `echo hola > pequeno.log`.
 
+> 🧩 **Ejemplo resuelto:** listar los `.log` de `/var/log` con su tamaño en bytes.
+> ```bash
+> for F in /var/log/*.log; do
+>   [[ -e $F ]] || continue
+>   echo "$F: $(stat -c %s "$F") bytes"
+> done
+> ```
+> `stat -c %s` da el tamaño en bytes, y `[[ -e $F ]] || continue` salta la vuelta si el comodín no encontró nada (el Rómpelo 4).
+
+**Ahora tú, con huecos:**
+```bash
+#!/bin/bash
+DIR="${1:?Uso: $0 <carpeta>}"
+for F in "$DIR"/*.log; do
+  [[ -e $F ]] || continue
+  if (( $(stat -c %s "$F") > ____ )); then
+    ____ "$F" && echo "comprimido: $F"
+  fi
+done
+```
+
 <details>
 <summary>Pista</summary>
 
-`for F in "$DIR"/*.log` (pieza 1). `stat -c %s archivo` da el tamaño en bytes: `if (( $(stat -c %s "$F") > 1024 ))`. Para el caso sin logs, el Rómpelo 4: `[[ -e $F ]] || continue`.
+1 KB son 1024 bytes. El comando que comprime un archivo lo viste en la clase 03.
 </details>
 
 **3.** `contar-codigos.sh <log>`: lee el log de la clase 05 (`~/my-devops-journey/recursos/clase-05/access.log`) línea a línea y cuenta cuántas respuestas son 2xx, 3xx, 4xx y 5xx.
 
+> 🧩 **Ejemplo resuelto:** contar cuántas peticiones del log son `POST`.
+> ```bash
+> LOG=~/my-devops-journey/recursos/clase-05/access.log
+> N=0
+> while read -r _ _ _ _ _ METODO _; do
+>   [[ $METODO == '"POST' ]] && N=$(( N + 1 ))
+> done < "$LOG"
+> echo "POST: $N"
+> ```
+> `read` reparte cada línea: cinco `_` para los trozos que no interesan, el sexto en `METODO` (lleva delante la comilla de la línea: `"POST`) y el resto en el último `_`. Sale `POST: 353`.
+
+**Ahora tú, con huecos:**
+```bash
+#!/bin/bash
+LOG="${1:?Uso: $0 <access.log>}"
+C2=0; C3=0; C4=0; C5=0
+while read -r _ _ _ _ _ _ _ _ CODIGO _; do
+  case "$CODIGO" in
+    2??) C2=$(( C2 + 1 )) ;;
+    3??) ____ ;;
+    4??) ____ ;;
+    5??) ____ ;;
+  esac
+done < "____"
+echo "2xx: $C2  3xx: $C3  4xx: $C4  5xx: $C5"
+```
+
 <details>
 <summary>Pista</summary>
 
-El bucle de la pieza 3, con `< "$LOG"` al final. `read -r _ _ _ _ _ _ _ _ CODIGO _` deja el trozo 9 en `CODIGO` (ocho `_` para los ocho primeros). Un `case` con `2??)`, `3??)`… (`?` es un carácter cualquiera, clase 03) y un contador por grupo: `C2=$(( C2 + 1 ))`. Empieza los cuatro contadores en 0.
+Las tres líneas que faltan son como la de `2??`, cada una con su contador. Y el bucle lee del archivo que llegó como argumento.
 </details>
 
 ➕ **Si te queda energía:** compara la velocidad de tu `contar-codigos.sh` con la cadena de montaje. Fabrica un log grande con `for i in {1..50}; do cat "$LOG"; done > grande.log` (106 000 líneas) y compara `time ./contar-codigos.sh grande.log` con `time awk '{print $9}' grande.log | sort | uniq -c`. ¿Qué concluyes?
@@ -293,10 +406,10 @@ El bucle de la pieza 3, con `< "$LOG"` al final. `read -r _ _ _ _ _ _ _ _ CODIGO
 
 En `notas/fase-1/clase-18.md`:
 
-1. ¿Por qué `for F in $(ls)` es un error? ¿Qué usas en su lugar?
-2. Explica cada parte de `while read -r URL || [[ -n $URL ]]; do … done < archivo`.
-3. ¿Por qué un contador dentro de `cmd | while …` vale 0 al terminar? ¿Cómo lo arreglas?
-4. **Repaso (clase 17, sin mirar):** ¿qué evalúa realmente `if`?
+1. ¿Por qué `for F in $(ls)` es un error? ¿Qué usas en su lugar? *(2 líneas. Empieza así: «Porque `$(ls)` parte los nombres que tienen…, así que `informe final.txt`… En su lugar uso…»)*
+2. Explica cada parte de `while read -r URL || [[ -n $URL ]]; do … done < archivo`. *(3–4 líneas, una por pieza. Empieza así: «`read -r URL` lee… `|| [[ -n $URL ]]`… `< archivo`…»)*
+3. ¿Por qué un contador dentro de `cmd | while …` vale 0 al terminar? ¿Cómo lo arreglas? *(2 líneas. Empieza así: «Porque cada lado del pipe corre en un…, y el contador sube en su copia… Lo arreglo con…»)*
+4. **Repaso (clase 17, sin mirar):** ¿qué evalúa realmente `if`? *(1 línea. Empieza así: «`if` ejecuta un comando y mira su…»)*
 
 Después, escríbeme `examíname clase-18`.
 
