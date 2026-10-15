@@ -16,6 +16,7 @@
 > - **pipe** (`|`): empalmar la manguera 1 de un programa con la entrada del siguiente.
 > - **código de salida**: la nota que deja un programa al terminar (0 = todo bien).
 > - **`/dev/null`**: la papelera sin fondo.
+> - **pipeline de CI/CD**: la cadena de pasos automáticos que prueba y publica el código (pieza 4). No es el pipe `|`.
 
 ## Objetivo
 
@@ -133,6 +134,8 @@ Con esa nota puedes decidir qué se ejecuta después:
 | `a ; b` | «haz `a` y después `b`, pase lo que pase» |
 
 **En resumen:** 0 = bien; `&&` significa «si salió bien» y `||`, «si falló».
+
+> 🏭 **La nota en el trabajo: el pipeline de CI/CD.** Piensa en el control de calidad de una fábrica: cada pieza pasa por varias estaciones y, si una detecta un defecto, la cinta se para y esa pieza no llega a la tienda. Un **pipeline de CI/CD** hace lo mismo con el código: cada vez que alguien lo cambia, una máquina ejecuta sola una lista de pasos, como **probar** (los tests), **construir** (empaquetar la app) y **desplegar** (publicarla para los clientes). Cada paso es un comando, y el pipeline mira su **nota**: si un paso deja algo distinto de 0, se para y no se publica nada roto. Lo construirás tú en la fase 7. (No lo confundas con el pipe `|`: solo comparten el nombre).
 
 ### 5. `$( )`: «pon aquí lo que imprima este comando»
 

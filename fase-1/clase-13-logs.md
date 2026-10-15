@@ -15,6 +15,7 @@
 > - **rotación**: renombrar, comprimir y borrar los logs viejos.
 > - **rsyslog**: el programa que copia el journal en archivos de texto de `/var/log`.
 > - **log estructurado**: un log con campos que tienen nombre, como en JSON.
+> - **CloudWatch Logs** (AWS): un servicio que recoge los logs de muchos servidores en un solo sitio, fuera de ellos (fase 6).
 
 ## Objetivo
 

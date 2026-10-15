@@ -15,6 +15,7 @@
 > - **señal**: un aviso del kernel a un proceso (`SIGTERM`, `SIGKILL`…).
 > - **primer / segundo plano**: ocupando tu terminal, o funcionando por detrás mientras la usas.
 > - **master / worker**: en nginx, el proceso jefe y los que atienden a los clientes.
+> - **Kubernetes / ECS**: plataformas que ejecutan aplicaciones en contenedores y las sustituyen por versiones nuevas sin que lo hagas a mano (fases 5, 6 y 9).
 
 ## Objetivo
 

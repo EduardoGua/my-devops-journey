@@ -16,6 +16,7 @@
 > - **sudoers**: esa lista: quién puede usar `sudo` y para qué.
 > - **usuario de servicio**: una cuenta para un programa, no para una persona (`www-data`).
 > - **setgid** en una carpeta: el sello de equipo que pone su grupo a todo lo que se crea dentro.
+> - **IAM** (AWS): el servicio que decide quién puede hacer qué en una cuenta de AWS, con usuarios, grupos y permisos. Es el sudoers de la nube (fase 6).
 
 ## Objetivo
 
