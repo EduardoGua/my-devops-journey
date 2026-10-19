@@ -19,8 +19,8 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 - [x] 01 · La terminal, el shell y el kernel · 2026-10-08
 - [x] 02 · El sistema de archivos y las rutas · 2026-10-11
 - [x] 03 · Archivos y directorios · 2026-10-13
-- [ ] 04 · Redirecciones, pipes y códigos de salida ·
-- [ ] 05 · Buscar y filtrar: find, grep y compañía ·
+- [x] 04 · Redirecciones, pipes y códigos de salida · 2026-10-15
+- [x] 05 · Buscar y filtrar: find, grep y compañía · 2026-10-18
 - [ ] 06 · Permisos: usuarios, grupos y rwx ·
 - [ ] 07 · Variables de entorno, PATH y el shell ·
 - [ ] Repaso del bloque A ·
@@ -362,3 +362,5 @@ La columna *Tiempo* es tiempo enfocado (clase, proyecto, Anki). Súmala cada mes
 | 2026-10-08 | 01 | 40 min | Cierre: preguntas 2 y 4 en 🟡, corregidas. |
 | 2026-10-09 | — | — | Curso v5: alineado con la Ruta 2.0. Scripting y Vigía v0 en la fase 1 (clases 16–21), Git antes de redes, Vigía como proyecto único. |
 | 2026-10-14 | — | — | Fase 1 revisada y probada en Ubuntu 26.04: *La idea de hoy* en cada clase, `nueva-nota.sh`, repasos de bloque A, B y C. |
+|2026-10-15|04|3 horas en dos dias| la encontre confusa pero considero que es solo falta de practica. |
+|2026-10-18|05|fueron como 3 dias con 15 a media hora en cada dia | la clase la lei en 3 veces para poder tanto comprender todo lo posible con respecto a los comandos find y grep del resto considero lo mismo no es tanto memorizacion sino practica para dominarlos
