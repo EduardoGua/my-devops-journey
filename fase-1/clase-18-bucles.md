@@ -6,7 +6,7 @@
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - Los comodines, como `*.log` (clase 03).
-> - `if`, `[[ ]]`, la nota de salida y `$(( ))` para hacer cuentas (clase 17).
+> - `if`, `[[ ]]`, el código de salida y `$(( ))` para hacer cuentas (clase 17).
 > - Tu `revisar-url.sh` (clase 17) y lanzar algo en segundo plano con `&` (clase 11).
 
 > 🔤 **Palabras nuevas de hoy:**
@@ -60,7 +60,7 @@ for i in {1..5}; do echo "intento $i"; done                # lo mismo, si el lí
 
 ### 2. `while`: mientras pase algo
 
-`while` repite **mientras** un comando deje nota 0, igual que `if` decide con la nota (clase 17):
+`while` repite **mientras** un comando deje código de salida 0, igual que `if` decide con él (clase 17):
 
 ```bash
 while ! curl -fs -o /dev/null http://localhost:8080; do     # mientras NO (!) responda...
@@ -103,9 +103,9 @@ Pieza a pieza:
 
 ### 4. ¿Bucle o `awk`?
 
-Para **analizar texto** (contar, filtrar, sumar columnas), la cadena de montaje de la clase 05 es mucho más rápida. Usa un bucle cuando tengas que **hacer algo** con cada elemento: lanzar una petición, comprimir un archivo o conectarte a un servidor.
+Para **analizar texto** (contar, filtrar, sumar columnas), el pipeline de la clase 05 (`awk | sort | uniq -c`) es mucho más rápido. Usa un bucle cuando tengas que **hacer algo** con cada elemento: lanzar una petición, comprimir un archivo o conectarte a un servidor.
 
-**En resumen:** para contar o filtrar, la cadena de montaje; para **hacer algo** con cada elemento, un bucle.
+**En resumen:** para contar o filtrar, un pipeline; para **hacer algo** con cada elemento, un bucle.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -400,7 +400,7 @@ echo "2xx: $C2  3xx: $C3  4xx: $C4  5xx: $C5"
 Las tres líneas que faltan son como la de `2??`, cada una con su contador. Y el bucle lee del archivo que llegó como argumento.
 </details>
 
-➕ **Si te queda energía:** compara la velocidad de tu `contar-codigos.sh` con la cadena de montaje. Fabrica un log grande con `for i in {1..50}; do cat "$LOG"; done > grande.log` (106 000 líneas) y compara `time ./contar-codigos.sh grande.log` con `time awk '{print $9}' grande.log | sort | uniq -c`. ¿Qué concluyes?
+➕ **Si te queda energía:** compara la velocidad de tu `contar-codigos.sh` con el pipeline de la clase 05. Fabrica un log grande con `for i in {1..50}; do cat "$LOG"; done > grande.log` (106 000 líneas) y compara `time ./contar-codigos.sh grande.log` con `time awk '{print $9}' grande.log | sort | uniq -c`. ¿Qué concluyes?
 
 ## Cierre
 
@@ -444,7 +444,7 @@ done < "$LOG"
 echo "2xx: $C2  3xx: $C3  4xx: $C4  5xx: $C5"
 EOF
 ```
-Con el log del curso: `2xx: 1611  3xx: 155  4xx: 252  5xx: 102`. En el extra, con `grande.log`, en el portátil donde se probó, el bucle tardó 1,2 s y la cadena de montaje, una décima: unas diez veces más. Un log de producción de un día puede tener millones de líneas. Para analizar texto, awk; para actuar por cada elemento, bucle.
+Con el log del curso: `2xx: 1611  3xx: 155  4xx: 252  5xx: 102`. En el extra, con `grande.log`, en el portátil donde se probó, el bucle tardó 1,2 s y el pipeline, una décima: unas diez veces más. Un log de producción de un día puede tener millones de líneas. Para analizar texto, awk; para actuar por cada elemento, bucle.
 
 **Reto 2 (una solución):**
 ```bash

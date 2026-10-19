@@ -2,7 +2,7 @@
 
 **Dónde:** VM `servidor-01` · **Tiempo:** 75 min · **Bloque:** B. Administrar un servidor
 
-> 💡 **La idea de hoy:** un **programa** es una receta guardada en el disco; un **proceso** es esa receta *mientras se cocina*, con su número (PID), su dueño y su padre. Para hablar con un proceso le envías **señales**: primero se le pide por favor que termine (`SIGTERM`) y solo si no hace caso se le fuerza (`SIGKILL`).
+> 💡 **La idea de hoy:** un **programa** es un archivo en el disco y un **proceso** es ese programa *mientras se ejecuta* (como una receta escrita frente al plato que se está cocinando), con su número (PID), su dueño y su padre. Para hablar con un proceso le envías **señales**: primero se le pide por favor que termine (`SIGTERM`) y solo si no hace caso se le fuerza (`SIGKILL`).
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - El paso 4 de «Qué pasa cuando pulsas Enter»: el kernel crea un proceso (clase 01).
@@ -30,12 +30,12 @@
 
 ## Teoría
 
-Cuatro piezas, con la imagen de la cocina de *La idea de hoy*.
+Cuatro piezas.
 
-### 1. Receta y plato: programa y proceso
+### 1. Programa y proceso
 
-- Un **programa** es una receta guardada en el disco (`/usr/sbin/nginx`). Por sí sola no hace nada.
-- Un **proceso** es esa receta **mientras se cocina**: tiene su número de pedido (el **PID**), un dueño (el usuario que lo lanzó) y un **padre** (el proceso que lo encargó, su PPID). De la misma receta pueden estar cocinándose muchos platos a la vez.
+- Un **programa** es un archivo guardado en el disco (`/usr/sbin/nginx`). Por sí solo no hace nada.
+- Un **proceso** es ese programa **mientras se ejecuta**: tiene su número (el **PID**), un dueño (el usuario que lo lanzó) y un **padre** (el proceso que lo lanzó, su PPID). Del mismo programa pueden estar corriendo muchos procesos a la vez.
 
 Todos los procesos descienden del **PID 1** (`systemd`), el primero que arranca el kernel:
 
@@ -47,13 +47,13 @@ systemd (1)
 └── cron
 ```
 
-> 🔁 **Vuelve a la clase 01.** El paso 4 de «Qué pasa cuando pulsas Enter» era «el kernel crea un proceso nuevo». Ese proceso es **hijo de tu shell**. Por dentro, el shell se **clona** (`fork`) y el clon se **convierte** en el programa que pediste (`exec`). Por eso el hijo hereda la mochila de variables de la clase 07. Lo verás en la práctica: `sleep 60 &` y `ps -o pid,ppid,cmd`. El PPID (el padre) del `sleep` es el PID de tu shell (`echo $$`).
+> 🔁 **Vuelve a la clase 01.** El paso 4 de «Qué pasa cuando pulsas Enter» era «el kernel crea un proceso nuevo». Ese proceso es **hijo de tu shell**. Por dentro, el shell se **clona** (`fork`) y el clon se **convierte** en el programa que pediste (`exec`). Por eso el hijo hereda las variables de entorno de la clase 07. Lo verás en la práctica: `sleep 60 &` y `ps -o pid,ppid,cmd`. El PPID (el padre) del `sleep` es el PID de tu shell (`echo $$`).
 
-**En resumen:** un programa es la receta; un proceso, la receta cocinándose, con su PID y su padre.
+**En resumen:** un programa es el archivo; un proceso, ese programa ejecutándose, con su PID y su padre.
 
-### 2. Ver qué se está cocinando
+### 2. Ver los procesos
 
-Tres formas de mirar la cocina:
+Tres formas de mirarlos:
 
 ```bash
 ps aux          # la lista de todos los procesos, una foto fija
@@ -61,28 +61,28 @@ pstree -p       # el árbol de familia, con los PIDs
 top             # en directo, ordenado por lo que más CPU gasta (q para salir)
 ```
 
-En la columna `STAT` de `ps` verás sobre todo dos estados: **R** (*running*, cocinando ahora) y **S** (*sleeping*, esperando algo: que llegue una petición, que pulses una tecla). Lo normal es que casi todo esté en S. Los demás estados están en la chuleta.
+En la columna `STAT` de `ps` verás sobre todo dos estados: **R** (*running*, ejecutándose ahora) y **S** (*sleeping*, esperando algo: que llegue una petición, que pulses una tecla). Lo normal es que casi todo esté en S. Los demás estados están en la chuleta.
 
 **En resumen:** `ps aux` es una foto fija, `pstree` el árbol de familia y `top` el directo.
 
-### 3. Señales: mensajes al cocinero
+### 3. Señales
 
 Una **señal** es un aviso que el kernel entrega a un proceso. Cuatro que usarás siempre:
 
-| Señal | Cómo se envía | Es como decirle al cocinero… |
-|-------|---------------|------------------------------|
-| `SIGTERM` (15) | `kill PID` | «termina lo que tienes en el fuego, recoge y vete». Puede cerrar con orden |
+| Señal | Cómo se envía | Qué le pide al proceso |
+|-------|---------------|------------------------|
+| `SIGTERM` (15) | `kill PID` | que **termine**: puede acabar lo que está haciendo, guardar y cerrar con orden |
 | `SIGINT` (2) | `Ctrl+C` | lo mismo, desde el teclado |
-| `SIGKILL` (9) | `kill -9 PID` | **apagón**: se corta todo en el acto. No puede recoger nada |
-| `SIGHUP` (1) | `kill -HUP PID` | muchos servicios lo entienden como «**vuelve a leer la receta**» (recargar la configuración) |
+| `SIGKILL` (9) | `kill -9 PID` | nada: el kernel lo **mata en el acto**. No puede guardar ni cerrar nada |
+| `SIGHUP` (1) | `kill -HUP PID` | muchos servicios lo entienden como «**vuelve a leer tu configuración**» (recargar) |
 
 El proceso puede **atrapar** las señales y reaccionar (despedirse, guardar datos)… todas menos `SIGKILL`, que no se puede atrapar. Por eso el orden correcto es: **`kill PID` → esperar unos segundos → solo si sigue vivo, `kill -9 PID`**.
 
-**En resumen:** primero `kill PID` (por favor); solo si no hace caso, `kill -9 PID` (apagón).
+**En resumen:** primero `kill PID` (SIGTERM); solo si no termina, `kill -9 PID` (SIGKILL).
 
 ### 4. Primer y segundo plano
 
-Normalmente, un comando ocupa tu terminal hasta que termina: está en **primer plano**. Puedes mandarlo a **segundo plano** para seguir usando la terminal mientras se cocina:
+Normalmente, un comando ocupa tu terminal hasta que termina: está en **primer plano**. Puedes mandarlo a **segundo plano** para seguir usando la terminal mientras se ejecuta:
 
 ```bash
 sleep 300 &       # el & lo lanza directamente en segundo plano
@@ -103,7 +103,7 @@ fg %1             # traer el trabajo 1 al primer plano
 <details>
 <summary>Comprueba</summary>
 
-1. Muchos: como varios platos de la misma receta. nginx, por ejemplo, tiene un *master* y varios *workers*. 2. Primero `SIGTERM` (`kill PID`); `SIGKILL` (`kill -9`) solo si no hace caso. 3. Lo **pausa**: sigue existiendo, en estado `T`.
+1. Muchos: cada vez que se ejecuta el programa nace un proceso nuevo. nginx, por ejemplo, tiene un *master* y varios *workers*. 2. Primero `SIGTERM` (`kill PID`); `SIGKILL` (`kill -9`) solo si no hace caso. 3. Lo **pausa**: sigue existiendo, en estado `T`.
 </details>
 
 ### Tu chuleta de la clase
@@ -125,7 +125,7 @@ fg %1             # traer el trabajo 1 al primer plano
 | `S` | *Sleeping*: esperando algo. Lo más común |
 | `D` | Espera **ininterrumpible**, casi siempre de disco o red. Ni `kill -9` lo mata hasta que vuelve |
 | `T` | Detenido (`Ctrl+Z`, `SIGSTOP`) |
-| `Z` | Zombi: terminó, pero su padre no ha recogido su nota de salida |
+| `Z` | Zombi: terminó, pero su padre no ha recogido su código de salida |
 
 `SIGSTOP` (19) y `SIGCONT` (18) pausan y reanudan un proceso, como `Ctrl+Z` y `bg`.
 

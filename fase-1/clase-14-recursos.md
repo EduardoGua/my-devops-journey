@@ -2,7 +2,7 @@
 
 **Dónde:** VM `servidor-01` · **Tiempo:** 120 min (puedes partirla en dos sesiones) · **Bloque:** B. Administrar un servidor
 
-> 💡 **La idea de hoy:** un servidor tiene tres recursos que se agotan. Imagínalo como una cocina: los **fuegos** son la CPU (cuánto puede hacer a la vez), la **encimera** es la memoria (lo que tiene a mano) y la **despensa** es el disco (lo que guarda). Cuando algo va lento o se cae, la primera pregunta es cuál de los tres es el cuello de botella, porque la solución es distinta para cada uno.
+> 💡 **La idea de hoy:** un servidor tiene tres recursos que se agotan: la **CPU** (cuánto puede hacer a la vez), la **memoria** (lo que tiene a mano) y el **disco** (lo que guarda), como los fuegos, la encimera y la despensa de una cocina. Cuando algo va lento o se cae, la primera pregunta es cuál de los tres es el cuello de botella, porque la solución es distinta para cada uno.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - Los procesos, `kill` por PID y que `SIGKILL` no deja despedirse (clase 11).
@@ -13,7 +13,7 @@
 > - **carga** (*load average*): cuántos procesos quieren CPU o esperan al disco, de media.
 > - **swap**: disco usado como memoria de emergencia; muy lento.
 > - **OOM killer**: el kernel matando un proceso porque se acabó la memoria.
-> - **inodo**: la ficha de cada archivo en el sistema de archivos.
+> - **inodo**: el registro de cada archivo en el sistema de archivos (sus permisos, su dueño y dónde están sus datos).
 > - **montar**: colgar un disco de una carpeta del árbol, como `/datos`.
 > - **volumen EBS**: un disco de AWS que conectas a una instancia.
 
@@ -30,11 +30,11 @@ Las alarmas más comunes en CloudWatch son de CPU alta, memoria alta y disco lle
 
 ## Teoría
 
-Cuatro piezas, con la cocina de *La idea de hoy*: los **fuegos** son la CPU, la **encimera** es la memoria y la **despensa** es el disco.
+Cuatro piezas: la CPU, la memoria, el disco y dos trampas del disco.
 
-### 1. La CPU: los fuegos
+### 1. La CPU
 
-Cada núcleo de CPU es un **fuego** de la cocina (`nproc` te dice cuántos hay). La **carga** (*load average*) es cuántos platos, de media, quieren fuego o están esperando algo de la despensa:
+Cada **núcleo** de CPU ejecuta un proceso a la vez (`nproc` te dice cuántos hay). La **carga** (*load average*) es cuántos procesos, de media, quieren CPU o están esperando al disco:
 
 ```bash
 uptime
@@ -42,19 +42,19 @@ uptime
 #                                            1 min  5 min  15 min
 ```
 
-Las tres cifras son la media del último minuto, de los últimos 5 y de los últimos 15: te dicen si la cosa va a más o a menos. Se leen **comparadas con el número de fuegos**:
+Las tres cifras son la media del último minuto, de los últimos 5 y de los últimos 15: te dicen si la cosa va a más o a menos. Se leen **comparadas con el número de núcleos**:
 
 | Carga dividida entre núcleos | Lectura |
 |------------------------------|---------|
 | menos de 0,7 | holgado |
-| cerca de 1 | todos los fuegos ocupados, al límite |
-| más de 1 | hay platos **esperando turno** |
+| cerca de 1 | todos los núcleos ocupados, al límite |
+| más de 1 | hay procesos **esperando turno** |
 
-Ojo: la carga cuenta también los platos que esperan ingredientes de la despensa (procesos en estado `D`, esperando al disco). Por eso una carga alta con la CPU tranquila suele significar **disco lento**.
+Ojo: la carga cuenta también los procesos que esperan al disco (estado `D`). Por eso una carga alta con la CPU tranquila suele significar **disco lento**.
 
 **En resumen:** compara la carga con el número de núcleos: por encima de 1 por núcleo, hay cola.
 
-### 2. La memoria: la encimera
+### 2. La memoria
 
 ```bash
 free -h
@@ -62,16 +62,16 @@ free -h
 # Mem:   962Mi   310Mi  120Mi  1Mi     532Mi       500Mi
 ```
 
-- **free**: encimera vacía. Linux procura que haya poca: una encimera vacía es espacio desperdiciado.
-- **buff/cache**: Linux pone en la encimera libre cosas de la despensa que quizá vuelvas a pedir (una *caché* del disco), y las **retira** en cuanto alguien necesita sitio.
+- **free**: memoria sin usar. Linux procura que haya poca: memoria vacía es memoria desperdiciada.
+- **buff/cache**: Linux usa la memoria libre para guardar datos del disco que quizá vuelvas a pedir (una *caché* del disco), y los **libera** en cuanto un programa necesita sitio.
 - **available**: lo que de verdad pueden usar los programas, contando lo que se puede retirar de la caché. **Esta es la columna que importa.**
-- **swap**: cuando la encimera se llena, apoyar cosas en el suelo del pasillo (usar el disco como memoria). Funciona, pero es lentísimo.
+- **swap**: cuando la memoria se llena, el kernel usa una parte del disco como memoria. Funciona, pero es lentísimo.
 
-Si aun así la encimera se llena, el kernel llama al **OOM killer** (*Out Of Memory*): elige un plato, normalmente el que más espacio ocupa, y lo **tira a la basura** con `SIGKILL` (clase 11). Ese proceso no llega a escribir nada en su log: la única pista queda en el **log del kernel**.
+Si aun así la memoria se llena, el kernel llama al **OOM killer** (*Out Of Memory*): elige un proceso, normalmente el que más memoria usa, y lo **mata** con `SIGKILL` (clase 11). Ese proceso no llega a escribir nada en su log: la única pista queda en el **log del kernel**.
 
 **En resumen:** mira `available`, no `free`; y si una app muere sin dejar rastro, piensa en el OOM killer.
 
-### 3. El disco: la despensa
+### 3. El disco
 
 Dos preguntas, dos comandos:
 
@@ -80,19 +80,19 @@ df -h            # ¿cuánto sitio QUEDA en cada disco?
 du -sh carpeta   # ¿cuánto OCUPA esta carpeta?
 ```
 
-`df` mira la despensa desde fuera (cuánto cabe aún) y `du` cuenta lo que hay en cada estante. Normalmente cuadran. Cuando no cuadran, hay una de las dos trampas de la pieza 4.
+`df` pregunta al sistema de archivos cuánto espacio libre le queda, y `du` suma lo que ocupan los archivos de cada carpeta. Normalmente cuadran. Cuando no cuadran, hay una de las dos trampas de la pieza 4.
 
 **En resumen:** `df` = cuánto queda; `du` = cuánto ocupa cada cosa.
 
 ### 4. Dos trampas del disco
 
-**Trampa 1: se acaban las fichas.** Cada archivo necesita una **ficha** en el catálogo de la despensa, llamada **inodo** (sus permisos, su dueño, dónde están sus datos). El número de fichas es fijo. Con millones de archivos diminutos se acaban las fichas aunque los estantes estén medio vacíos: `No space left on device` con `df -h` al 60 %. Se mira con `df -i`.
+**Trampa 1: se acaban los inodos.** Cada archivo necesita un **inodo**, un registro con sus permisos, su dueño y dónde están sus datos. El número de inodos es fijo. Con millones de archivos diminutos se acaban los inodos aunque quede espacio: `No space left on device` con `df -h` al 60 %. Se mira con `df -i`.
 
-**Trampa 2: tachado de la lista, pero alguien lo sigue usando.** Si borras un archivo que un proceso tiene **abierto**, desaparece su nombre, pero el espacio no se libera hasta que ese proceso lo cierra. `df` dice «lleno» y `du` no encuentra nada. Pasa constantemente con logs borrados a mano. Se mira con `lsof +L1`.
+**Trampa 2: un archivo borrado que un proceso sigue usando.** Si borras un archivo que un proceso tiene **abierto**, desaparece su nombre, pero el espacio no se libera hasta que ese proceso lo cierra. `df` dice «lleno» y `du` no encuentra nada. Pasa constantemente con logs borrados a mano. Se mira con `lsof +L1`.
 
-Relacionado con las fichas: una misma ficha puede tener **varios nombres**, que se llaman **enlaces duros** (`ln original otro-nombre`; `ls -li` muestra el número de ficha y cuántos nombres tiene). El espacio solo se libera cuando desaparece el **último nombre** y **nadie** tiene el archivo abierto. Un enlace simbólico (`ln -s`, clase 02) es otra cosa: un archivo pequeño que contiene una ruta, como un acceso directo.
+Relacionado con los inodos: un mismo inodo puede tener **varios nombres**, que se llaman **enlaces duros** (`ln original otro-nombre`; `ls -li` muestra el número de inodo y cuántos nombres tiene). El espacio solo se libera cuando desaparece el **último nombre** y **nadie** tiene el archivo abierto. Un enlace simbólico (`ln -s`, clase 02) es otra cosa: un archivo pequeño que contiene una ruta, como un acceso directo.
 
-**En resumen:** si `df` y `du` no cuadran, o se acabaron las fichas (`df -i`) o alguien sigue usando un archivo borrado (`lsof +L1`).
+**En resumen:** si `df` y `du` no cuadran, o se acabaron los inodos (`df -i`) o alguien sigue usando un archivo borrado (`lsof +L1`).
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -103,7 +103,7 @@ Relacionado con las fichas: una misma ficha puede tener **varios nombres**, que 
 <details>
 <summary>Comprueba</summary>
 
-1. Que hay el doble de trabajo del que caben en los fuegos: la mitad de los procesos espera turno (o espera al disco). 2. No: lo que cuenta es `available`, y 600 MiB está bien. 3. El OOM killer: busca en el log del kernel.
+1. Que hay el doble de trabajo del que caben en los núcleos: la mitad de los procesos espera turno (o espera al disco). 2. No: lo que cuenta es `available`, y 600 MiB está bien. 3. El OOM killer: busca en el log del kernel.
 </details>
 
 ### Tu chuleta de la clase
@@ -112,17 +112,17 @@ Relacionado con las fichas: una misma ficha puede tener **varios nombres**, que 
 |---------|----------|
 | CPU | `nproc` (núcleos) · `uptime` (carga) · `top` (en vivo; `P` ordena por CPU) · `vmstat 1` (cada segundo) |
 | Memoria | `free -h` · `ps aux --sort=-%mem \| head` (quién más usa) · `journalctl -k \| grep -i "killed process"` (el OOM killer) |
-| Disco | `df -h` (lo que queda) · `df -i` (fichas que quedan) · `du -sh dir` (lo que ocupa) · `du -xh / --max-depth=1 \| sort -h` (dónde está el espacio; `-x`: sin cruzar a otros discos) · `lsblk` (discos y particiones) · `lsof +L1` (borrados pero abiertos) |
+| Disco | `df -h` (lo que queda) · `df -i` (inodos que quedan) · `du -sh dir` (lo que ocupa) · `du -xh / --max-depth=1 \| sort -h` (dónde está el espacio; `-x`: sin cruzar a otros discos) · `lsblk` (discos y particiones) · `lsof +L1` (borrados pero abiertos) |
 
-La línea `%Cpu(s)` de `top`, en la cocina:
+La línea `%Cpu(s)` de `top`:
 
 | Campo | Significado |
 |-------|-------------|
-| `us` | fuegos ocupados con tus programas |
-| `sy` | fuegos ocupados con el kernel |
-| `wa` | platos esperando a la despensa (*I/O wait*) |
-| `id` | fuegos libres |
-| `st` | **steal**: el hipervisor (clase 08) prestó tu fuego a otra VM. En la nube, un `st` alto indica una instancia sin créditos de CPU (familia `t3`) o un servidor físico saturado |
+| `us` | CPU ocupada con tus programas |
+| `sy` | CPU ocupada con el kernel |
+| `wa` | CPU esperando al disco (*I/O wait*) |
+| `id` | CPU libre |
+| `st` | **steal**: el hipervisor (clase 08) dio tu tiempo de CPU a otra VM. En la nube, un `st` alto indica una instancia sin créditos de CPU (familia `t3`) o un servidor físico saturado |
 
 ## Práctica guiada
 
@@ -199,7 +199,7 @@ sudo du -xh / --max-depth=1 2>/dev/null | sort -h
 sudo du -sh /var/* 2>/dev/null | sort -h | tail -5
 ```
 
-👀 **Qué deberías ver:** tu disco (por ejemplo `sda` o `vda`); el uso de `/` en espacio y en fichas; y qué carpetas de `/` y de `/var` ocupan más (las más grandes, al final).
+👀 **Qué deberías ver:** tu disco (por ejemplo `sda` o `vda`); el uso de `/` en espacio y en inodos; y qué carpetas de `/` y de `/var` ocupan más (las más grandes, al final).
 
 ### 4. Llenar el disco
 
@@ -362,13 +362,13 @@ En la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, e
 
 **1.** Crea un archivo, hazle un enlace duro y un enlace simbólico, y borra el original. ¿Cuál de los dos enlaces sigue funcionando? Explícalo con `ls -li`.
 
-> 🧩 **Ejemplo resuelto:** ver que un enlace duro es la misma ficha con otro nombre.
+> 🧩 **Ejemplo resuelto:** ver que un enlace duro es el mismo inodo con otro nombre.
 > ```bash
 > echo hola > a.txt
 > ln a.txt b.txt
 > ls -li a.txt b.txt
 > ```
-> Los dos nombres tienen el **mismo número de ficha** (la primera columna) y un `2`: la ficha tiene dos nombres.
+> Los dos nombres tienen el **mismo número de inodo** (la primera columna) y un `2`: el inodo tiene dos nombres.
 
 **Ahora tú, con huecos:**
 ```bash

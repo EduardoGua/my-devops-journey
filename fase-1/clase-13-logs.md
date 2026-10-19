@@ -5,7 +5,7 @@
 > 💡 **La idea de hoy:** los logs son la **caja negra** del servidor: cuando algo falla, son la única forma de saber qué pasó y cuándo. Casi todo acaba en el *journal* de systemd, que consultas con `journalctl` filtrando por servicio, por hora y por gravedad hasta dar con la línea que lo explica.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
-> - Las mangueras 1 y 2 de cada programa (clase 04).
+> - stdout y stderr, las dos salidas de cada programa (clase 04).
 > - `tail -f` para seguir un archivo en directo (clase 03) y la cadena top-N para contar (clase 05).
 > - `miapp` y nginx funcionando como servicios en tu VM (clases 10 y 12).
 
@@ -50,13 +50,13 @@ Cuatro piezas. La idea de fondo: los logs son la **caja negra** del servidor, y 
 ```
 
 Tres caminos:
-- **El journal** (`systemd-journald`): el registro que lleva el encargado de la clase 12. Recoge casi todo y se consulta con `journalctl`.
+- **El journal** (`systemd-journald`): el registro que lleva systemd (clase 12). Recoge casi todo y se consulta con `journalctl`.
 - **Los archivos de texto de `/var/log/`** (`syslog`, `auth.log`): una copia que escribe `rsyslog`, si está instalado.
 - **Los archivos propios de algunas apps**, como nginx en `/var/log/nginx/`.
 
 > ⚠️ **rsyslog es opcional.** Si en tu VM no existen `/var/log/syslog` ni `/var/log/auth.log`, esa instalación solo usa el journal (cada vez más común en imágenes mínimas y contenedores). No pasa nada: todo está en `journalctl`. En esta clase verás siempre las dos formas.
 
-Lo que un servicio escribe por sus **mangueras 1 y 2** (clase 04) acaba en el journal sin configurar nada. Por eso tu `miapp` de la clase 12 ya tiene logs. Docker y Kubernetes funcionan igual: **la app escribe por sus mangueras y la plataforma recoge**.
+Lo que un servicio escribe por **stdout y stderr** (clase 04) acaba en el journal sin configurar nada. Por eso tu `miapp` de la clase 12 ya tiene logs. Docker y Kubernetes funcionan igual: **la app escribe por stdout y stderr, y la plataforma lo recoge**.
 
 **En resumen:** casi todo va al journal (`journalctl`); algunas apps, como nginx, escriben además sus propios archivos en `/var/log`.
 

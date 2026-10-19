@@ -55,7 +55,7 @@ Después repasa las clases 01 a 07 y añade lo que faltaba marcado con ➕. Lo m
 
 **8.** `640` = `rw-r-----`: el dueño lee y escribe, el grupo solo lee y los demás nada. `750` en un directorio = `rwxr-x---`: el dueño hace de todo; el grupo puede listar y entrar, pero no crear ni borrar; los demás ni siquiera entran. *(Clase 06.)*
 
-**9.** `ls caja` muestra los **nombres** (`r` deja leer la lista), y quizá con avisos al pedir detalles. `cat caja/dato.txt` falla: sin `x` no puedes cruzar el directorio para llegar a lo que hay dentro. *(Clase 06.)*
+**9.** `ls caja` muestra los **nombres** (`r` deja leer la lista), y quizá con avisos al pedir detalles. `cat caja/dato.txt` falla: sin `x` no puedes entrar en el directorio para acceder a lo que hay dentro. *(Clase 06.)*
 
 **10.** `prod`. `./script.sh` corre en un proceso **hijo** con una copia de tu entorno, y un hijo nunca cambia el del padre. Con `source`, el script corre en **tu** shell y la variable queda en `dev`. *(Clase 07.)*
 

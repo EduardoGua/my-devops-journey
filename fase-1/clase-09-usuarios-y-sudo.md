@@ -5,7 +5,7 @@
 > 💡 **La idea de hoy:** en un servidor hay dos preguntas distintas: **¿quién eres?** (autenticación: tu contraseña o tu llave) y **¿qué puedes hacer?** (autorización: tus grupos, tus permisos y las reglas de sudo). Funciona como un hotel: en recepción comprueban tu identidad una vez y te dan una tarjeta que solo abre tu habitación. La regla de oro es el **mínimo privilegio**, la misma que aplicarás con IAM en AWS.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
-> - Los tres juegos de llaves (dueño, grupo y resto) y los permisos en números, como `750` (clase 06).
+> - Los tres bloques de permisos (dueño, grupo y otros) y los permisos en números, como `750` (clase 06).
 > - La umask, el molde con el que nacen los archivos (clase 06).
 > - `bash -c '…'` lanza un shell hijo que ejecuta lo que va entre comillas (clase 07).
 
@@ -15,7 +15,7 @@
 > - **sudo**: ejecutar un comando como root, si la lista te lo permite.
 > - **sudoers**: esa lista: quién puede usar `sudo` y para qué.
 > - **usuario de servicio**: una cuenta para un programa, no para una persona (`www-data`).
-> - **setgid** en una carpeta: el sello de equipo que pone su grupo a todo lo que se crea dentro.
+> - **setgid** en una carpeta: hace que todo lo que se crea dentro sea del grupo de la carpeta.
 > - **IAM** (AWS): el servicio que decide quién puede hacer qué en una cuenta de AWS, con usuarios, grupos y permisos. Es el sudoers de la nube (fase 6).
 
 ## Objetivo
@@ -32,22 +32,22 @@ En un servidor real conviven personas (cada administrador con su cuenta) y servi
 
 ## Teoría
 
-Cuatro piezas, con la imagen del hotel de *La idea de hoy*.
+Cuatro piezas.
 
 ### 1. Dos preguntas distintas: ¿quién eres? y ¿qué puedes hacer?
 
-En un hotel, la recepción comprueba **quién eres** una vez (tu documento) y te da una tarjeta que solo abre **lo que te corresponde** (tu habitación y el gimnasio). En un servidor es igual:
+El sistema comprueba **quién eres** una vez y, a partir de ahí, solo te deja hacer **lo que te corresponde**:
 
-| | Pregunta | En el hotel | En Linux | En AWS |
-|-|----------|-------------|----------|--------|
-| **Autenticación** | ¿Quién eres? | el documento en recepción | contraseña, llave SSH | contraseña + MFA, access keys |
-| **Autorización** | ¿Qué puedes hacer? | lo que abre tu tarjeta | permisos de archivos, grupos, sudoers | políticas IAM |
+| | Pregunta | En Linux | En AWS |
+|-|----------|----------|--------|
+| **Autenticación** | ¿Quién eres? | contraseña, llave SSH | contraseña + MFA, access keys |
+| **Autorización** | ¿Qué puedes hacer? | permisos de archivos, grupos, sudoers | políticas IAM |
 
 Primero se autentica y después se autoriza. Puedes haber entrado (autenticado) y aun así no tener permiso para leer un archivo concreto (no autorizado).
 
 **En resumen:** autenticación = ¿quién eres?; autorización = ¿qué puedes hacer? Primero una y después la otra.
 
-### 2. El registro de huéspedes: `/etc/passwd`
+### 2. Las cuentas de usuario: `/etc/passwd`
 
 Linux apunta a cada usuario en una línea de `/etc/passwd`:
 
@@ -86,12 +86,12 @@ id ana                         # ver quién es Ana y en qué equipos está
 
 **En resumen:** `adduser` da de alta, `groupadd` crea un equipo y `usermod -aG` añade a alguien a él (¡con la `-a`!).
 
-### 4. `sudo`: la llave maestra, con registro
+### 4. `sudo`: ejecutar como root, con registro
 
-`sudo comando` ejecuta ese comando **como root**, el administrador, pero solo si **la lista de recepción** te lo permite. Esa lista es `/etc/sudoers`. Tres detalles:
+`sudo comando` ejecuta ese comando **como root**, el administrador, pero solo si **`/etc/sudoers`** te lo permite. Ese archivo es la lista de quién puede usar `sudo` y para qué. Tres detalles:
 - Te pide **tu** contraseña, no la de root: demuestras que eres tú.
 - **Apunta cada uso** en el log del sistema: quién, cuándo y qué. Es una auditoría.
-- En Ubuntu, estar en el grupo `sudo` te da la llave maestra para **todo**.
+- En Ubuntu, estar en el grupo `sudo` te deja ejecutar **cualquier** comando como root.
 
 Lo profesional es dar solo lo necesario. Una regla de sudoers se lee así:
 
@@ -105,7 +105,7 @@ ana  ALL=(root)  /usr/bin/journalctl, /usr/bin/systemctl restart nginx
 
 La lista se edita **siempre con `visudo`**, que revisa que lo que escribiste es correcto antes de guardar. Un error en sudoers puede dejar a **todo el mundo** sin `sudo`. Las reglas propias van en archivos aparte, dentro de `/etc/sudoers.d/`.
 
-**En resumen:** `sudo` presta la llave maestra solo a quien está en la lista, y apunta cada uso. La lista se edita con `visudo`.
+**En resumen:** `sudo` deja ejecutar como root solo a quien está en sudoers, y apunta cada uso. La lista se edita con `visudo`.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -182,9 +182,9 @@ sudo chmod 2770 /srv/proyecto
 ls -ld /srv/proyecto
 ```
 
-👀 **Qué deberías ver:** `drwxrws---`, con dueño `root` y grupo `devs`. La `s` en el juego del grupo es el sello de equipo.
+👀 **Qué deberías ver:** `drwxrws---`, con dueño `root` y grupo `devs`. La `s` en el bloque del grupo es el setgid.
 
-El `2` inicial activa el **setgid** en el directorio (verás una `s` en el grupo). Funciona como un **sello de equipo**: todo lo que se crea dentro sale con el sello `devs`, en vez del grupo personal de quien lo crea. Sin él, los archivos de Ana serían del grupo `ana` y Luis no podría editarlos.
+El `2` inicial activa el **setgid** en el directorio (verás una `s` en el grupo). Con él, todo lo que se crea dentro es del grupo `devs`, en vez del grupo personal de quien lo crea. Sin él, los archivos de Ana serían del grupo `ana` y Luis no podría editarlos.
 
 Antes de seguir, mira un detalle que va a importar:
 ```bash

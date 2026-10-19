@@ -30,9 +30,9 @@ Backups, limpieza de logs, informes diarios, comprobaciones de salud: todo lo pe
 
 ## Teoría
 
-Cuatro piezas, con el despertador de *La idea de hoy*. La 3 es la que más fallos evita: léela despacio.
+Cuatro piezas. La 3 es la que más fallos evita: léela despacio.
 
-### 1. La hora del despertador: la línea de cron
+### 1. La línea de cron: cuándo se ejecuta
 
 Cada línea de cron son **cinco campos de tiempo** y un comando:
 
@@ -78,7 +78,7 @@ Cada usuario tiene su propio crontab. Las tareas del sistema viven en `/etc/cron
 
 ### 3. El entorno de cron: aquí falla casi todo
 
-Cron ejecuta tus comandos como si el despertador te levantara **en otra casa**: sin tus cosas a mano. No tiene tu PATH, ni tus alias, ni tu carpeta actual, ni una pantalla donde escribir. Un script que funciona en tu terminal puede fallar en cron sin que nadie se entere.
+Cron ejecuta tus comandos en un entorno casi vacío, distinto del de tu terminal. No tiene tu PATH, ni tus alias, ni tu carpeta actual, ni una pantalla donde escribir. Un script que funciona en tu terminal puede fallar en cron sin que nadie se entere.
 
 Comprobado en Ubuntu 26.04, un trabajo de tu crontab arranca así:
 

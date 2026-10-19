@@ -2,19 +2,19 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** C. Scripting con Bash
 
-> 💡 **La idea de hoy:** un script es una **receta escrita**: los mismos comandos que escribirías a mano, guardados en un archivo para que se ejecuten igual cada vez. Recibe ingredientes (los **argumentos** `$1`, `$2`…), entrega el resultado por stdout, las quejas por stderr y, al terminar, un **código de salida** que dice si salió bien.
+> 💡 **La idea de hoy:** un script es una **receta escrita**: los mismos comandos que escribirías a mano, guardados en un archivo para que se ejecuten igual cada vez. Recibe **argumentos** (`$1`, `$2`…), entrega el resultado por stdout, los errores por stderr y, al terminar, un **código de salida** que dice si salió bien.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - Crear un archivo con un *heredoc*: `cat > archivo <<'EOF'` … `EOF` (clase 07).
-> - El permiso `x` para ejecutar (clase 06) y la nota de salida, `$?` (clase 04).
+> - El permiso `x` para ejecutar (clase 06) y el código de salida, `$?` (clase 04).
 > - Las variables, `${VAR:-defecto}` y las comillas dobles (clase 07).
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **script**: un archivo con comandos que se ejecutan en orden.
 > - **shebang** (`#!`): la primera línea, que dice qué programa interpreta el archivo.
 > - **argumento**: lo que escribes detrás del nombre del script (`$1`, `$2`…).
-> - **expansión de parámetros**: las «tijeras» de bash para recortar el texto de una variable.
-> - **código de salida propio**: la nota que tu script deja con `exit N`.
+> - **expansión de parámetros**: la sintaxis de bash para recortar el texto de una variable (`${VAR#…}`, `${VAR%…}`).
+> - **código de salida propio**: el número que tu script deja con `exit N`.
 
 ## Objetivo
 
@@ -32,9 +32,9 @@ Las clases 16 a 20 forman el bloque de scripting. Cada una añade una pieza: hoy
 
 ## Teoría
 
-Seis piezas, con la receta de *La idea de hoy*. La 5 (las tijeras) es la más nueva: tómatela con calma.
+Seis piezas. La 5 (la expansión de parámetros) es la más nueva: tómatela con calma.
 
-### 1. Cómo es una receta escrita
+### 1. Cómo es un script
 
 ```bash
 #!/bin/bash                       # shebang: qué programa interpreta el archivo
@@ -46,7 +46,7 @@ exit 0                            # código de salida (0 = éxito)
 
 El **shebang** (`#!`) tiene que ser la **primera línea**, desde el primer carácter. Cuando ejecutas `./hola.sh`, el kernel lee esos dos caracteres y lanza `/bin/bash ./hola.sh` por ti.
 
-> 🔁 **Vuelve a la clase 01.** En el paso 4 de «Qué pasa cuando pulsas Enter», el kernel ejecuta un programa. Un programa compilado, como `ls`, sabe ejecutarlo directamente. Un script, en cambio, es solo texto: el `#!` es la nota que le dice al kernel a qué programa pasárselo. Y si el archivo no tiene `x` (clase 06), el kernel se niega justo en ese paso: `Permiso denegado`.
+> 🔁 **Vuelve a la clase 01.** En el paso 4 de «Qué pasa cuando pulsas Enter», el kernel ejecuta un programa. Un programa compilado, como `ls`, sabe ejecutarlo directamente. Un script, en cambio, es solo texto: el `#!` es la línea que le dice al kernel a qué programa pasárselo. Y si el archivo no tiene `x` (clase 06), el kernel se niega justo en ese paso: `Permiso denegado`.
 
 **En resumen:** un script es un archivo de texto con `#!/bin/bash` en la primera línea y permiso `x`.
 
@@ -62,7 +62,7 @@ Lo normal es `./hola.sh`. `source` solo se usa para cargar variables o funciones
 
 **En resumen:** `./script` y `bash script` corren en un hijo; `source script`, en tu propio shell.
 
-### 3. Los ingredientes: los argumentos
+### 3. Los argumentos
 
 Lo que escribes detrás del nombre del script le llega numerado:
 
@@ -93,7 +93,7 @@ RUTA="${1:?Uso: $0 <ruta>}"       # si no me das $1, me quejo y termino con erro
 
 **En resumen:** `${1:-defecto}` pone un valor si falta; `${1:?mensaje}` para el script si falta.
 
-### 5. Las tijeras: recortar texto sin otros programas
+### 5. Expansión de parámetros: recortar texto sin otros programas
 
 Bash puede recortar el texto de una variable por delante o por detrás. Con `URL="https://ejemplo.com/salud"`:
 
@@ -114,19 +114,19 @@ Cómo recordarlo: en el teclado, `#` está a la **izquierda** de `$` (corta por 
 
 **En resumen:** `#` corta por delante y `%` por detrás; uno corta lo mínimo y dos, lo máximo.
 
-### 6. Datos, mensajes y la nota de salida
+### 6. stdout, stderr y el código de salida
 
-Tu script tiene las mismas dos mangueras y la misma nota que cualquier programa (clase 04):
+Tu script tiene las mismas dos salidas y el mismo código de salida que cualquier programa (clase 04):
 
 ```bash
-echo "resultado"                 # manguera 1: los datos que otro programa puede usar
-echo "Error: falta X" >&2        # manguera 2: mensajes para humanos y errores
-exit 2                           # la nota: 0 = bien, 1 = fallo, 2 = uso incorrecto
+echo "resultado"                 # stdout: los datos que otro programa puede usar
+echo "Error: falta X" >&2        # stderr: mensajes para humanos y errores
+exit 2                           # código de salida: 0 = bien, 1 = fallo, 2 = uso incorrecto
 ```
 
-`>&2` significa «manda esto por la manguera 2». Así, si alguien hace `./script.sh > datos.txt`, los errores siguen saliendo en pantalla y no ensucian los datos.
+`>&2` significa «manda esto por stderr». Así, si alguien hace `./script.sh > datos.txt`, los errores siguen saliendo en pantalla y no ensucian los datos.
 
-**En resumen:** datos por la 1, mensajes por la 2 (`>&2`) y una nota al salir (`exit N`).
+**En resumen:** datos por stdout, mensajes por stderr (`>&2`) y un código de salida al terminar (`exit N`).
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
@@ -150,7 +150,7 @@ exit 2                           # la nota: 0 = bien, 1 = fallo, 2 = uso incorre
 | `${VAR:-defecto}` · `${1:?mensaje}` | valor por defecto · obligatorio (si falta, error y salida) |
 | `${V#…}` `${V##…}` · `${V%…}` `${V%%…}` | cortar por delante (mínimo · máximo) · por detrás (mínimo · máximo) |
 | `${#V}` | la longitud |
-| `echo "…" >&2` · `exit N` | mensaje por la manguera 2 · terminar con la nota N |
+| `echo "…" >&2` · `exit N` | mensaje por stderr · terminar con el código de salida N |
 | `bash -x s.sh` | ejecutarlo enseñando cada línea ya expandida |
 
 ## Práctica guiada
@@ -358,21 +358,21 @@ En `labs/clase-16/`. Cada punto sube en tres escalones: un **ejemplo resuelto** 
 
 **1.** Ejecuta `./tamano.sh /no-existe; echo $?` y explica en tus notas por qué ese resultado es un problema.
 
-> 🧩 **Ejemplo resuelto:** ¿qué nota deja `ls` cuando le pides algo que no existe?
+> 🧩 **Ejemplo resuelto:** ¿qué código de salida deja `ls` cuando le pides algo que no existe?
 > ```bash
 > ls /no-existe; echo $?
 > ```
 > Deja `2`: avisa de que falló, así que un script que use `ls` puede enterarse.
 
-**Ahora tú, con huecos:** `./tamano.sh /no-existe deja la nota ____, que significa «todo fue ____», aunque la ruta no existe.`
+**Ahora tú, con huecos:** `./tamano.sh /no-existe deja el código de salida ____, que significa «todo fue ____», aunque la ruta no existe.`
 
 <details>
 <summary>Pista</summary>
 
-¿Qué pensaría cron, o un pipeline de CI, al ver esa nota?
+¿Qué pensaría cron, o un pipeline de CI, al ver ese código?
 </details>
 
-**2.** Escribe `extension.sh <archivo>`, que imprima el nombre sin extensión y la extensión, usando solo las tijeras (sin `cut`): `./extension.sh informe.final.pdf` → `nombre: informe.final · extensión: pdf`.
+**2.** Escribe `extension.sh <archivo>`, que imprima el nombre sin extensión y la extensión, usando solo la expansión de parámetros (sin `cut`): `./extension.sh informe.final.pdf` → `nombre: informe.final · extensión: pdf`.
 
 > 🧩 **Ejemplo resuelto:** solo la extensión de `foto.vacaciones.jpg`.
 > ```bash

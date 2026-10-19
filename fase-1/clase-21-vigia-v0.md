@@ -35,7 +35,7 @@
 
 Al final tendrás **una** pieza de portafolio completa que muestra el ciclo DevOps entero, en lugar de diez ejercicios sueltos.
 
-**La regla del proyecto:** cada versión se cierra con un commit etiquetado (`v0`, `v0.1`…) y una nota corta en el README sobre **qué se rompió y cómo lo diagnosticaste**. Esa nota muestra cómo piensas cuando algo falla, y es material directo para entrevistas.
+**La regla del proyecto:** cada versión se cierra con un commit etiquetado (`v0`, `v0.1`…) y una nota corta en el README sobre **qué se rompió y cómo lo diagnosticaste**. Esa nota muestra cómo piensas cuando algo falla, y es material directo para entrevistas. No hace falta que la redactes desde cero: cada versión trae un ejemplo escrito que solo tienes que adaptar a lo que te pasó.
 
 ## Objetivo de la v0
 
@@ -212,7 +212,7 @@ Para pararlo más adelante: `crontab -e` y pon un `#` delante de la línea.
 `~/vigia/`:
 - `vigia.sh`: ejecutable, `set -euo pipefail` y `shellcheck` sin avisos.
 - `urls.txt`: tus sitios.
-- `README.md` en inglés, con esta estructura:
+- `README.md` en inglés. No tienes que redactarlo: copia este ejemplo y cambia solo lo que sea distinto en tu caso (tu línea de crontab, tu log y, si te pasó otra cosa, la sección *What broke*):
 
 ````markdown
 # Vigía
@@ -224,7 +224,10 @@ the HTTP status code and response time of each one.
 > a layer (Python, Docker, AWS, CI/CD, Terraform, Kubernetes, observability).
 
 ## How it works
-(3–4 lines in your own words, and the log format: `timestamp url status_code seconds UP|DOWN`)
+`vigia.sh` reads `urls.txt` line by line and checks each URL with `curl`, with a
+10-second timeout. For every URL it writes one line to `~/vigia.log`:
+`timestamp url status_code seconds UP|DOWN`. A site is UP when it answers with a
+2xx or 3xx code; anything else (or no answer at all, `000`) is DOWN.
 
 ## Run it
 ```bash
@@ -234,19 +237,24 @@ VIGIA_LOG=/tmp/test.log ./vigia.sh other-urls.txt
 Exit codes: 0 all up · 1 at least one site down · 2 cannot read the URL list.
 
 ## Schedule it
-(your `crontab -l` line)
+```
+*/5 * * * * /home/educo/vigia/vigia.sh >> /home/educo/logs/vigia-cron.log 2>&1
+```
 
 ## Sample log
-(8–10 real lines from your log, including at least one DOWN)
+(paste 8–10 real lines from your `~/vigia.log`, including at least one DOWN)
 
 ## What broke and how I found it
-(3–6 lines: the symptom, how you diagnosed it, the fix. For example: the script
-stopped at the first unreachable site because of `set -e`; `bash -x` showed curl
-returning 6…)
+The first version stopped at the first unreachable site and never checked the
+rest. Running it with `bash -x` showed that `curl` returned exit code 6 (the
+name did not resolve), and `set -e` stopped the whole script there. The fix:
+`curl … || true` inside `revisar`, and calling it as `revisar "$URL" || CAIDAS=…`,
+so a site being down is logged as DOWN instead of killing the script.
 
 ## Limitations
-(what v0 can't do yet: only runs while my laptop is on, the log grows forever,
-nobody gets notified…)
+- It only runs while my laptop is on: cron does not catch up on missed runs.
+- The log grows forever: there is no rotation yet.
+- Nobody gets notified when a site goes DOWN: I have to read the log.
 ````
 
 Cierra la versión:
@@ -281,7 +289,7 @@ Después, escríbeme `examíname clase-21`: además del cierre, reviso tu `vigia
 - [ ] Con una lista de sitios sanos, código 0.
 - [ ] Desde `/tmp` encuentra su `urls.txt`. Con un archivo inexistente, código 2.
 - [ ] `journalctl -u cron` muestra una ejecución cada 5 minutos, `~/vigia.log` crece y `vigia-cron.log` está vacío.
-- [ ] El README tiene las seis secciones, y la de *What broke* cuenta algo que te pasó de verdad.
+- [ ] El README tiene las seis secciones, con tu crontab y tu log reales. En *What broke*, si lo que te pasó fue distinto del ejemplo, cambia los detalles.
 - [ ] `git tag` muestra `v0`.
 
 **Una solución de referencia** (la tuya puede ser distinta y estar igual de bien):

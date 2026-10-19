@@ -2,7 +2,7 @@
 
 **Dónde:** VM `servidor-01` · **Tiempo:** 60 min · **Bloque:** B. Administrar un servidor
 
-> 💡 **La idea de hoy:** `apt` funciona como una **tienda de aplicaciones con catálogo**. `apt update` descarga el catálogo al día (qué programas hay y en qué versión) y `apt install` trae el programa junto con todo lo que necesita para funcionar (sus *dependencias*), después de comprobar su firma para saber que viene de la tienda oficial.
+> 💡 **La idea de hoy:** `apt` se parece a una tienda de aplicaciones: los programas salen de un **repositorio**. `apt update` descarga el **índice** al día (qué programas hay y en qué versión) y `apt install` trae el programa junto con todo lo que necesita para funcionar (sus *dependencias*), después de comprobar su firma para saber que viene del repositorio oficial.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - `sudo` ejecuta un comando como root (clase 09).
@@ -10,11 +10,11 @@
 > - `which` dice dónde está un programa, y `$( )` mete su resultado dentro de otro comando (clases 07 y 04).
 
 > 🔤 **Palabras nuevas de hoy:**
-> - **paquete** (`.deb`): una caja con un programa listo para instalar.
-> - **repositorio**: la tienda de donde salen los paquetes.
-> - **índice** o catálogo: la lista de lo que hay en la tienda y en qué versión.
+> - **paquete** (`.deb`): un archivo con un programa listo para instalar.
+> - **repositorio**: el servidor de donde salen los paquetes.
+> - **índice de paquetes**: la lista de lo que hay en el repositorio y en qué versión.
 > - **dependencia**: otro paquete que un programa necesita para funcionar.
-> - **firma**: el sello que demuestra que un paquete viene de la tienda oficial.
+> - **firma**: la prueba criptográfica de que un paquete viene del repositorio oficial y nadie lo ha modificado.
 
 ## Objetivo
 
@@ -29,9 +29,9 @@ Cada servidor se aprovisiona instalando paquetes: en el *user-data* de una EC2, 
 
 ## Teoría
 
-Cuatro piezas, con la imagen de la tienda de *La idea de hoy*.
+Cuatro piezas.
 
-### 1. El catálogo y la tienda
+### 1. El repositorio y el índice
 
 ```
  Repositorio de Ubuntu (internet)          Tu servidor
@@ -46,33 +46,33 @@ Cuatro piezas, con la imagen de la tienda de *La idea de hoy*.
                                            └──────────────────────────────┘
 ```
 
-- La **tienda** es un **repositorio**: un servidor con miles de programas empaquetados. Ubuntu tiene configurados los suyos en `/etc/apt/sources.list.d/`.
-- El **catálogo** es el índice: qué programas hay y en qué versión. Tu servidor guarda **una copia local** del catálogo, que se queda vieja si no la actualizas.
-- `apt update` descarga el **catálogo** nuevo. **No instala nada.**
-- `apt install` mira el catálogo, descarga el programa y lo instala.
+- Un **repositorio** es un servidor con miles de programas empaquetados. Ubuntu tiene configurados los suyos en `/etc/apt/sources.list.d/`.
+- El **índice** dice qué programas hay y en qué versión. Tu servidor guarda **una copia local** del índice, que se queda vieja si no la actualizas.
+- `apt update` descarga el **índice** nuevo. **No instala nada.**
+- `apt install` mira el índice, descarga el programa y lo instala.
 
-**En resumen:** `apt update` actualiza el catálogo; `apt install` trae el programa.
+**En resumen:** `apt update` actualiza el índice; `apt install` trae el programa.
 
 ### 2. Paquetes, dependencias y firmas
 
-- Un **paquete** (`.deb`) es una caja con el programa, su configuración por defecto y una etiqueta con su versión y lo que necesita.
+- Un **paquete** (`.deb`) es un archivo con el programa, su configuración por defecto y unos datos con su versión y lo que necesita.
 - Lo que necesita son sus **dependencias**: otros paquetes sin los que no funciona. `apt` las trae solas.
-- Cada caja viene **firmada**: `apt` comprueba la firma y rechaza lo que no venga de la tienda oficial o haya sido manipulado.
-- Por debajo, quien instala de verdad las cajas es `dpkg`. `apt` es el dependiente amable que lo organiza todo.
+- Cada paquete viene **firmado**: `apt` comprueba la firma y rechaza lo que no venga del repositorio oficial o haya sido manipulado.
+- Por debajo, quien instala de verdad los paquetes es `dpkg`. `apt` organiza todo lo demás: busca, descarga y resuelve dependencias.
 
-**En resumen:** un paquete es una caja con etiqueta: su versión, sus dependencias y su firma.
+**En resumen:** un paquete lleva el programa y sus datos: su versión, sus dependencias y su firma.
 
 ### 3. Los cinco del día a día
 
 ```bash
-sudo apt update              # 1. actualizar el catálogo (siempre lo primero)
+sudo apt update              # 1. actualizar el índice (siempre lo primero)
 sudo apt install nginx       # 2. instalar un programa (y sus dependencias)
-sudo apt upgrade             # 3. actualizar todo lo que ya tienes a la versión del catálogo
+sudo apt upgrade             # 3. actualizar todo lo que ya tienes a la versión del índice
 sudo apt remove nginx        # 4. desinstalar, pero DEJAR su configuración en /etc
 sudo apt purge nginx         # 5. desinstalar y BORRAR también su configuración
 ```
 
-`remove` frente a `purge` es como devolver un mueble guardando o tirando las instrucciones de montaje: con `remove`, si lo reinstalas, recupera tu configuración. Lo verás en el Rómpelo 1.
+La diferencia entre `remove` y `purge` es la configuración: con `remove`, si lo reinstalas, recupera tu configuración; con `purge`, empieza de cero. Lo verás en el Rómpelo 1.
 
 **En resumen:** update, install, upgrade, remove y purge: con esos cinco haces casi todo.
 
@@ -95,14 +95,14 @@ sudo apt-get update && sudo apt-get install -y nginx
 <details>
 <summary>Comprueba</summary>
 
-1. `sudo apt update`: el catálogo local estaba vacío o viejo. 2. No: solo actualiza el **catálogo**. Instalar las versiones nuevas es `apt upgrade`. 3. `purge`.
+1. `sudo apt update`: el índice local estaba vacío o viejo. 2. No: solo actualiza el **índice**. Instalar las versiones nuevas es `apt upgrade`. 3. `purge`.
 </details>
 
 ### Tu chuleta de la clase
 
 | Comando | Qué hace |
 |---------|----------|
-| `sudo apt update` | actualiza el catálogo local. No instala nada |
+| `sudo apt update` | actualiza el índice local. No instala nada |
 | `sudo apt install pkg` · `sudo apt upgrade` | instala con sus dependencias · actualiza lo que ya tienes |
 | `sudo apt remove pkg` · `sudo apt purge pkg` | desinstala dejando / borrando su configuración |
 | `sudo apt autoremove` | quita las dependencias que ya nadie usa |
@@ -127,7 +127,7 @@ sudo apt update
 apt list --upgradable | head
 ```
 
-👀 **Qué deberías ver:** los archivos de repositorios; el de Ubuntu por dentro (líneas `URIs:` y `Suites:`); `apt update` descargando catálogos (`Hit`, `Get`); y los paquetes que tienen versión nueva.
+👀 **Qué deberías ver:** los archivos de repositorios; el de Ubuntu por dentro (líneas `URIs:` y `Suites:`); `apt update` descargando índices (`Hit`, `Get`); y los paquetes que tienen versión nueva.
 
 ### 2. Instalar nginx
 
@@ -143,7 +143,7 @@ systemctl status nginx --no-pager
 <details>
 <summary>Qué deberías ver</summary>
 
-La ficha de nginx, la instalación, el principio de su página de bienvenida (`<!DOCTYPE html>`…) y nginx en `active (running)`: ya funciona solo.
+La información del paquete nginx (versión, dependencias, descripción), la instalación, el principio de su página de bienvenida (`<!DOCTYPE html>`…) y nginx en `active (running)`: ya funciona solo.
 </details>
 
 En Ubuntu, instalar un servicio suele **arrancarlo y activarlo** automáticamente. (En otras distribuciones, como Amazon Linux, no.)
@@ -255,7 +255,7 @@ Ejecútalo dos veces, una con cada nombre. Hazlo en la VM: en tu PC, por cómo e
 > ```bash
 > apt list --upgradable 2>/dev/null | wc -l
 > ```
-> `apt list` saca un paquete por línea, `2>/dev/null` tira un aviso que `apt` escribe por la manguera 2 y `wc -l` cuenta. La primera línea es `Listing...`, así que el número real es uno menos.
+> `apt list` saca un paquete por línea, `2>/dev/null` descarta un aviso que `apt` escribe por stderr y `wc -l` cuenta. La primera línea es `Listing...`, así que el número real es uno menos.
 
 **Ahora tú, con huecos:** `apt list --____ 2>/dev/null | wc -l`
 
@@ -288,13 +288,13 @@ sudo apt ____ -y
 El primer hueco desinstala borrando también la configuración. El segundo quita las dependencias que ya nadie usa. Los dos están en la chuleta.
 </details>
 
-**4.** Escribe la línea que pondrías en un script de aprovisionamiento para instalar `nginx` y `curl` sin preguntas y sin fallar por un catálogo desactualizado.
+**4.** Escribe la línea que pondrías en un script de aprovisionamiento para instalar `nginx` y `curl` sin preguntas y sin fallar por un índice desactualizado.
 
 > 🧩 **Ejemplo resuelto:** la línea para instalar `jq` en un script.
 > ```bash
 > sudo apt-get update && sudo apt-get install -y jq
 > ```
-> Primero el catálogo, y solo si salió bien (`&&`), la instalación sin preguntas (`-y`).
+> Primero el índice, y solo si salió bien (`&&`), la instalación sin preguntas (`-y`).
 
 **Ahora tú, con huecos:** `sudo apt-get ____ && sudo apt-get install ____ nginx curl`
 

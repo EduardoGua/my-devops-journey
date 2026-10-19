@@ -2,7 +2,7 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 60 min · **Bloque:** A. Linux en tu equipo
 
-> 💡 **La idea de hoy:** cada proceso nace con una **mochila de variables**, su *entorno*, que es una copia de la de su padre. Lo que exportas viaja en la mochila de tus hijos, pero un hijo nunca puede cambiar la tuya. El `PATH` es una de esas variables: la lista ordenada de carpetas donde el shell busca cada comando que escribes.
+> 💡 **La idea de hoy:** cada proceso nace con un conjunto de variables, su **entorno**, que es una **copia** del entorno de su padre. Lo que exportas con `export` lo reciben tus procesos hijos, pero un hijo nunca puede cambiar tus variables. El `PATH` es una de esas variables: la lista ordenada de carpetas donde el shell busca cada comando que escribes.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - El paso 3 de «Qué pasa cuando pulsas Enter»: el shell busca el programa (clase 01).
@@ -11,8 +11,8 @@
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **variable**: una etiqueta con un valor (`REGION=us-east-1`).
-> - **entorno**: la mochila de variables que hereda cada programa.
-> - **export**: meter una variable en la mochila.
+> - **entorno**: las variables que recibe cada programa al arrancar, copiadas de su padre.
+> - **export**: convertir una variable del shell en variable de entorno.
 > - **PATH**: la lista de carpetas donde el shell busca los comandos.
 > - **alias**: un atajo para un comando largo.
 > - **source**: ejecutar un archivo en tu propio shell, no en un hijo.
@@ -30,7 +30,7 @@ La configuración de las aplicaciones modernas llega por **variables de entorno*
 
 ## Teoría
 
-Cinco piezas. La 2 (la mochila) es la idea que más usarás en todo el curso: en Docker, en Kubernetes y en GitHub Actions.
+Cinco piezas. La 2 (las variables de entorno) es la idea que más usarás en todo el curso: en Docker, en Kubernetes y en GitHub Actions.
 
 ### 1. Una variable es una etiqueta con un valor
 
@@ -42,39 +42,39 @@ echo "${NOMBRE}s"   # las llaves marcan dónde acaba el nombre: imprime «valors
 
 **En resumen:** `NOMBRE=valor` crea la variable (sin espacios) y `$NOMBRE` la usa.
 
-### 2. La mochila: variables del shell y variables de entorno
+### 2. Variables del shell y variables de entorno
 
-Cada programa nace con una **mochila de variables**, su *entorno*, que es una **copia** de la mochila de quien lo lanzó (su padre).
+Cada programa nace con un conjunto de variables, su *entorno*, que es una **copia** del entorno de quien lo lanzó (su padre).
 
 ```
   tu bash
-  ├── COLOR=azul           ← en el bolsillo: solo la ve tu shell
-  └── export REGION=eu     ← en la mochila: viaja con cada programa que lances
+  ├── COLOR=azul           ← variable del shell: solo la ve tu shell
+  └── export REGION=eu     ← variable de entorno: la recibe cada programa que lances
           │
-          ▼  (copia de la mochila)
+          ▼  (copia del entorno)
       programa hijo (un script, python, otro bash): ve REGION, no ve COLOR
 ```
 
-- Una variable recién creada se queda **en tu bolsillo**: solo la ve tu shell.
-- `export` la mete **en la mochila**: desde ese momento, cada programa que lances recibe una copia.
+- Una variable recién creada es una **variable del shell**: solo la ve tu shell.
+- `export` la convierte en **variable de entorno**: desde ese momento, cada programa que lances recibe una copia.
 - El hijo recibe una **copia**: puede cambiar la suya, pero nunca la de su padre. Cuando termina, sus cambios desaparecen con él.
 
-**En resumen:** lo del bolsillo solo lo ves tú; lo que metes en la mochila con `export` lo heredan tus hijos, como copia.
+**En resumen:** una variable sin `export` solo la ve tu shell; con `export` la heredan tus procesos hijos, como copia.
 
-### 3. El `PATH`: la lista de cajones donde el shell busca
+### 3. El `PATH`: las carpetas donde el shell busca los comandos
 
-`PATH` es una variable de la mochila con una lista de carpetas separadas por `:`. Cuando escribes `python3`, el shell abre esas carpetas **en orden**, como cajones, y ejecuta el **primer** `python3` que encuentra.
+`PATH` es una variable de entorno con una lista de carpetas separadas por `:`. Cuando escribes `python3`, el shell mira esas carpetas **en orden** y ejecuta el **primer** `python3` que encuentra.
 
 ```
 PATH=/usr/local/bin:/usr/bin:/bin:...
-       1.º cajón     2.º      3.º
+       1.ª carpeta   2.ª      3.ª
 ```
 
-Si no está en ningún cajón, ves `no se encontró la orden`, aunque el programa exista en otro sitio. Por eso tus propios scripts se ejecutan con `./script.sh`: la carpeta actual (`.`) **no** es uno de los cajones, a propósito, por seguridad.
+Si no está en ninguna de esas carpetas, ves `no se encontró la orden`, aunque el programa exista en otro sitio. Por eso tus propios scripts se ejecutan con `./script.sh`: la carpeta actual (`.`) **no** está en el `PATH`, a propósito, por seguridad.
 
 > 🔁 **Vuelve a la clase 01.** En «Qué pasa cuando pulsas Enter», el paso 3 era «el shell busca el programa en las carpetas del PATH». Ahora conoces esa lista: el shell la recorre **en orden** y se queda con el **primer** programa que encuentra. Si dos carpetas tienen un programa con el mismo nombre, gana la que va antes. Lo comprobarás en el Rómpelo 2.
 
-**En resumen:** el shell busca cada comando en los cajones del PATH, en orden, y usa el primero que encuentra.
+**En resumen:** el shell busca cada comando en las carpetas del PATH, en orden, y usa el primero que encuentra.
 
 ### 4. Comillas: tres formas de escribir un texto
 
@@ -108,7 +108,7 @@ Si cambias `~/.bashrc`, las terminales que ya estaban abiertas no se enteran has
 <details>
 <summary>Comprueba</summary>
 
-1. Una línea vacía: `COLOR` estaba en el bolsillo, no en la mochila. Con `export`, el script recibe la copia e imprime `azul`. 2. `/opt/app/bin` no es uno de los cajones del `PATH`. 3. `Soy $USER`, tal cual: las comillas simples no sustituyen nada.
+1. Una línea vacía: `COLOR` era una variable del shell, no de entorno. Con `export`, el script recibe la copia e imprime `azul`. 2. `/opt/app/bin` no está en el `PATH`. 3. `Soy $USER`, tal cual: las comillas simples no sustituyen nada.
 </details>
 
 ### Tu chuleta de la clase
@@ -116,16 +116,16 @@ Si cambias `~/.bashrc`, las terminales que ya estaban abiertas no se enteran has
 | Comando | Qué hace |
 |---------|----------|
 | `VAR=valor` · `echo "$VAR"` | crear · usar |
-| `export VAR=valor` | meterla en la mochila |
+| `export VAR=valor` | crearla como variable de entorno |
 | `VAR=valor comando` | darle la variable solo a ese comando |
 | `unset VAR` | borrarla |
-| `env` · `printenv VAR` | ver la mochila entera · ver una variable |
-| `echo "$PATH" \| tr ':' '\n'` | los cajones del PATH, uno por línea |
-| `type -a cmd` · `which cmd` | en qué cajón está un comando |
+| `env` · `printenv VAR` | ver todas las variables de entorno · ver una |
+| `echo "$PATH" \| tr ':' '\n'` | las carpetas del PATH, una por línea |
+| `type -a cmd` · `which cmd` | en qué carpeta del PATH está un comando |
 | `source archivo` | ejecutar un archivo en tu shell, no en un hijo |
 | `alias ll='ls -lah'` | crear un atajo |
 
-Variables que ya existen: `HOME` (tu casa), `USER` (tu usuario), `PWD` (dónde estás), `SHELL` (tu shell), `PATH` (los cajones) y `?` (la nota del último comando, `$?`).
+Variables que ya existen: `HOME` (tu carpeta personal), `USER` (tu usuario), `PWD` (dónde estás), `SHELL` (tu shell), `PATH` (dónde se buscan los comandos) y `?` (el código de salida del último comando, `$?`).
 
 ## Práctica guiada
 
@@ -145,9 +145,9 @@ echo "Hoy: $(date +%F), usuario: $USER"
 
 👀 **Qué deberías ver:** `us-east-1`; `La región es us-east-1`; `La región es $REGION` tal cual, por las comillas simples; y la fecha con tu usuario.
 
-### 2. El bolsillo y la mochila
+### 2. Variable del shell frente a variable de entorno
 
-`bash -c '...'` lanza un shell **hijo** que ejecuta lo que hay entre comillas y termina. Es la forma más rápida de ver qué recibe un hijo en su mochila.
+`bash -c '...'` lanza un shell **hijo** que ejecuta lo que hay entre comillas y termina. Es la forma más rápida de ver qué variables recibe un hijo.
 
 🔮 **Predice:** ¿qué imprimirá el `bash -c`?
 
@@ -160,7 +160,7 @@ bash -c 'echo "COLOR=$COLOR  ENTORNO=$ENTORNO"'
 <details>
 <summary>Compruébalo</summary>
 
-`COLOR=  ENTORNO=produccion`. `COLOR` estaba en el bolsillo; `ENTORNO`, en la mochila.
+`COLOR=  ENTORNO=produccion`. `COLOR` era solo del shell; `ENTORNO` estaba exportada, así que el hijo la recibió.
 </details>
 
 ```bash
@@ -202,7 +202,7 @@ echo "Tras source: $ENTORNO"
 <details>
 <summary>Compruébalo</summary>
 
-`./cambia.sh` corre en un hijo: cambia **su copia** de la mochila, y el cambio desaparece con él. Tu shell sigue con `produccion`. `source` ejecuta el archivo **en tu propio shell**, así que ahí sí cambia: `modificado-por-el-script`.
+`./cambia.sh` corre en un hijo: cambia **su copia** de la variable, y el cambio desaparece con él. Tu shell sigue con `produccion`. `source` ejecuta el archivo **en tu propio shell**, así que ahí sí cambia: `modificado-por-el-script`.
 </details>
 
 ### 4. El PATH
@@ -339,7 +339,7 @@ Es el ejemplo con otra variable y otro texto por defecto.
 > NOMBRE=Ana ./saluda.sh
 > unset NOMBRE; ./saluda.sh
 > ```
-> `Hola, Luis` (está en la mochila), `Hola, Ana` (solo para ese comando) y `Hola, desconocido` (ya no existe).
+> `Hola, Luis` (está exportada), `Hola, Ana` (solo para ese comando) y `Hola, desconocido` (ya no existe).
 
 **Ahora tú, con huecos:**
 ```bash
@@ -415,7 +415,7 @@ En `notas/fase-1/clase-07.md`:
 1. ¿Qué diferencia hay entre `COLOR=azul` y `export COLOR=azul`? ¿Cuándo importa? *(2–3 líneas. Empieza así: «Sin `export`, la variable se queda en… Con `export`… Importa cuando…»)*
 2. Un script funciona en tu terminal, pero desde `cron` falla con "command not found". ¿Cuál es la causa más probable y cómo lo arreglas? *(2 líneas. Empieza así: «Lo más probable es que cron tenga otro PATH… Lo arreglo usando…»)*
 3. ¿Por qué no está `.` en el PATH? ¿Qué podría pasar si estuviera al principio? *(2 líneas. Empieza así: «Por seguridad: si `.` estuviera al principio, al escribir `ls` en una carpeta con un archivo llamado `ls`…»)*
-4. **Repaso (clase 06, sin mirar):** ¿qué hacen `r`, `w` y `x` en un **directorio**? *(3 líneas, una por llave. Empieza así: «`r` deja… `w` deja… `x` deja…»)*
+4. **Repaso (clase 06, sin mirar):** ¿qué hacen `r`, `w` y `x` en un **directorio**? *(3 líneas, una por permiso. Empieza así: «`r` deja… `w` deja… `x` deja…»)*
 
 Después, escríbeme `examíname clase-07`.
 

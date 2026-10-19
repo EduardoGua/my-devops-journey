@@ -14,7 +14,7 @@ Omitida. Ejemplo para leer (lo escribió Claude):
 > 3. ¿Por qué `grep " 401 "` y `awk '$9 == 401'` dieron números distintos? ¿Qué lección sacas? *(2 líneas. Empieza así: «`grep` encontró también una línea en la que 401 era…, mientras que `awk` mira solo… Lección: …»)*
 la diferencia esta en los comandos grep te busca en toda la linea mientras que awk te busca en el noveno trozo, al mirar mas informacion en otro trozo que no es el 9 hay un 401
 
-> 4. **Repaso (clase 04, sin mirar):** ¿qué hace `2>/dev/null` y por qué lo usaste con `find`? *(2 líneas. Empieza así: «Manda la manguera 2 a… Con `find` hacía falta porque…»)*
+> 4. **Repaso (clase 04, sin mirar):** ¿qué hace `2>/dev/null` y por qué lo usaste con `find`? *(2 líneas. Empieza así: «Manda stderr a… Con `find` hacía falta porque…»)*
 usar 2>/dev/null con find es para enviar los reportes stderr o posible mensajes de errores o fallos a /dev/null singulamente se estan eliminando y evitando en la pantalla, los errores con find pueden llegar a aparecer mientras busca y pueda toparse con archivos o carpetas sin permisos suficiente
 
 ## Autocorrección

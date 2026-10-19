@@ -5,7 +5,7 @@
 > 💡 **La idea de hoy:** `if` no entiende de «verdadero» o «falso»: **ejecuta un comando y mira su código de salida**. Si es 0, entra en `then`. Los corchetes `[[ ]]` son solo otro comando que responde 0 o 1. Con eso, tu script comprueba antes de actuar y, si algo no cuadra, **falla pronto y con un mensaje claro** en vez de romper algo a medias.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
-> - La nota de salida de cada programa (`$?`), y `&&` y `||` (clase 04).
+> - El código de salida de cada programa (`$?`), y `&&` y `||` (clase 04).
 > - Tu script `tamano.sh` y `${1:?mensaje}` (clase 16).
 > - Los comodines, como `servidor-*` (clase 03), y `^` y `$` en `grep` (clase 05).
 
@@ -32,21 +32,21 @@ Un script sin comprobaciones hace daño en silencio: sigue después de un fallo,
 
 Cinco piezas. La 1 es la idea que cambia cómo ves los scripts: léela despacio.
 
-### 1. `if` mira la nota de un comando
+### 1. `if` mira el código de salida de un comando
 
-Recuerda la **nota** que deja cada programa al terminar (clase 04): 0 si fue bien, otra cosa si falló. `if` no evalúa «verdadero o falso»: **ejecuta un comando y mira su nota**.
+Recuerda el **código de salida** que deja cada programa al terminar (clase 04): 0 si fue bien, otra cosa si falló. `if` no evalúa «verdadero o falso»: **ejecuta un comando y mira su código de salida**.
 
 ```bash
 if grep -q "^educo:" /etc/passwd; then      # ejecuta grep (-q: sin imprimir nada)...
-  echo "el usuario existe"                  # ...si su nota es 0, viene aquí
+  echo "el usuario existe"                  # ...si su código de salida es 0, viene aquí
 else
   echo "no existe"                          # ...si no, aquí
 fi
 ```
 
-No hay corchetes porque no hacen falta: `grep` ya deja su nota. Para encadenar varios casos existe `elif` («y si no, si…»):
+No hay corchetes porque no hacen falta: `grep` ya deja su código de salida. Para encadenar varios casos existe `elif` («y si no, si…»):
 
-**En resumen:** `if comando; then …` entra si la nota del comando es 0.
+**En resumen:** `if comando; then …` entra si el código de salida del comando es 0.
 
 ```bash
 if [[ $USO -ge 90 ]]; then echo "crítico"
@@ -57,7 +57,7 @@ fi
 
 ### 2. `[[ ]]`: un comando que solo sabe hacer preguntas
 
-Los corchetes dobles **también son un comando**: hacen una pregunta y dejan nota 0 si la respuesta es «sí». Las preguntas más útiles:
+Los corchetes dobles **también son un comando**: hacen una pregunta y dejan código 0 si la respuesta es «sí». Las preguntas más útiles:
 
 | Sobre… | Pregunta | Ejemplo |
 |--------|----------|---------|
@@ -74,7 +74,7 @@ Verás también corchetes **simples**, `[ … ]`: es la versión clásica, que f
 ### 3. `(( ))`: cuentas con números enteros
 
 ```bash
-(( INTENTOS > 3 )) && echo "demasiados intentos"   # comparar: nota 0 si es verdad
+(( INTENTOS > 3 )) && echo "demasiados intentos"   # comparar: código 0 si es verdad
 TOTAL=$(( A + B * 2 ))                            # calcular
 ```
 
@@ -99,9 +99,9 @@ Cada opción termina en `;;`. `|` separa alternativas («esto o aquello») y `*`
 
 **En resumen:** `case` elige un camino según el valor, con `*)` para «cualquier otra cosa».
 
-### 5. Fallar pronto: el portero en la entrada
+### 5. Fallar pronto: validar al principio
 
-Un buen script comprueba **al principio** que tiene todo lo que necesita, como un portero que revisa en la entrada en vez de echarte a mitad de la fiesta:
+Un buen script comprueba **al principio** que tiene todo lo que necesita, en vez de descubrirlo a mitad del trabajo:
 
 ```bash
 #!/bin/bash
@@ -112,7 +112,7 @@ command -v tar > /dev/null || { echo "Error: falta tar" >&2; exit 1; }
 # a partir de aquí, todo lo que el script necesita existe
 ```
 
-Cada línea se lee «comprueba esto **o** (`||`) quéjate y sal». `{ …; }` agrupa varios comandos para hacerlos juntos, y `command -v tar` deja nota 0 si el programa `tar` existe. Es mucho mejor que fallar a mitad del trabajo con un error confuso y las cosas a medias.
+Cada línea se lee «comprueba esto **o** (`||`) quéjate y sal». `{ …; }` agrupa varios comandos para hacerlos juntos, y `command -v tar` deja código 0 si el programa `tar` existe. Es mucho mejor que fallar a mitad del trabajo con un error confuso y las cosas a medias.
 
 **En resumen:** comprueba al principio y, si falta algo, sal con un mensaje claro.
 
@@ -125,7 +125,7 @@ Cada línea se lee «comprueba esto **o** (`||`) quéjate y sal». `{ …; }` ag
 <details>
 <summary>Comprueba</summary>
 
-1. La **nota** (el código de salida) de `grep`: si es 0, entra. 2. `[[ -d /srv/datos ]]`. 3. Con `-lt`: `<` compararía texto. (O usa `(( ))`, donde `<` sí compara números).
+1. El **código de salida** de `grep`: si es 0, entra. 2. `[[ -d /srv/datos ]]`. 3. Con `-lt`: `<` compararía texto. (O usa `(( ))`, donde `<` sí compara números).
 </details>
 
 ### Tu chuleta de la clase
@@ -368,7 +368,7 @@ La misma pregunta del ejemplo. Con `<`, `wc -l` imprime solo el número, sin el 
 > ```bash
 > if systemctl is-active --quiet cron; then echo "cron va"; else echo "cron caído"; fi
 > ```
-> `--quiet` hace que no imprima nada: solo deja la nota, y el `if` decide con ella.
+> `--quiet` hace que no imprima nada: solo deja el código de salida, y el `if` decide con él.
 
 **Ahora tú, con huecos:**
 ```bash

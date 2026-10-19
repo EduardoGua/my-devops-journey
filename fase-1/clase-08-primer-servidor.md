@@ -72,7 +72,7 @@ Tres palabras que no conviene confundir, porque en AWS una de ellas te sigue cos
 | Multipass | Qué hace | En AWS |
 |-----------|----------|--------|
 | `stop` | **apaga** la VM; el disco se conserva | *Stop*: no pagas CPU, **sí** el disco |
-| `delete` | la manda a la **papelera**: aún se puede recuperar | (no existe en AWS) |
+| `delete` | la marca como borrada, pero **aún se puede recuperar** | (no existe en AWS) |
 | `delete --purge` | la **destruye** para siempre | *Terminate* |
 
 **En resumen:** antes de romper algo, guarda partida. Y en AWS, `stop` sigue cobrando el disco.
@@ -100,7 +100,7 @@ Tres palabras que no conviene confundir, porque en AWS una de ellas te sigue cos
 | `multipass transfer archivo X:/ruta/` | copiar un archivo a la VM |
 | `multipass stop X` · `multipass start X` | apagar · encender |
 | `multipass snapshot X --name N` · `multipass restore X.N` | guardar partida (con la VM parada) · cargarla |
-| `multipass delete X` · `recover X` · `delete --purge X` | a la papelera · sacarla · destruirla |
+| `multipass delete X` · `recover X` · `delete --purge X` | marcarla como borrada · recuperarla · destruirla |
 
 ## Práctica guiada
 

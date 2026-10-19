@@ -46,7 +46,7 @@ Si una clase dura 90 minutos o más, o es de VM (arrancar la máquina y retomar 
 
 | Sección | Para qué |
 |---------|----------|
-| 💡 **La idea de hoy** | La clase en dos frases y con una imagen cotidiana. Léela antes de empezar: es el gancho del que cuelga todo lo demás |
+| 💡 **La idea de hoy** | La clase en dos frases, a veces con una comparación cotidiana para entenderla. La comparación se queda ahí: la teoría y la práctica usan siempre los nombres reales (stdout, código de salida, permisos…) |
 | 📚 **Lo que ya sabes** | Las 2 o 3 cosas de clases anteriores que vas a usar hoy. Si alguna no te suena, repásala antes de seguir |
 | 🔤 **Palabras nuevas** | Los términos nuevos de la clase, cada uno en una línea sencilla, para que la jerga no te frene |
 | **Objetivo** | Lo que sabrás hacer al terminar |
@@ -57,7 +57,7 @@ Si una clase dura 90 minutos o más, o es de VM (arrancar la máquina y retomar 
 | **Práctica guiada** | Comandos paso a paso. Antes de los importantes verás 🔮 **Predice**: piensa (o escribe) qué crees que pasará *antes* de ejecutarlo. Detrás, 👀 **Qué deberías ver**, para saber que vas bien |
 | **Rómpelo** | Provocas un fallo y lo diagnosticas. Es la parte que más enseña |
 | **Reto** | Un problema para comprobar que lo entendiste y no solo lo seguiste. Cada punto sube en tres escalones: 🧩 un **ejemplo resuelto** parecido, el mismo reto **con huecos** (`____`) y una **pista** escondida. Se hace **en la terminal**: en tus notas solo marcas cada punto con ✅ o ❌ |
-| **Cierre** | 3 preguntas de esta clase + 1 de repaso de una clase anterior. Cada una dice cuánto escribir y cómo empezar la frase |
+| **Cierre** | 3 preguntas de esta clase + 1 de repaso de una clase anterior. Cada una dice cuánto escribir y cómo empezar la frase. No hay que redactar textos largos: cuando haga falta uno (un resumen de incidente, un README), la clase trae un ejemplo para leer o adaptar |
 | **Autocorrección** | Las respuestas, escondidas. Ábrelas **después** de escribir las tuyas |
 | **Inglés** | Vocabulario y una frase de entrevista |
 

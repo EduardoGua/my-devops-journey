@@ -2,7 +2,7 @@
 
 **Dónde:** tu Ubuntu + VM `servidor-01` · **Tiempo:** 90 min · **Bloque:** B. Administrar un servidor
 
-> 💡 **La idea de hoy:** entrar por SSH es como **firmar en la puerta**. Tu llave **privada** es tu firma: nunca sale de tu PC. Tu llave **pública** es una muestra de esa firma, que dejas en cada servidor para que pueda comprobar que eres tú. Y el servidor también se identifica con su propio sello (su *huella*), para que sepas que no hablas con un impostor.
+> 💡 **La idea de hoy:** para entrar por SSH demuestras quién eres **firmando** con tu llave **privada**, que nunca sale de tu PC. Tu llave **pública**, que dejas en cada servidor, sirve para **comprobar** esa firma, pero no para firmar. Y el servidor también se identifica con su propia llave (su *host key*, que reconoces por su *huella*), para que sepas que no hablas con un impostor.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - Los permisos `700` y `600`, y que `~/.ssh` ya existe en tu PC (clase 06).
@@ -10,9 +10,10 @@
 > - `systemctl restart` y `journalctl -u` sobre el servicio `ssh` (clases 12 y 13).
 
 > 🔤 **Palabras nuevas de hoy:**
-> - **par de llaves**: la privada (tu firma) y la pública (su muestra).
+> - **par de llaves**: la privada (firma) y la pública (comprueba la firma).
 > - **passphrase**: la contraseña que protege tu llave privada en el disco.
-> - **huella** (*fingerprint*): un resumen corto que identifica el sello de un servidor.
+> - **host key**: el par de llaves con el que se identifica un servidor.
+> - **huella** (*fingerprint*): un resumen corto que identifica la host key de un servidor.
 > - **known_hosts**: la lista de servidores que tu PC ya conoce.
 > - **túnel**: llevar un puerto de tu PC hasta otro de un servidor, a través de SSH.
 > - **bastión**: un servidor que hace de puerta para llegar a otros que no están en internet.
@@ -31,27 +32,27 @@ SSH es la puerta de cada servidor Linux. En AWS, una EC2 se crea con un *key pai
 
 ## Teoría
 
-Cuatro piezas, con la imagen de la firma de *La idea de hoy*.
+Cuatro piezas.
 
-### 1. Tu firma y su muestra
+### 1. La llave privada y la pública
 
 Cuando creas un par de llaves, obtienes dos archivos que van juntos:
-- la **privada** (`lab_ed25519`): tu **firma**. Solo la tienes tú;
-- la **pública** (`lab_ed25519.pub`): una **muestra de tu firma**. Se puede enseñar a cualquiera: la pegas en los servidores, en GitHub o en AWS.
+- la **privada** (`lab_ed25519`): la que **firma**. Solo la tienes tú;
+- la **pública** (`lab_ed25519.pub`): la que **comprueba** esas firmas. Se puede enseñar a cualquiera: la pegas en los servidores, en GitHub o en AWS.
 
-Al conectarte, el servidor te pone delante un documento único (un *reto*); tu PC lo **firma** con la privada y el servidor **compara** la firma con la muestra que guarda en `~/.ssh/authorized_keys`. Si coinciden, entras. La privada **nunca viaja por la red**: solo viaja la firma de ese documento.
+Al conectarte, el servidor te pone delante un documento único (un *reto*); tu PC lo **firma** con la privada y el servidor **comprueba** la firma con la llave pública que guarda en `~/.ssh/authorized_keys`. Si coinciden, entras. La privada **nunca viaja por la red**: solo viaja la firma de ese documento.
 
-Por eso la pública no es peligrosa (con una muestra no se puede firmar) y la privada sí: quien la tenga **es** tú para todos esos servidores. Una *passphrase* la protege en el disco: si te la roban, no sirve sin la frase.
+Por eso la pública no es peligrosa (con ella no se puede firmar) y la privada sí: quien la tenga **es** tú para todos esos servidores. Una *passphrase* la protege en el disco: si te la roban, no sirve sin la frase.
 
-**En resumen:** la privada firma y nunca sale de tu PC; la pública es la muestra que dejas en los servidores.
+**En resumen:** la privada firma y nunca sale de tu PC; la pública, que dejas en los servidores, comprueba la firma.
 
 ### 2. El servidor también se identifica
 
-El servidor tiene su propio par de llaves, su **sello** (*host key*). La primera vez que te conectas, tu PC te enseña la **huella** de ese sello (*fingerprint*) y te pregunta si te fías. Si dices que sí, la apunta en `~/.ssh/known_hosts`.
+El servidor tiene su propio par de llaves, su **host key**. La primera vez que te conectas, tu PC te enseña la **huella** (*fingerprint*) de esa llave y te pregunta si te fías. Si dices que sí, la apunta en `~/.ssh/known_hosts`.
 
 Las siguientes veces la compara. Si un día la huella **cambia**, SSH se niega a conectar y avisa a gritos: podría ser un impostor en medio (un ataque *man-in-the-middle*) o, simplemente, un servidor reinstalado. Nunca se acepta sin averiguar cuál de las dos es.
 
-**En resumen:** la primera vez apuntas el sello del servidor; si un día cambia, no aceptes sin averiguar por qué.
+**En resumen:** la primera vez apuntas la host key del servidor; si un día cambia, no aceptes sin averiguar por qué.
 
 Las dos piezas juntas:
 
@@ -64,7 +65,7 @@ Las dos piezas juntas:
 
 ### 3. SSH es estricto con los permisos
 
-Si alguien más pudiera leer tu firma o cambiar la lista de muestras, SSH no se fía y se niega a funcionar. Exige (clase 06):
+Si alguien más pudiera leer tu llave privada o cambiar la lista de llaves públicas autorizadas (`authorized_keys`), SSH no se fía y se niega a funcionar. Exige (clase 06):
 
 | Ruta | Permiso |
 |------|---------|
@@ -101,7 +102,7 @@ Ubuntu lee también los archivos de `/etc/ssh/sshd_config.d/*.conf`, y **la prim
 <details>
 <summary>Comprueba</summary>
 
-1. La **pública** (`.pub`), la muestra. La privada nunca sale de tu PC. 2. No aceptar a ciegas: averiguar si el servidor se reinstaló, comprobando la huella por otra vía, y solo entonces borrar la vieja. 3. Dejar abierta una sesión de seguridad y probar desde otra (y revisar la sintaxis con `sudo sshd -t`).
+1. La **pública** (`.pub`). La privada nunca sale de tu PC. 2. No aceptar a ciegas: averiguar si el servidor se reinstaló, comprobando la huella por otra vía, y solo entonces borrar la vieja. 3. Dejar abierta una sesión de seguridad y probar desde otra (y revisar la sintaxis con `sudo sshd -t`).
 </details>
 
 ### Tu chuleta de la clase
@@ -380,15 +381,15 @@ sudo cp -r /tmp/web/* /var/www/____/
 <details>
 <summary>Pista</summary>
 
-Tres verbos, en este orden: **revocar** (quitar del servidor la muestra de la llave filtrada), **reemplazar** (una llave nueva, como en la práctica 9) y **revisar** (si alguien la usó).
+Tres verbos, en este orden: **revocar** (quitar del servidor la llave pública de la llave filtrada), **reemplazar** (una llave nueva, como en la práctica 9) y **revisar** (si alguien la usó).
 </details>
 
 ## Cierre
 
 En `notas/fase-1/clase-15.md`:
 
-1. ¿Por qué la llave pública se puede compartir y la privada no? Explica qué hace cada una al conectar. *(3 líneas. Empieza así: «La pública es la muestra…, así que con ella nadie puede… La privada firma…, y quien la tenga…»)*
-2. ¿Qué significa el aviso `REMOTE HOST IDENTIFICATION HAS CHANGED` y qué haces cuando lo ves? *(2 líneas. Empieza así: «Que el sello del servidor no coincide con el que apunté… Antes de aceptar, compruebo…»)*
+1. ¿Por qué la llave pública se puede compartir y la privada no? Explica qué hace cada una al conectar. *(3 líneas. Empieza así: «La pública solo comprueba…, así que con ella nadie puede… La privada firma…, y quien la tenga…»)*
+2. ¿Qué significa el aviso `REMOTE HOST IDENTIFICATION HAS CHANGED` y qué haces cuando lo ves? *(2 líneas. Empieza así: «Que la host key del servidor no coincide con la que apunté… Antes de aceptar, compruebo…»)*
 3. Una llave privada se publicó en GitHub. ¿Por qué borrar el archivo del repo **no** cierra el incidente? ¿Qué pasos sí lo cierran? *(3 líneas. Empieza así: «Porque Git guarda… y los bots… Lo cierran: revocar…, reemplazar… y revisar…»)*
 4. **Repaso (clase 14, sin mirar):** `df` dice que el disco está lleno pero `du` no encuentra el espacio. ¿Qué compruebas? *(2 líneas. Empieza así: «Un archivo borrado que un proceso sigue usando, con `lsof +L1`. Y si es *No space left* con espacio libre…»)*
 

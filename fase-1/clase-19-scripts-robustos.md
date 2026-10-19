@@ -7,7 +7,7 @@
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - Tus scripts con argumentos, `${1:?…}` y `exit N` (clase 16).
 > - Los fallos que esconde un pipe, como `cat /no-existe | wc -l` (clase 04).
-> - `if`, `||` y el portero en la entrada (clase 17), y el bucle de `esperar-url.sh` (clase 18).
+> - `if`, `||` y validar al principio (clase 17), y el bucle de `esperar-url.sh` (clase 18).
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **función**: un trozo de script con nombre, que llamas cuando lo necesitas.
@@ -32,9 +32,9 @@ Un script que sigue adelante después de un error es peor que no tener script: h
 
 Seis piezas. Todas sirven para lo mismo: que tu script **falle de forma segura** en lugar de seguir a ciegas.
 
-### 1. Funciones: recetas dentro de la receta
+### 1. Funciones
 
-Una función es un trozo de script con nombre, que llamas cuando lo necesitas, como una receta pequeña dentro de la grande:
+Una función es un trozo de script con nombre, que llamas cuando lo necesitas:
 
 ```bash
 saludar() {
@@ -46,7 +46,7 @@ saludar "Ana"
 
 - Dentro de la función, `$1`, `$2` y `"$@"` son **sus** ingredientes, no los del script.
 - `local` hace que la variable exista **solo** dentro de la función. Sin `local`, podría pisar otra variable del script con el mismo nombre.
-- Una función devuelve cosas por los mismos dos sitios que cualquier programa: **datos** por la manguera 1 (que capturas con `$(...)`) y una **nota** con `return N` (o la del último comando que ejecutó).
+- Una función devuelve cosas por los mismos dos sitios que cualquier programa: **datos** por stdout (que capturas con `$(...)`) y un **código de salida** con `return N` (o el del último comando que ejecutó).
 
 **En resumen:** una función es un trozo de script con nombre; `local` guarda sus variables dentro de ella.
 
@@ -84,8 +84,8 @@ N="$(grep -c "zzz" archivo || true)"                             # "no hay coinc
 ```
 
 Dos trampas que verás en el Rómpelo:
-- `(( contador++ ))` con `contador=0` deja nota 1 y **mata el script**. Usa `contador=$(( contador + 1 ))`.
-- `local x=$(comando)` esconde el fallo del comando: la nota que ve `set -e` es la de `local`, que siempre sale bien. Sepáralo en dos: `local x; x=$(comando)`.
+- `(( contador++ ))` con `contador=0` deja código de salida 1 y **mata el script**. Usa `contador=$(( contador + 1 ))`.
+- `local x=$(comando)` esconde el fallo del comando: el código de salida que ve `set -e` es el de `local`, que siempre sale bien. Sepáralo en dos: `local x; x=$(comando)`.
 
 `set -e` es una red de seguridad, no un sustituto de comprobar tú los errores importantes.
 
@@ -93,7 +93,7 @@ Dos trampas que verás en el Rómpelo:
 
 ### 4. `trap`: recoger al salir, pase lo que pase
 
-Como quien cierra la cocina al irse, **termine como termine**:
+Sirve para limpiar al salir, **termine como termine**:
 
 ```bash
 TMP="$(mktemp -d)"                 # crea un directorio temporal con nombre único
@@ -113,7 +113,7 @@ log ERROR "no encuentro el archivo"
 logger -t mi-script "copia terminada"               # al journal: journalctl -t mi-script
 ```
 
-`log INFO "mensaje"` escribe una línea con fecha, hora y nivel por la manguera 2. `${*:2}` son todos los argumentos desde el segundo, unidos en un texto. `logger` deja el mensaje en el journal (clase 13).
+`log INFO "mensaje"` escribe una línea con fecha, hora y nivel por stderr. `${*:2}` son todos los argumentos desde el segundo, unidos en un texto. `logger` deja el mensaje en el journal (clase 13).
 
 **En resumen:** `log` deja una línea con fecha y nivel; `logger` la deja en el journal.
 
@@ -165,7 +165,7 @@ main "$@"
 | Escribes | Qué es |
 |----------|--------|
 | `nombre() { …; }` · `nombre arg1 arg2` | definir una función · llamarla |
-| `local x="$1"` · `return 1` | variable solo de la función · terminar la función con nota 1 |
+| `local x="$1"` · `return 1` | variable solo de la función · terminar la función con código 1 |
 | `set -euo pipefail` | los tres cinturones: parar al fallar, variables sin definir, pipes |
 | `if ! cmd; then …` · `cmd \|\| true` | tratar un fallo esperado · ignorarlo a propósito |
 | `TMP="$(mktemp -d)"` · `trap '…' EXIT` | carpeta temporal · qué hacer al salir |
@@ -447,7 +447,7 @@ Repite con las carpetas 16, 17 y 18. Empieza por los avisos que ya conoces de la
 > log INFO "empiezo"
 > log WARN "algo raro"
 > ```
-> `log` escribe con fecha, hora y nivel por la manguera 2. `die` hace lo mismo con `ERROR` y además **termina** el script: no la pruebes en tu terminal, porque la cerraría.
+> `log` escribe con fecha, hora y nivel por stderr. `die` hace lo mismo con `ERROR` y además **termina** el script: no la pruebes en tu terminal, porque la cerraría.
 
 **Ahora tú, con huecos:**
 ```bash

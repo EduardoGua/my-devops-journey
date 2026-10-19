@@ -5,15 +5,15 @@
 > 💡 **La idea de hoy:** `find` busca **archivos** (por nombre, tamaño o fecha) y `grep` busca **texto dentro** de los archivos. Con pipes encadenas filtros pequeños como en una **cadena de montaje**: cada herramienta hace una sola cosa (cortar una columna, ordenar, contar) y pasa el resultado a la siguiente. Así respondes las preguntas de un incidente con datos y no con corazonadas.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
-> - Un pipe (`|`) empalma programas, y se construye pieza a pieza (clase 04).
-> - `2> /dev/null` tira los errores a la papelera (clase 04).
+> - Un pipe (`|`) pasa el stdout de un programa a la entrada del siguiente, y se construye pieza a pieza (clase 04).
+> - `2> /dev/null` descarta los errores, que salen por stderr (clase 04).
 > - Un comodín entre comillas le llega tal cual al programa: el shell no lo expande (clase 03).
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **log**: el registro de lo que pasa; aquí, una línea por cada visita a una web.
 > - **patrón**: el texto que buscas, con o sin comodines.
 > - **campo** o trozo: cada dato de una línea, separado por espacios (`$1`, `$9`…).
-> - **código de estado HTTP**: la nota de cada visita (200: bien; 404: no existe; 500: falló el servidor).
+> - **código de estado HTTP**: el número que dice cómo fue cada visita (200: bien; 404: no existe; 500: falló el servidor).
 > - **top-N**: los N que más se repiten.
 
 ## Objetivo
@@ -79,15 +79,15 @@ Un log de nginx tiene una línea por cada visita a la web. Parece un churro, per
 
 Los que más vas a usar: **$1** (la IP de quien visita), **$7** (la página que pidió) y **$9** (el código de estado: cómo le fue).
 
-El código de estado es la «nota» de cada petición, como la de los programas en la clase 04: **2xx** bien · **3xx** redirigido a otro sitio · **4xx** el cliente pidió mal (404: no existe; 401: sin permiso) · **5xx** falló el servidor (500: error interno; 502: el servidor de detrás no respondió). Los verás a fondo en la clase 32.
+El código de estado dice cómo fue cada petición, igual que el código de salida de los programas en la clase 04: **2xx** bien · **3xx** redirigido a otro sitio · **4xx** el cliente pidió mal (404: no existe; 401: sin permiso) · **5xx** falló el servidor (500: error interno; 502: el servidor de detrás no respondió). Los verás a fondo en la clase 32.
 
 **En resumen:** cada trozo de la línea es un dato: `$1` quién, `$7` qué página y `$9` cómo le fue.
 
-### 4. La cadena de montaje
+### 4. Encadenar filtros con `|`
 
-Para responder preguntas con un log se empalman con `|` herramientas pequeñas. Cada una hace **una sola cosa** y le pasa el resultado a la siguiente, como en una cadena de montaje:
+Para responder preguntas con un log se conectan con `|` herramientas pequeñas. Cada una hace **una sola cosa** y le pasa el resultado a la siguiente:
 
-| Puesto | Qué hace |
+| Comando | Qué hace |
 |--------|----------|
 | `awk '{print $9}'` | se queda solo con el trozo 9 de cada línea |
 | `awk '$9 >= 500'` | deja pasar solo las líneas cuyo trozo 9 es 500 o más |
@@ -122,7 +122,7 @@ Ya la construiste pieza a pieza en la clase 04 con `cut`. Hoy cambias `cut` por 
 
 Para consultar mientras practicas. Las opciones con ➕ son extra: no las necesitas hoy.
 
-| `find` | | `grep` | | Cadena de montaje | |
+| `find` | | `grep` | | Pipeline | |
 |--------|-|--------|-|-------------------|-|
 | `-name "*.log"` | por nombre | `-c` | cuenta | `awk '{print $1, $9}'` | trozos 1 y 9 |
 | `-type f` / `d` | archivo / directorio | `-v` | las que no | `awk '$9 >= 500'` | filtra filas |
@@ -158,7 +158,7 @@ find ~/my-devops-journey -type f -mtime -1                # lo que tocaste en la
 <details>
 <summary>Compruébalo</summary>
 
-Hay carpetas en las que tu usuario no tiene permiso para entrar, y `find` se queja de cada una por la **manguera 2** (clase 04). `2>/dev/null` tira esas quejas a la papelera y te deja ver solo los resultados.
+Hay carpetas en las que tu usuario no tiene permiso para entrar, y `find` se queja de cada una por **stderr** (clase 04). `2>/dev/null` descarta esos errores y te deja ver solo los resultados.
 </details>
 
 ### 2. `grep` básico sobre el log
@@ -224,6 +224,14 @@ awk '$9 >= 500' $LOG | grep "2026:14:" | awk '{print $7}' | sort | uniq -c
 ```
 
 ¿Por qué `"2026:14:"` y no solo `":14:"`? Porque `":14:"` también coincidiría con el **minuto** 14 de cualquier hora (`10:14:22`). Incluir lo que va delante de la hora hace el patrón exacto.
+
+### 📄 Para leer: el resumen del incidente
+
+No tienes que escribir nada: lee cómo quedan los datos que acabas de sacar cuando se los cuentas a tu jefe. Fíjate en que cada frase lleva un dato del log (hora, ruta, IP, cuántas peticiones) y una acción.
+
+> Hubo dos problemas. Primero, hacia las 14:00 se triplicaron los errores 5xx (21 en esa hora, frente a unos 8 en las demás), sobre todo en `/api/orders`: los pedidos fallaban. Revisaría los logs de la aplicación de pedidos a esa hora y si hubo algún cambio o despliegue. Segundo, desde la IP 198.51.100.7 hubo un ataque de fuerza bruta: unos 120 `POST /login` con 401 entre las 19:25 y las 19:27, con `python-requests`. La bloquearía en el firewall, limitaría los intentos de login y comprobaría que ninguna cuenta llegó a entrar.
+
+Son **dos** sucesos distintos, a horas distintas: el ataque no causó los errores de las 14:00. Mezclarlos es el error típico cuando se saca una conclusión sin mirar los datos.
 
 ### 4. Guardar el informe
 
@@ -381,9 +389,9 @@ Desde hoy, los días que te sobren 20–30 minutos: [Bandit](bandit.md).
 En `notas/fase-1/clase-05.md`:
 
 1. Explica el patrón `sort | uniq -c | sort -rn | head` paso a paso. ¿Por qué hace falta el primer `sort`? *(3–4 líneas, una por pieza. Empieza así: «`sort` junta… `uniq -c`… `sort -rn`… y `head`… El primer `sort` hace falta porque…»)*
-2. Con los datos del log, redacta en 3–4 líneas un **resumen del incidente**, como si se lo contaras a tu jefe: qué pasó, cuándo, qué afectó y qué harías. *(3–4 líneas. Empieza así: «Hubo dos problemas. Primero, hacia las 14:00… Segundo, desde la IP…»)*
+2. **Solo para leer, no se responde ni se califica:** relee el resumen del incidente de la práctica guiada (después del paso 3) y fíjate en qué dato del log sostiene cada frase.
 3. ¿Por qué `grep " 401 "` y `awk '$9 == 401'` dieron números distintos? ¿Qué lección sacas? *(2 líneas. Empieza así: «`grep` encontró también una línea en la que 401 era…, mientras que `awk` mira solo… Lección: …»)*
-4. **Repaso (clase 04, sin mirar):** ¿qué hace `2>/dev/null` y por qué lo usaste con `find`? *(2 líneas. Empieza así: «Manda la manguera 2 a… Con `find` hacía falta porque…»)*
+4. **Repaso (clase 04, sin mirar):** ¿qué hace `2>/dev/null` y por qué lo usaste con `find`? *(2 líneas. Empieza así: «Manda stderr a… Con `find` hacía falta porque…»)*
 
 Después, escríbeme `examíname clase-05`.
 
@@ -394,7 +402,7 @@ Después, escríbeme `examíname clase-05`.
 
 **1.** `sort` junta las líneas iguales, `uniq -c` cuenta cada grupo y pone el número delante, `sort -rn` ordena por ese número de mayor a menor y `head` se queda con el top 10. El primer `sort` hace falta porque `uniq` solo agrupa líneas iguales **contiguas**.
 
-**2.** Debe incluir dos sucesos con datos: (a) **errores 5xx** (500/502) concentrados hacia las **14:00**, sobre todo en **`/api/orders`**, probablemente un fallo del servicio o la base de datos que hay detrás de pedidos. Acción: revisar los logs de esa aplicación a esa hora, ver si hubo un despliegue y vigilar su backend. (b) **Fuerza bruta** desde **198.51.100.7**: 120 `POST /login` con 401 en unos dos minutos (~19:25), con `python-requests`. Acción: bloquear la IP, limitar intentos de login y revisar que ninguna cuenta haya entrado.
+**2.** No se califica: era solo para leer el ejemplo de la práctica.
 
 **3.** `grep` busca texto en cualquier parte de la línea, y una línea tenía **401 bytes** en el campo de tamaño. `awk '$9 == 401'` mira solo la columna del estado. Lección: cuando el dato tiene estructura, se filtra por columna. Y siempre se valida un número antes de sacar conclusiones.
 

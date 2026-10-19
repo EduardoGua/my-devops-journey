@@ -2,7 +2,7 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 90 min (puedes partirla en dos sesiones: la segunda empieza en el Rómpelo) · **Bloque:** A. Linux en tu equipo
 
-> 💡 **La idea de hoy:** imagina cada programa como un depósito con **una entrada y dos mangueras de salida**. Por la manguera **1** salen los datos que pediste; por la **2**, los errores. Las dos apuntan a la pantalla, pero tú puedes **apuntarlas a otro sitio** (eso es *redirigir*) o **empalmar** la manguera 1 de un programa con la entrada del siguiente (eso es un *pipe*, `|`). Y al terminar, cada programa deja una **nota** con el resultado: 0 si todo fue bien.
+> 💡 **La idea de hoy:** todo programa tiene **una entrada y dos salidas**. Por **stdout** salen los datos que pediste; por **stderr**, los errores. Las dos van a la pantalla, pero tú puedes **mandarlas a otro sitio**, como un archivo (eso es *redirigir*), o pasar el stdout de un programa a la entrada del siguiente (eso es un *pipe*, `|`). Y al terminar, cada programa deja un **código de salida**: 0 si todo fue bien.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - `>` y `>>` para escribir en un archivo (clase 03: lo explicaste en tu cierre).
@@ -10,55 +10,55 @@
 > - Mirar quién se queja en un error: `lsss` frente a `ls /esto-no-existe` (clase 01).
 
 > 🔤 **Palabras nuevas de hoy:**
-> - **stdout** (la manguera 1): por donde salen los datos.
-> - **stderr** (la manguera 2): por donde salen los errores.
-> - **redirigir**: apuntar una manguera a otro sitio, como un archivo o la papelera.
-> - **pipe** (`|`): empalmar la manguera 1 de un programa con la entrada del siguiente.
-> - **código de salida**: la nota que deja un programa al terminar (0 = todo bien).
-> - **`/dev/null`**: la papelera sin fondo.
+> - **stdout** (salida estándar, número 1): por donde salen los datos.
+> - **stderr** (salida de errores, número 2): por donde salen los errores.
+> - **redirigir**: mandar stdout o stderr a otro sitio que no sea la pantalla, como un archivo.
+> - **pipe** (`|`): pasar el stdout de un programa a la entrada del siguiente.
+> - **código de salida**: el número que deja un programa al terminar (0 = todo bien).
+> - **`/dev/null`**: un archivo especial que descarta todo lo que le mandas.
 > - **pipeline de CI/CD**: la cadena de pasos automáticos que prueba y publica el código (pieza 4). No es el pipe `|`.
 
 ## Objetivo
 
-- Entender las tres conexiones de todo programa: la entrada y las dos mangueras de salida.
-- Apuntar cada manguera a un archivo o a la papelera: `>`, `>>`, `2>`, `/dev/null` y `2>&1`.
-- Empalmar programas con `|` y sacar una copia por el camino con `tee`.
-- Leer la nota que deja cada programa (`$?`) y usarla para decidir qué se ejecuta después: `&&` y `||`.
+- Entender las tres conexiones de todo programa: la entrada (stdin), stdout y stderr.
+- Mandar stdout o stderr a un archivo o descartarlos: `>`, `>>`, `2>`, `/dev/null` y `2>&1`.
+- Conectar programas con `|` y guardar una copia por el camino con `tee`.
+- Leer el código de salida de cada programa (`$?`) y usarlo para decidir qué se ejecuta después: `&&` y `||`.
 
 ## Por qué importa
 
-Esta clase es **la filosofía Unix**: programas pequeños que hacen una cosa bien y se empalman. Con `|` analizarás logs de millones de líneas en un segundo. Y la nota de cada programa (el código de salida) es el idioma con el que se entienden los scripts, los pipelines de CI/CD y los *health checks*: un job de GitHub Actions falla porque un comando dejó una nota distinta de 0.
+Esta clase es **la filosofía Unix**: programas pequeños que hacen una cosa bien y se conectan entre sí. Con `|` analizarás logs de millones de líneas en un segundo. Y el código de salida de cada programa es el idioma con el que se entienden los scripts, los pipelines de CI/CD y los *health checks*: un job de GitHub Actions falla porque un comando dejó un código de salida distinto de 0.
 
 ## Teoría
 
 Son cinco piezas pequeñas. Léelas en orden: cada una se apoya en la anterior.
 
-### 1. Una entrada y dos mangueras
+### 1. Una entrada y dos salidas
 
 ```
                      ┌────────────┐
- entrada (0)  ─────► │  programa  │ ─────► manguera 1: los DATOS     (stdout)
- (el teclado)        │            │ ─────► manguera 2: los ERRORES   (stderr)
+ stdin (0)    ─────► │  programa  │ ─────► stdout (1): los DATOS
+ (el teclado)        │            │ ─────► stderr (2): los ERRORES
                      └────────────┘
 ```
 
-Los números (0, 1 y 2) importan: son los que escribirás en los comandos. Los nombres en inglés (*stdin*, *stdout*, *stderr*) los verás en documentación y entrevistas.
+Los números (0, 1 y 2) importan: son los que escribirás en los comandos (`2>` significa «stderr a…»). Los nombres (*stdin*, *stdout*, *stderr*) son los que verás en la documentación y en las entrevistas.
 
-Por defecto, **las dos mangueras apuntan a la pantalla**. Por eso los datos y los errores **parecen lo mismo**, aunque salgan por sitios distintos. Un ejemplo que da una cosa de cada:
+Por defecto, **stdout y stderr van a la pantalla**. Por eso los datos y los errores **parecen lo mismo**, aunque salgan por sitios distintos. Un ejemplo que da una cosa de cada:
 
 ```bash
 ls /etc/hostname /no-existe
 ```
 ```
-ls: no se puede acceder a '/no-existe': No existe el archivo o directorio     ← manguera 2
-/etc/hostname                                                                 ← manguera 1
+ls: no se puede acceder a '/no-existe': No existe el archivo o directorio     ← stderr (2)
+/etc/hostname                                                                 ← stdout (1)
 ```
 
-**En resumen:** los datos salen por la 1, los errores por la 2, y las dos van a la pantalla salvo que digas otra cosa.
+**En resumen:** los datos salen por stdout (1), los errores por stderr (2), y los dos van a la pantalla salvo que digas otra cosa.
 
 ### Cómo leer un mensaje de error
 
-Lo que sale por la manguera 2 casi siempre sigue el mismo molde: **quién se queja: sobre qué: por qué**.
+Lo que sale por stderr casi siempre sigue el mismo molde: **quién se queja: sobre qué: por qué**.
 
 ```
 ls: no se puede acceder a '/no-existe': No existe el archivo o directorio
@@ -74,58 +74,58 @@ Es lo que viste en la clase 01 con `ls /esto-no-existe` frente a `lsss`.
 
 **En resumen:** lee primero **quién** se queja: te dice dónde buscar.
 
-### 2. Redirigir: apuntar una manguera a otro sitio
+### 2. Redirigir: mandar stdout o stderr a otro sitio
 
-Cada símbolo mueve **una** manguera. Uno a uno:
+Cada símbolo redirige **una** de las dos salidas. Uno a uno:
 
-| Escribes | Qué manguera mueves | A dónde |
+| Escribes | Qué salida redirige | A dónde |
 |----------|---------------------|---------|
-| `> archivo` | la 1 (datos) | al archivo, **vaciándolo antes** |
-| `>> archivo` | la 1 (datos) | al **final** del archivo, sin borrar lo que había (lo viste en la clase 03) |
-| `2> archivo` | la 2 (errores) | al archivo |
-| `> /dev/null` | la 1 | a la **papelera sin fondo**: lo que entra ahí desaparece |
-| `2> /dev/null` | la 2 | a la papelera: «no quiero ver los errores» |
+| `> archivo` | stdout (datos) | al archivo, **vaciándolo antes** |
+| `>> archivo` | stdout (datos) | al **final** del archivo, sin borrar lo que había (lo viste en la clase 03) |
+| `2> archivo` | stderr (errores) | al archivo |
+| `> /dev/null` | stdout | a `/dev/null`, que lo **descarta**: no se guarda en ningún sitio |
+| `2> /dev/null` | stderr | a `/dev/null`: «no quiero ver los errores» |
 
 Y una más, la única con truco:
 
 | Escribes | Qué hace |
 |----------|----------|
-| `2>&1` | apunta la manguera 2 **al mismo sitio al que apunta la 1 en ese momento** |
+| `2>&1` | manda stderr **al mismo sitio al que va stdout en ese momento** |
 
-Piénsalo como **copiar la dirección de un amigo en un papel**: si tu amigo se muda después, tu papel sigue teniendo la dirección vieja. `2>&1` no ata las mangueras para siempre: copia el destino de la 1 **en ese instante**. Por eso importa el orden, y lo verás con tus ojos en el Rómpelo 2. La forma correcta de mandar **todo** a un archivo es:
+`2>&1` no une las dos salidas para siempre: copia el destino que tiene stdout **en ese instante**. Si después cambias stdout, stderr se queda donde estaba. Por eso importa el orden, y lo verás con tus ojos en el Rómpelo 2. La forma correcta de mandar **todo** a un archivo es:
 
 ```bash
-comando > archivo 2>&1        # primero mueves la 1; después la 2 copia su nueva dirección
+comando > archivo 2>&1        # primero stdout va al archivo; después stderr copia ese destino
 comando &> archivo            # atajo de bash que hace lo mismo
 ```
 
-**En resumen:** `>` mueve la manguera 1, `2>` mueve la 2, y `> archivo 2>&1` manda las dos al archivo.
+**En resumen:** `>` redirige stdout, `2>` redirige stderr, y `> archivo 2>&1` manda los dos al archivo.
 
-### 3. Pipes: empalmar programas
+### 3. Pipes: conectar programas
 
 ```
- ┌──────┐  manguera 1   ┌──────┐
+ ┌──────┐    stdout     ┌──────┐
  │  ls  │ ─────────────►│  wc  │ ────► pantalla
  └──────┘     ( | )     └──────┘
 ```
 
-`a | b` empalma la manguera 1 de `a` con la entrada de `b`: lo que `a` iba a escribir en pantalla, `b` lo recibe para trabajar con ello. Por ejemplo, `ls /etc | wc -l` cuenta cuántas cosas hay en `/etc` (`wc -l` cuenta líneas).
+`a | b` conecta el stdout de `a` con la entrada de `b`: lo que `a` iba a escribir en pantalla, `b` lo recibe para trabajar con ello. Por ejemplo, `ls /etc | wc -l` cuenta cuántas cosas hay en `/etc` (`wc -l` cuenta líneas).
 
-Ojo: el pipe **solo empalma la manguera 1**. La 2 sigue apuntando a la pantalla, así que los errores no pasan al siguiente programa: los ves tú.
+Ojo: el pipe **solo pasa stdout**. stderr sigue yendo a la pantalla, así que los errores no pasan al siguiente programa: los ves tú.
 
-`tee` es la **T de fontanería** (de ahí su nombre): deja pasar el agua y, además, saca una copia hacia un archivo. `ls /etc | tee lista.txt | wc -l` cuenta las cosas de `/etc` **y** guarda la lista en `lista.txt`.
+`tee` deja pasar los datos al siguiente programa y, además, guarda una copia en un archivo (el nombre viene de la pieza en forma de T de las tuberías). `ls /etc | tee lista.txt | wc -l` cuenta las cosas de `/etc` **y** guarda la lista en `lista.txt`.
 
 **En resumen:** `|` pasa los datos de un programa al siguiente; los errores no pasan.
 
-### 4. La nota que deja cada programa: el código de salida
+### 4. El código de salida
 
 Al terminar, todo programa deja un número:
 - **0**: todo fue bien.
 - **Cualquier otro**: algo falló. Qué número exacto lo decide cada programa: `grep`, por ejemplo, deja 1 si no encontró nada y 2 si hubo un error de verdad.
 
-`$?` guarda la nota del **último** comando: `echo $?` te la enseña.
+`$?` guarda el código de salida del **último** comando: `echo $?` te lo enseña.
 
-Con esa nota puedes decidir qué se ejecuta después:
+Con ese código puedes decidir qué se ejecuta después:
 
 | Escribes | Se lee como… |
 |----------|--------------|
@@ -135,7 +135,7 @@ Con esa nota puedes decidir qué se ejecuta después:
 
 **En resumen:** 0 = bien; `&&` significa «si salió bien» y `||`, «si falló».
 
-> 🏭 **La nota en el trabajo: el pipeline de CI/CD.** Piensa en el control de calidad de una fábrica: cada pieza pasa por varias estaciones y, si una detecta un defecto, la cinta se para y esa pieza no llega a la tienda. Un **pipeline de CI/CD** hace lo mismo con el código: cada vez que alguien lo cambia, una máquina ejecuta sola una lista de pasos, como **probar** (los tests), **construir** (empaquetar la app) y **desplegar** (publicarla para los clientes). Cada paso es un comando, y el pipeline mira su **nota**: si un paso deja algo distinto de 0, se para y no se publica nada roto. Lo construirás tú en la fase 7. (No lo confundas con el pipe `|`: solo comparten el nombre).
+> 🏭 **El código de salida en el trabajo: el pipeline de CI/CD.** Piensa en el control de calidad de una fábrica: cada pieza pasa por varias estaciones y, si una detecta un defecto, la cinta se para y esa pieza no llega a la tienda. Un **pipeline de CI/CD** hace lo mismo con el código: cada vez que alguien lo cambia, una máquina ejecuta sola una lista de pasos, como **probar** (los tests), **construir** (empaquetar la app) y **desplegar** (publicarla para los clientes). Cada paso es un comando, y el pipeline mira su **código de salida**: si un paso deja algo distinto de 0, se para y no se publica nada roto. Lo construirás tú en la fase 7. (No lo confundas con el pipe `|`: solo comparten el nombre).
 
 ### 5. `$( )`: «pon aquí lo que imprima este comando»
 
@@ -148,14 +148,14 @@ Antes de ejecutar `echo`, el shell ejecuta `date +%A`, coge lo que imprime (el d
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
-1. El mensaje `No existe el archivo o directorio`, ¿por qué manguera sale?
+1. El mensaje `No existe el archivo o directorio`, ¿sale por stdout o por stderr?
 2. ¿Qué diferencia hay entre `> notas.txt` y `>> notas.txt`?
 3. Acabas de ejecutar un comando que salió bien. ¿Qué muestra `echo $?`?
 
 <details>
 <summary>Comprueba</summary>
 
-1. Por la **2**: es un error. 2. `>` vacía el archivo antes de escribir; `>>` añade al final. 3. `0`.
+1. Por **stderr** (la 2): es un error. 2. `>` vacía el archivo antes de escribir; `>>` añade al final. 3. `0`.
 
 Si fallaste alguna, relee esa pieza antes de seguir: la práctica se apoya en las tres.
 </details>
@@ -170,12 +170,12 @@ Para consultar mientras practicas (no para memorizar de golpe):
 | `cmd >> f` | datos al final de `f` |
 | `cmd 2> f` | errores a `f` |
 | `cmd > f 2>&1` / `cmd &> f` | datos y errores a `f` |
-| `cmd 2> /dev/null` | tira los errores |
+| `cmd 2> /dev/null` | descarta los errores |
 | `cmd < f` | la entrada viene de `f` en lugar del teclado |
 | `a \| b` | los datos de `a` entran en `b` |
 | `a \| tee f \| b` | además, guarda una copia en `f` |
 | `a && b` · `a \|\| b` | `b` solo si `a` salió bien · solo si falló |
-| `$?` · `$(cmd)` | la nota del último comando · lo que imprime `cmd` |
+| `$?` · `$(cmd)` | el código de salida del último comando · lo que imprime `cmd` |
 
 ## Práctica guiada
 
@@ -183,7 +183,7 @@ Para consultar mientras practicas (no para memorizar de golpe):
 mkdir -p ~/my-devops-journey/labs/clase-04 && cd ~/my-devops-journey/labs/clase-04
 ```
 
-### 1. Mover las mangueras
+### 1. Redirigir stdout y stderr
 
 Ejecuta las líneas **de una en una**. Antes de cada una, 🔮 **predice**: ¿qué verás en pantalla? ¿Qué acabará en el archivo?
 
@@ -210,33 +210,33 @@ cat salida.txt; echo ---; cat errores.txt; echo ---; cat todo.txt
 
 | Línea | En pantalla | En el archivo |
 |-------|-------------|---------------|
-| `> salida.txt` | el error (la 2 sigue en pantalla) | `/etc/hostname` |
-| `2> errores.txt` | `/etc/hostname` (la 1 sigue en pantalla) | el error |
+| `> salida.txt` | el error (stderr sigue en pantalla) | `/etc/hostname` |
+| `2> errores.txt` | `/etc/hostname` (stdout sigue en pantalla) | el error |
 | `> todo.txt 2>&1` | nada | las dos líneas |
 | `2> /dev/null` | `/etc/hostname` | (el error desapareció) |
 </details>
 
-Verás errores en español (`ls`: *No existe el archivo o directorio*) y otros en inglés (`cat`: *No such file or directory*). Son las uutils de la clase 01, que aún no traducen todos sus mensajes. El idioma da igual: lo que importa es por qué manguera sale cada mensaje.
+Verás errores en español (`ls`: *No existe el archivo o directorio*) y otros en inglés (`cat`: *No such file or directory*). Son las uutils de la clase 01, que aún no traducen todos sus mensajes. El idioma da igual: lo que importa es si cada mensaje sale por stdout o por stderr.
 
-### 2. Leer la nota de cada programa
+### 2. Leer el código de salida
 
 ```bash
-ls /etc/hostname ; echo "nota: $?"
-ls /no-existe    ; echo "nota: $?"
-grep root /etc/passwd ; echo "nota: $?"
-grep zzzz /etc/passwd ; echo "nota: $?"
-grep root /no-existe  ; echo "nota: $?"
+ls /etc/hostname ; echo "código: $?"
+ls /no-existe    ; echo "código: $?"
+grep root /etc/passwd ; echo "código: $?"
+grep zzzz /etc/passwd ; echo "código: $?"
+grep root /no-existe  ; echo "código: $?"
 ```
 
 <details>
 <summary>Qué deberías ver</summary>
 
-Las notas, en orden: `0`, `2`, `0`, `1` y `2`.
+Los códigos, en orden: `0`, `2`, `0`, `1` y `2`.
 </details>
 
 Fíjate en `grep`: deja **1** si no encontró nada y **2** si hubo un error de verdad (el archivo no existe). Un script bien hecho distingue los dos casos.
 
-Ahora usa la nota para decidir:
+Ahora usa el código de salida para decidir:
 ```bash
 mkdir prueba && echo "creado"
 mkdir prueba && echo "creado"          # ahora mkdir falla: el echo no se ejecuta
@@ -250,8 +250,8 @@ Y una línea que junta todo lo de hoy. Léela por partes antes de ejecutarla:
 ping -c1 -W1 8.8.8.8 > /dev/null 2>&1 && echo "hay internet" || echo "sin internet"
 ```
 - `ping -c1 -W1 8.8.8.8`: envía **una** prueba a un servidor de internet y espera como mucho un segundo.
-- `> /dev/null 2>&1`: tira **las dos** mangueras a la papelera. No nos interesa lo que imprime, solo su nota.
-- `&& echo … || echo …`: si la nota es 0, «hay internet»; si no, «sin internet».
+- `> /dev/null 2>&1`: descarta stdout **y** stderr. No nos interesa lo que imprime, solo su código de salida.
+- `&& echo … || echo …`: si el código es 0, «hay internet»; si no, «sin internet».
 
 ### 3. Pipes, pieza a pieza
 
@@ -275,15 +275,15 @@ cut -d: -f7 /etc/passwd | sort | uniq -c | sort -rn       # paso 4: de más a me
 - `uniq -c`: junta las líneas iguales **que están seguidas** y las cuenta. Por eso antes hace falta `sort`.
 - `sort -rn`: ordena por número (`n`) de mayor a menor (`r`, *reverse*).
 
-Gana `/usr/sbin/nologin` con diferencia: la mayoría de las cuentas no son personas, sino servicios que no pueden iniciar sesión (lo verás en la clase 09). Estas herramientas las verás a fondo en la clase 05; hoy basta con entender cómo se empalman.
+Gana `/usr/sbin/nologin` con diferencia: la mayoría de las cuentas no son personas, sino servicios que no pueden iniciar sesión (lo verás en la clase 09). Estas herramientas las verás a fondo en la clase 05; hoy basta con entender cómo se conectan con `|`.
 
-Y comprueba que el pipe solo empalma la manguera 1:
+Y comprueba que el pipe solo pasa stdout:
 ```bash
 ls /etc/hostname /no-existe | wc -l
 ```
-🔮 **Predice:** ¿qué número saldrá? ¿Y el error? `wc` cuenta **1** línea, la de `/etc/hostname`. El error no entró en el pipe: salió directo a tu pantalla por la manguera 2.
+🔮 **Predice:** ¿qué número saldrá? ¿Y el error? `wc` cuenta **1** línea, la de `/etc/hostname`. El error no entró en el pipe: salió directo a tu pantalla por stderr.
 
-### 4. `tee`: la T de fontanería
+### 4. `tee`: guardar una copia sin cortar el pipe
 
 ```bash
 ls -l /etc | tee listado.txt | wc -l
@@ -314,7 +314,7 @@ printf "c\na\nb\n" > letras.txt
 sort letras.txt > letras.txt
 cat letras.txt              # ¡vacío!
 ```
-El shell prepara las redirecciones **antes** de lanzar el programa, y `>` significa «vacía este archivo». El orden real es: (1) el shell vacía `letras.txt`; (2) lanza `sort letras.txt`; (3) `sort` lee un archivo que ya está vacío. Es como pasar a limpio una receta escribiendo sobre la hoja original: la borras antes de copiarla. Es la misma idea que el comodín de la clase 03: **el shell trabaja antes que el programa**.
+El shell prepara las redirecciones **antes** de lanzar el programa, y `>` significa «vacía este archivo». El orden real es: (1) el shell vacía `letras.txt`; (2) lanza `sort letras.txt`; (3) `sort` lee un archivo que ya está vacío. Es la misma idea que el comodín de la clase 03: **el shell trabaja antes que el programa**.
 
 Bien hecho: escribe en otro archivo y después `mv`, o deja que lo haga `sort` con `sort -o letras.txt letras.txt`.
 
@@ -331,39 +331,39 @@ ls /etc/hostname /no-existe 2>&1 > mal.txt
 cat mal.txt
 ```
 
-El error salió por pantalla. El shell aplica las redirecciones **de izquierda a derecha**, una a una. Sigue las dos mangueras en cada versión.
+El error salió por pantalla. El shell aplica las redirecciones **de izquierda a derecha**, una a una. Sigue a dónde va stdout y a dónde va stderr en cada versión.
 
 **Versión buena:** `ls … > todo.txt 2>&1`
 
-| Paso | Qué hace | Manguera 1 | Manguera 2 |
+| Paso | Qué hace | stdout (1) | stderr (2) |
 |------|----------|------------|------------|
 | Al empezar | | pantalla | pantalla |
-| `> todo.txt` | mueve la 1 al archivo | **todo.txt** | pantalla |
-| `2>&1` | la 2 copia la dirección de la 1 **ahora** | todo.txt | **todo.txt** |
+| `> todo.txt` | stdout va al archivo | **todo.txt** | pantalla |
+| `2>&1` | stderr copia el destino que tiene stdout **ahora** | todo.txt | **todo.txt** |
 
-Las dos acaban en el archivo. ✅
+Los dos acaban en el archivo. ✅
 
 **Versión mala:** `ls … 2>&1 > mal.txt`
 
-| Paso | Qué hace | Manguera 1 | Manguera 2 |
+| Paso | Qué hace | stdout (1) | stderr (2) |
 |------|----------|------------|------------|
 | Al empezar | | pantalla | pantalla |
-| `2>&1` | la 2 copia la dirección de la 1 **ahora**… que es la pantalla | pantalla | pantalla |
-| `> mal.txt` | mueve la 1 al archivo | **mal.txt** | pantalla |
+| `2>&1` | stderr copia el destino que tiene stdout **ahora**… que es la pantalla | pantalla | pantalla |
+| `> mal.txt` | stdout va al archivo | **mal.txt** | pantalla |
 
-La 2 se quedó con la «dirección vieja» y no se entera de que la 1 se mudó después. ❌
+stderr copió el destino que stdout tenía en ese momento (la pantalla) y no cambia cuando stdout pasa después al archivo. ❌
 
-**Regla para recordarlo:** primero mueves la 1 y después le dices a la 2 que la copie: `comando > archivo 2>&1`. El `2>&1` va **al final**.
+**Regla para recordarlo:** primero mandas stdout al archivo y después le dices a stderr que vaya al mismo sitio: `comando > archivo 2>&1`. El `2>&1` va **al final**.
 
 **3. Un pipe esconde fallos:**
 ```bash
-cat /no-existe | wc -l ; echo "nota: $?"
+cat /no-existe | wc -l ; echo "código: $?"
 ```
-La nota es 0 aunque `cat` falló. En un pipe, `$?` solo guarda la nota del **último** programa (`wc`, que contó 0 líneas sin problema). La nota de `cat` se pierde. En la clase 19 lo arreglarás con `set -o pipefail`. Por ahora, recuérdalo: un pipeline en verde no garantiza que todo haya ido bien.
+El código es 0 aunque `cat` falló. En un pipe, `$?` solo guarda el código de salida del **último** programa (`wc`, que contó 0 líneas sin problema). El de `cat` se pierde. En la clase 19 lo arreglarás con `set -o pipefail`. Por ahora, recuérdalo: un pipeline en verde no garantiza que todo haya ido bien.
 
 ## Reto
 
-Cada respuesta en **una sola línea**, empalmando con `|` tantos programas como necesites (eso es un *pipeline*). En la terminal. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+Cada respuesta en **una sola línea**, conectando con `|` tantos programas como necesites (eso es un *pipeline*). En la terminal. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
 **1.** ¿Cuántos usuarios de `/etc/passwd` usan `/bin/bash` como shell?
 
@@ -397,20 +397,20 @@ Cambia solo lo que buscas: en lugar de `nologin`, el shell que pide el reto.
 Si quieres 5 cosas y la primera línea es `total`, ¿cuántas líneas necesitas?
 </details>
 
-**3.** Guarda en `errores-find.txt` **solo** los errores de `find /etc -name "*.conf"` (los de permiso denegado) y tira los resultados a la papelera.
+**3.** Guarda en `errores-find.txt` **solo** los errores de `find /etc -name "*.conf"` (los de permiso denegado) y descarta los resultados en `/dev/null`.
 
-> 🧩 **Ejemplo resuelto:** lo contrario: guardar **solo los resultados** en `resultados.txt` y tirar los errores a la papelera.
+> 🧩 **Ejemplo resuelto:** lo contrario: guardar **solo los resultados** en `resultados.txt` y descartar los errores.
 > ```bash
 > find /etc -name "*.conf" > resultados.txt 2> /dev/null
 > ```
-> `>` manda la manguera 1 (los resultados) al archivo, y `2>` manda la 2 (los errores) a la papelera.
+> `>` manda stdout (los resultados) al archivo, y `2>` manda stderr (los errores) a `/dev/null`.
 
 **Ahora tú, con huecos:** `find /etc -name "*.conf" ____ errores-find.txt ____ /dev/null`
 
 <details>
 <summary>Pista</summary>
 
-Es el ejemplo al revés: ahora los errores (manguera 2, `2>`) van al archivo, y los resultados (manguera 1, `>`) a la papelera.
+Es el ejemplo al revés: ahora los errores (stderr, `2>`) van al archivo, y los resultados (stdout, `>`) a `/dev/null`.
 </details>
 
 **4.** Escribe una línea que cree el directorio `backup-<fecha de hoy>` y, **solo si se creó**, copie dentro `/etc/hostname`.
@@ -437,9 +437,9 @@ bash ~/my-devops-journey/recursos/nueva-nota.sh 04
 ```
 Y responde en `notas/fase-1/clase-04.md`:
 
-1. ¿Qué son stdout y stderr? ¿Por qué conviene que sean flujos separados? *(2–3 líneas. Empieza así: «stdout es la manguera… y stderr es… Conviene separarlas porque…»)*
-2. Explica qué hace `comando > log.txt 2>&1` y por qué `comando 2>&1 > log.txt` no hace lo mismo. *(3–4 líneas. Empieza así: «En la primera, la manguera 1 va primero a… y después la 2… En la segunda, la 2 copia la dirección de la 1 cuando todavía…»)*
-3. ¿Qué significa un código de salida 0? ¿Por qué le importa a un pipeline de CI/CD? *(2 líneas. Empieza así: «Un 0 significa… Si un paso de un pipeline deja otra nota…»)*
+1. ¿Qué son stdout y stderr? ¿Por qué conviene que sean flujos separados? *(2–3 líneas. Empieza así: «stdout es la salida de… y stderr es… Conviene separarlas porque…»)*
+2. Explica qué hace `comando > log.txt 2>&1` y por qué `comando 2>&1 > log.txt` no hace lo mismo. *(3–4 líneas. Empieza así: «En la primera, stdout va primero a… y después stderr… En la segunda, stderr copia el destino de stdout cuando todavía…»)*
+3. ¿Qué significa un código de salida 0? ¿Por qué le importa a un pipeline de CI/CD? *(2 líneas. Empieza así: «Un 0 significa… Si un paso de un pipeline deja otro código…»)*
 4. **Repaso (clase 03, sin mirar):** ¿por qué `rm` es peligroso con comodines y qué haces antes de usarlo? *(2 líneas. Empieza así: «Porque el shell convierte el comodín en… y rm… Antes uso… para…»)*
 
 Después, escríbeme `examíname clase-04`.
@@ -449,11 +449,11 @@ Después, escríbeme `examíname clase-04`.
 <details>
 <summary>Ábrelo solo después de escribir tus respuestas</summary>
 
-**1.** stdout (la manguera 1) es la salida normal del programa, los datos; stderr (la 2) es la de errores y avisos. Separados, puedes guardar o empalmar los datos limpios mientras ves los errores, o guardar los errores en un log aparte. Si se mezclaran, un error se colaría en los datos que procesa el siguiente programa del pipe.
+**1.** stdout (1) es la salida normal del programa, los datos; stderr (2) es la de errores y avisos. Separados, puedes guardar los datos limpios o pasarlos a otro programa mientras ves los errores, o guardar los errores en un log aparte. Si se mezclaran, un error se colaría en los datos que procesa el siguiente programa del pipe.
 
-**2.** Las redirecciones se aplican de izquierda a derecha, y `2>&1` copia **a dónde apunta la 1 en ese momento**, como quien copia una dirección. En `> log.txt 2>&1`, primero la 1 se muda al archivo y después la 2 copia esa dirección: todo acaba en el log. En `2>&1 > log.txt`, la 2 copia la dirección de la 1 cuando todavía era la pantalla, y después solo la 1 se muda al archivo: los errores siguen saliendo por pantalla.
+**2.** Las redirecciones se aplican de izquierda a derecha, y `2>&1` manda stderr **a donde va stdout en ese momento**. En `> log.txt 2>&1`, primero stdout va al archivo y después stderr copia ese destino: todo acaba en el log. En `2>&1 > log.txt`, stderr copia el destino de stdout cuando todavía era la pantalla, y después solo stdout pasa al archivo: los errores siguen saliendo por pantalla.
 
-**3.** 0 = éxito; cualquier otro valor = fallo. En CI/CD, cada paso es un comando: si deja una nota distinta de 0, el job se marca como fallido y el pipeline se detiene. Así un test que falla impide desplegar. Por eso un script que «falla pero deja 0» es peligroso: el pipeline sale en verde con algo roto.
+**3.** 0 = éxito; cualquier otro valor = fallo. En CI/CD, cada paso es un comando: si deja un código distinto de 0, el job se marca como fallido y el pipeline se detiene. Así un test que falla impide desplegar. Por eso un script que «falla pero deja 0» es peligroso: el pipeline sale en verde con algo roto.
 
 **4.** El shell expande el comodín y `rm` borra todo lo que coincida, sin papelera y sin preguntar. Antes de usarlo se previsualiza con `echo patrón` o `ls patrón`, se comprueba con `pwd` dónde estás y, si hay duda, se usa `rm -i`.
 

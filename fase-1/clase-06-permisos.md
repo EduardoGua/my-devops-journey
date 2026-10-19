@@ -2,7 +2,7 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** A. Linux en tu equipo
 
-> 💡 **La idea de hoy:** cada archivo tiene un dueño, un grupo y **tres juegos de llaves**: uno para el dueño, otro para los del grupo y otro para el resto. Cada juego dice si se puede leer (`r`), escribir (`w`) o ejecutar (`x`), y el kernel te da **solo el primer juego que te corresponde**. En un directorio, las llaves abren otras cosas: `r` deja ver la lista de nombres, `w` crear o borrar dentro y `x` cruzar la puerta.
+> 💡 **La idea de hoy:** cada archivo tiene un dueño, un grupo y **tres bloques de permisos**: uno para el dueño, otro para los del grupo y otro para el resto (otros). Cada bloque dice si se puede leer (`r`), escribir (`w`) o ejecutar (`x`), y el kernel te aplica **solo el primer bloque que te corresponde**. En un directorio, los permisos significan otra cosa: `r` deja ver la lista de nombres, `w` crear o borrar dentro y `x` entrar en él.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - Leer una línea de `ls -l`: tipo, permisos, dueño y grupo (clase 02).
@@ -13,8 +13,8 @@
 > - **dueño**, **grupo** y **otros**: los tres «quiénes» de cada archivo.
 > - **r / w / x**: leer, escribir y ejecutar.
 > - **root**: el administrador del sistema, que se salta casi todos los permisos.
-> - **chmod**: el comando que cambia las llaves.
-> - **umask**: el molde con el que nacen los archivos nuevos.
+> - **chmod**: el comando que cambia los permisos.
+> - **umask**: la máscara que decide con qué permisos nacen los archivos nuevos.
 
 ## Objetivo
 
@@ -41,9 +41,9 @@ id          # uid=1000(educo) gid=1000(educo) groups=1000(educo),27(sudo),...
 
 **En resumen:** cada programa corre como un usuario, y cada archivo tiene un dueño y un grupo.
 
-### 2. Tres juegos de llaves
+### 2. Tres bloques de permisos
 
-Las 9 letras que ves con `ls -l` son tres juegos de llaves, de tres letras cada uno:
+Las 9 letras que ves con `ls -l` son tres bloques de permisos, de tres letras cada uno:
 
 ```
 -rwxr-x---  1 educo devs  ... script.sh
@@ -53,41 +53,41 @@ Las 9 letras que ves con `ls -l` son tres juegos de llaves, de tres letras cada 
   └──────── la dueña, educo (dueño, «u»):      rwx  todo
 ```
 
-Cada letra es una llave: **r** para leer, **w** para escribir y **x** para ejecutar. Un guion (`-`) es una llave que falta.
+Cada letra es un permiso: **r** para leer, **w** para escribir y **x** para ejecutar. Un guion (`-`) es un permiso que falta.
 
-El kernel actúa como un portero que mira **en orden** y te da **solo el primer juego que te corresponde**:
-1. ¿Eres el dueño? Te da el juego del dueño, y no sigue mirando.
-2. Si no, ¿estás en el grupo? Te da el del grupo.
-3. Si no, te da el del resto.
+El kernel mira **en orden** y te aplica **solo el primer bloque que te corresponde**:
+1. ¿Eres el dueño? Te aplica el bloque del dueño, y no sigue mirando.
+2. Si no, ¿estás en el grupo? Te aplica el del grupo.
+3. Si no, te aplica el de otros.
 
 (La excepción es **root**, el administrador, que se salta casi todas las comprobaciones.)
 
-**En resumen:** tres juegos de llaves (dueño, grupo y resto), y el portero te da solo el primero que te toca.
+**En resumen:** tres bloques de permisos (dueño, grupo y otros), y el kernel te aplica solo el primero que te toca.
 
-### 3. En un directorio, las llaves abren otras cosas
+### 3. En un directorio, los permisos significan otra cosa
 
-En un **archivo**, las llaves significan lo que esperas: `r` leerlo, `w` modificarlo y `x` ejecutarlo como programa.
+En un **archivo**, los permisos significan lo que esperas: `r` leerlo, `w` modificarlo y `x` ejecutarlo como programa.
 
-Un **directorio**, en cambio, es como **una habitación con la lista de lo que hay dentro pegada en la puerta**:
+Un **directorio**, en cambio, es por dentro **una lista de nombres** de archivos, y sus permisos se aplican a esa lista:
 
-| Llave | En un archivo | En un directorio (la habitación) |
-|-------|---------------|----------------------------------|
-| `r` | leer el contenido | **leer la lista** de la puerta: ver los nombres (`ls`) |
-| `w` | modificar el contenido | **meter o sacar** cosas: crear, borrar y renombrar dentro |
-| `x` | ejecutarlo | **cruzar la puerta**: entrar (`cd`) y llegar a lo que hay dentro |
+| Permiso | En un archivo | En un directorio |
+|---------|---------------|------------------|
+| `r` | leer el contenido | **listar** los nombres de dentro (`ls`) |
+| `w` | modificar el contenido | **crear, borrar y renombrar** archivos dentro |
+| `x` | ejecutarlo | **entrar** (`cd`) y acceder a los archivos de dentro |
 
 De ahí salen tres sorpresas que verás con tus ojos en la práctica:
-- Borrar un archivo depende de la `w` del **directorio**, no del archivo: es sacar algo de la habitación.
-- Con `r` pero sin `x`, lees la lista de la puerta pero no puedes entrar a coger nada.
-- Para leer `/a/b/c.txt` necesitas cruzar tres puertas (`x` en `/`, `/a` y `/a/b`) y la `r` del archivo.
+- Borrar un archivo depende de la `w` del **directorio**, no del archivo: borrar es quitar un nombre de la lista del directorio.
+- Con `r` pero sin `x`, ves los nombres pero no puedes abrir ningún archivo de dentro.
+- Para leer `/a/b/c.txt` necesitas `x` en los tres directorios del camino (`/`, `/a` y `/a/b`) y la `r` del archivo.
 
-**En resumen:** en una carpeta, `r` es ver la lista, `w` meter o sacar cosas y `x` cruzar la puerta.
+**En resumen:** en un directorio, `r` es listar, `w` crear o borrar dentro y `x` entrar.
 
 ### 4. Los permisos en números
 
-Cada llave vale un número: **r = 4**, **w = 2**, **x = 1**. Se suman las de cada juego, así que cada juego queda en una cifra del 0 al 7:
+Cada permiso vale un número: **r = 4**, **w = 2**, **x = 1**. Se suman los de cada bloque, así que cada bloque queda en una cifra del 0 al 7:
 
-| Cifra | Llaves | Cuenta |
+| Cifra | Permisos | Cuenta |
 |-------|--------|--------|
 | `7` | `rwx` | 4 + 2 + 1 |
 | `6` | `rw-` | 4 + 2 |
@@ -95,44 +95,44 @@ Cada llave vale un número: **r = 4**, **w = 2**, **x = 1**. Se suman las de cad
 | `4` | `r--` | 4 |
 | `0` | `---` | nada |
 
-Tres cifras, una por juego, en el mismo orden (dueño, grupo, otros). `640` se lee así: **6** el dueño lee y escribe, **4** el grupo solo lee y **0** los demás nada → `rw-r-----`.
+Tres cifras, una por bloque, en el mismo orden (dueño, grupo, otros). `640` se lee así: **6** el dueño lee y escribe, **4** el grupo solo lee y **0** los demás nada → `rw-r-----`.
 
-**En resumen:** r = 4, w = 2 y x = 1. Se suman por juego, y salen tres cifras: dueño, grupo y resto.
+**En resumen:** r = 4, w = 2 y x = 1. Se suman por bloque, y salen tres cifras: dueño, grupo y resto.
 
-### 5. Cambiar las llaves: `chmod`
+### 5. Cambiar los permisos: `chmod`
 
 Hay dos formas de escribirlo:
 
 ```bash
-chmod 640 archivo           # con números: fija las 9 llaves de golpe
+chmod 640 archivo           # con números: fija los 9 permisos de golpe
 chmod u+x script.sh         # con letras: AÑADE (+) la x al dUeño (u)
 chmod g-w,o-r archivo       # QUITA (-) la w al Grupo y la r a los Otros
 ```
 
-Con letras: **u** = dueño (*user*), **g** = grupo, **o** = otros; **+** añade y **-** quita. Los números sirven para dejar los permisos exactamente como quieres; las letras, para cambiar una llave sin tocar las demás.
+Con letras: **u** = dueño (*user*), **g** = grupo, **o** = otros; **+** añade y **-** quita. Los números sirven para dejar los permisos exactamente como quieres; las letras, para cambiar un permiso sin tocar los demás.
 
 `chown usuario:grupo archivo` cambia el dueño y el grupo. Solo lo puede hacer root: lo practicarás en el servidor (clase 09).
 
-**En resumen:** `chmod 640` lo fija todo con números; `chmod g-w` cambia una sola llave con letras.
+**En resumen:** `chmod 640` lo fija todo con números; `chmod g-w` cambia un solo permiso con letras.
 
-### 6. `umask`: el molde de los archivos nuevos
+### 6. `umask`: los permisos de los archivos nuevos
 
-Los archivos nuevos no nacen con permisos al azar: los saca un molde, la **umask**. Con la de Ubuntu para tu usuario (`002`), un archivo nuevo nace `664` (`rw-rw-r--`) y un directorio nuevo, `775`. La idea: la máscara **quita** llaves; con `002`, le quita la `w` al resto del mundo.
+Los archivos nuevos no nacen con permisos al azar: los decide una máscara, la **umask**. Con la de Ubuntu para tu usuario (`002`), un archivo nuevo nace `664` (`rw-rw-r--`) y un directorio nuevo, `775`. La idea: la máscara **quita** permisos; con `002`, le quita la `w` a los otros.
 
-`umask 077` cambia el molde **solo en esa terminal**: al cerrarla, vuelve el de siempre.
+`umask 077` cambia la máscara **solo en esa terminal**: al cerrarla, vuelve el de siempre.
 
-**En resumen:** la umask es el molde: decide qué llaves les faltan a los archivos que nacen.
+**En resumen:** la umask decide qué permisos les faltan a los archivos que nacen.
 
 ### ✋ Antes de practicar: tres preguntas, sin mirar
 
 1. Traduce `rwxr-xr--` a números.
 2. Un archivo es `---rwxrwx` y tú eres su dueño. ¿Puedes leerlo?
-3. Quieres poder borrar archivos de una carpeta. ¿Qué llave necesitas, y dónde: en los archivos o en la carpeta?
+3. Quieres poder borrar archivos de una carpeta. ¿Qué permiso necesitas, y dónde: en los archivos o en la carpeta?
 
 <details>
 <summary>Comprueba</summary>
 
-1. `754`: `rwx` = 7, `r-x` = 5, `r--` = 4. 2. No: el portero te da el juego del dueño (`---`) y no sigue mirando, aunque el resto tenga todo. Lo comprobarás en el Rómpelo 1. 3. La `w` de la **carpeta**: borrar es sacar algo de la habitación.
+1. `754`: `rwx` = 7, `r-x` = 5, `r--` = 4. 2. No: el kernel te aplica el bloque del dueño (`---`) y no sigue mirando, aunque el resto tenga todo. Lo comprobarás en el Rómpelo 1. 3. La `w` de la **carpeta**: borrar es quitar un nombre de la lista del directorio.
 </details>
 
 ### Tu chuleta de la clase
@@ -150,7 +150,7 @@ Los archivos nuevos no nacen con permisos al azar: los saca un molde, la **umask
 |---------|----------|
 | `ls -l archivo` · `ls -ld carpeta` | ver los permisos (`-d`: de la carpeta, no de lo que hay dentro) |
 | `chmod 640 f` · `chmod u+x f` · `chmod -R 750 d` | cambiar permisos: números, letras, recursivo (¡cuidado!) |
-| `umask` · `umask 077` | ver el molde · cambiarlo en esta terminal |
+| `umask` · `umask 077` | ver la máscara · cambiarla en esta terminal |
 | `id` | quién eres y en qué grupos estás |
 
 **Para reconocerlos** (no hace falta más hoy): una `s` en lugar de la `x` del dueño es el **setuid**: el programa corre con los permisos de su dueño, no con los tuyos (`/usr/bin/passwd` lo tiene para poder escribir en `/etc/shadow`). Una `t` al final es el **sticky bit**: en `/tmp` todos pueden crear archivos, pero cada uno solo puede borrar los suyos.
@@ -170,7 +170,7 @@ ls -l /etc/passwd /etc/shadow /usr/bin/passwd
 ls -ld /tmp /root ~
 ```
 
-Para cada línea, di en voz alta quién es el dueño, el grupo y qué llaves tiene cada juego.
+Para cada línea, di en voz alta quién es el dueño, el grupo y qué permisos tiene cada bloque.
 
 🔮 **Predice:** mirando los permisos de `/etc/shadow`, ¿podrás leerlo?
 
@@ -197,7 +197,7 @@ ls -l hola.sh
 bash hola.sh        # esto funciona incluso sin x: bash LEE el archivo (necesita r)
 ```
 
-👀 **Qué deberías ver:** después del `chmod`, la `x` en el juego del dueño (`-rwxrw-r--`), y `hola desde el script` las dos veces.
+👀 **Qué deberías ver:** después del `chmod`, la `x` en el bloque del dueño (`-rwxrw-r--`), y `hola desde el script` las dos veces.
 
 `./hola.sh` pide al kernel **ejecutar** el archivo (hace falta `x`). `bash hola.sh` ejecuta `bash`, que solo **lee** el archivo (basta con `r`).
 
@@ -219,9 +219,9 @@ mkdir caja && echo "dato" > caja/dato.txt
 ls -ld caja
 ```
 
-`caja` es tu habitación de la teoría. Vas a quitarle llaves y ver qué puedes hacer en cada caso. Antes de cada bloque, 🔮 **predice** qué funcionará y qué no, y apúntalo.
+`caja` es un directorio de prueba. Vas a quitarle permisos y ver qué puedes hacer en cada caso. Antes de cada bloque, 🔮 **predice** qué funcionará y qué no, y apúntalo.
 
-**Sin ninguna llave (000):**
+**Sin ningún permiso (000):**
 ```bash
 chmod 000 caja
 ls caja
@@ -260,14 +260,14 @@ chmod 755 caja
 <details>
 <summary>Compruébalo después de predecir</summary>
 
-| Llaves de `caja` | `ls caja` (leer la lista) | `cat caja/dato.txt` (entrar a coger algo) | Crear o borrar dentro |
-|------------------|---------------------------|-------------------------------------------|-----------------------|
+| Permisos de `caja` | `ls caja` (listar) | `cat caja/dato.txt` (abrir un archivo de dentro) | Crear o borrar dentro |
+|--------------------|--------------------|--------------------------------------------------|-----------------------|
 | `000` | ❌ | ❌ | ❌ |
-| `400` (`r`) | ✅ ves el nombre | ❌ no puedes cruzar la puerta | ❌ |
-| `100` (`x`) | ❌ no puedes leer la lista | ✅ si sabes el nombre, entras directo | ❌ |
-| `500` (`r` y `x`) | ✅ | ✅ | ❌ borrar y crear es cambiar la habitación: hace falta `w` |
+| `400` (`r`) | ✅ ves el nombre | ❌ falta la `x` para entrar | ❌ |
+| `100` (`x`) | ❌ falta la `r` para listar | ✅ si sabes el nombre, accedes directo | ❌ |
+| `500` (`r` y `x`) | ✅ | ✅ | ❌ crear y borrar cambian la lista del directorio: hace falta `w` |
 
-¿Y `ls -ld caja` con `000`? Funciona: no entra en la habitación, lee su ficha (permisos, dueño) desde la carpeta de fuera, donde sí tienes llaves.
+¿Y `ls -ld caja` con `000`? Funciona: no entra en `caja`, lee su información (permisos, dueño) en el directorio padre, donde sí tienes permisos.
 </details>
 
 ### 5. `umask` en acción
@@ -281,7 +281,7 @@ ls -ld con-umask-* dir-*
 umask 002             # restaura (o cierra la terminal)
 ```
 
-Compara: con el molde normal, el archivo nace `rw-rw-r--` y la carpeta `rwxrwxr-x`. Con `077`, el molde quita **todo** al grupo y al resto: nacen `rw-------` y `rwx------`, privados desde el primer momento.
+Compara: con la máscara normal, el archivo nace `rw-rw-r--` y la carpeta `rwxrwxr-x`. Con `077`, la máscara quita **todo** al grupo y al resto: nacen `rw-------` y `rwx------`, privados desde el primer momento.
 
 ## Rómpelo
 
@@ -350,21 +350,21 @@ Nace `rw-rw-r--` y lo quieres `rw-r-----`. ¿Qué letra le sobra al grupo? ¿Y a
 
 **3.** Calcula sin ejecutar: con `umask 027`, ¿con qué permisos nacen un archivo y una carpeta? Compruébalo después.
 
-> 🧩 **Ejemplo resuelto:** con `umask 077`, el molde quita **todo** al grupo y al resto.
+> 🧩 **Ejemplo resuelto:** con `umask 077`, la máscara quita **todo** al grupo y al resto.
 > ```bash
 > umask 077
 > touch prueba.txt && mkdir prueba-dir
 > ls -ld prueba.txt prueba-dir
 > umask 002
 > ```
-> El archivo nace `-rw-------` y la carpeta `drwx------`. Al final, `umask 002` deja el molde como siempre.
+> El archivo nace `-rw-------` y la carpeta `drwx------`. Al final, `umask 002` deja la máscara como siempre.
 
 **Ahora tú, con huecos:** `Con 027 → archivo: `rw-` `___` `---` · carpeta: `rwx` `___` `---``
 
 <details>
 <summary>Pista</summary>
 
-Solo tienes que pensar el juego del grupo: el `2` le quita la `w`. Un archivo parte de `rw-` y una carpeta de `rwx`: ¿qué les queda sin la `w`?
+Solo tienes que pensar el bloque del grupo: el `2` le quita la `w`. Un archivo parte de `rw-` y una carpeta de `rwx`: ¿qué les queda sin la `w`?
 </details>
 
 **4.** Ejecuta `find /usr/bin -perm -4000 2>/dev/null`: son los programas con setuid. Elige dos que conozcas e investiga por qué lo necesitan.
@@ -388,7 +388,7 @@ Lee la primera frase de `DESCRIPTION` en `man su`: ¿qué hace `su`? Hacerse pas
 En `notas/fase-1/clase-06.md`:
 
 1. Explica `rwxr-x---` **en un directorio**: qué puede hacer cada categoría. *(3 líneas, una por quién. Empieza así: «El dueño puede… El grupo puede… El resto…»)*
-2. Con el directorio en `000`, ¿qué pasó con `ls caja`, con `cat caja/dato.txt` y con `ls -ld caja`? ¿Por qué el último sí funcionó? *(3 líneas. Empieza así: «`ls caja` falló porque faltaba la llave… `cat` falló porque faltaba… `ls -ld` funcionó porque…»)*
+2. Con el directorio en `000`, ¿qué pasó con `ls caja`, con `cat caja/dato.txt` y con `ls -ld caja`? ¿Por qué el último sí funcionó? *(3 líneas. Empieza así: «`ls caja` falló porque faltaba el permiso… `cat` falló porque faltaba… `ls -ld` funcionó porque…»)*
 3. Un compañero propone `chmod -R 777 /var/www` porque nginx da "Permission denied". ¿Qué le respondes y qué harías tú? *(3 líneas. Empieza así: «No, porque 777 deja que cualquiera… Yo miraría con qué usuario corre nginx y le daría solo…»)*
 4. **Repaso (clase 05, sin mirar):** ¿con qué pipeline sacarías las 5 IPs que más peticiones hacen en un log de nginx? *(una línea. Empieza así: `awk '{print $…}' access.log | …`)*
 
