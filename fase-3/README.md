@@ -47,4 +47,4 @@ Los cuatro primeros son los de la Ruta 2.0. Se marcan en [`PROGRESO.md`](../PROG
 
 ## Siguiente fase
 
-Con el examen aprobado, pídeme `revisa la fase 4` (compruebo que versiones y comandos siguen al día) y empieza: [Fase 4 — Python para automatizar](../fase-4/README.md).
+Con el examen aprobado, pídeme `revisa la fase NOC` (compruebo que versiones, precios y comandos siguen al día) y empieza: [Fase NOC — Monitoreo, operación y CCST](../fase-noc/README.md). Después viene la [Fase 4 — Python para automatizar](../fase-4/README.md).

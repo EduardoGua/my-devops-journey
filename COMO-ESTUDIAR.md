@@ -19,7 +19,7 @@ Es la rutina de la Ruta 2.0, adaptada a las clases:
 | Todos los días | Anki: tu mazo de DevOps y tu mazo de inglés | 10 min |
 | 4 días entre semana | Sesión corta: 5 min de calentamiento (escribe **sin mirar** lo que recuerdes de la última sesión y después compruébalo en tu nota), 35 min de clase y 5 min para anotar dónde te quedaste | 45 min |
 | Tu día libre | Bloque largo: la versión de Vigía que toca o, si no toca ninguna, la clase más pesada de la semana | 3 h |
-| Una vez al mes | Sumar tus horas, apuntarlas en la Ruta 2.0 y recalcular la fecha del hito | 20 min |
+| Una vez al mes | Sumar tus horas, apuntarlas en la Ruta 2.0 y recalcular las fechas de los hitos (NOC y Cloud/DevOps) | 20 min |
 
 **Una clase ocupa casi siempre dos sesiones cortas:**
 1. Sesión 1: Objetivo, Teoría y Práctica guiada.
@@ -164,12 +164,13 @@ Lo que **no** se hace: buscar la solución del reto o pedirle a una IA que lo re
 
 | Ruta | Qué es |
 |------|--------|
-| [`PLAN.md`](PLAN.md) | El mapa: las 10 fases, Vigía, certificaciones y empleo |
+| [`PLAN.md`](PLAN.md) | El mapa: las 10 fases y la fase NOC, Vigía, certificaciones y empleo |
 | [`PROGRESO.md`](PROGRESO.md) | Dónde vas, qué toca hoy, criterios de salida y el registro de clases |
 | [`fase-1/`](fase-1/README.md) … [`fase-10/`](fase-10/README.md) | Las 125 clases, una carpeta por fase. Cada README dice qué necesitas, sus criterios de salida y sus datos que caducan |
+| [`fase-noc/`](fase-noc/README.md) | La fase NOC, entre la 3 y la 4: CCST, Zabbix, ITIL y la búsqueda del empleo NOC |
 | `notas/fase-N/` | **Tus** cierres, uno por clase |
 | `labs/` | Lo que creas al practicar en tu Ubuntu |
-| `projects/` | Los laboratorios integradores P1 y P2 |
+| `projects/` | Los laboratorios integradores P1, P2 y P3 |
 | `recursos/` | Archivos que usan las clases (logs de ejemplo, scripts de averías…) y las pruebas de aceptación de Vigía, en `recursos/vigia/v1/` … `v7/` |
 | `~/vigia` | Tu proyecto de portafolio, en su propio repositorio |
 | Ruta Cloud & DevOps 2.0 | El registro mensual de horas y el recálculo de fechas |

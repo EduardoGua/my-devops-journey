@@ -110,7 +110,7 @@ Responde **en inglés**, en voz alta (grábate si puedes) y por escrito, en 4–
 
 | Total | Resultado |
 |-------|-----------|
-| ≥ 80 | ✅ Fundamentos superados: abre la fase 4 |
+| ≥ 80 | ✅ Fundamentos superados: abre la fase NOC |
 | 65–79 | Repasa las clases de las preguntas falladas y repite en una semana |
 | < 65 | Repite los retos de los bloques flojos antes de volver a intentarlo |
 
@@ -120,4 +120,4 @@ Responde **en inglés**, en voz alta (grábate si puedes) y por escrito, en 4–
 2. Revisa los **criterios de salida de la fase 3** en [`../PROGRESO.md`](../PROGRESO.md): subredes a mano, explicar `curl https://…` de memoria, diagnosticar con `dig`, `curl -v` y `ss`.
 3. Actualiza el `README.md` del repo (en inglés) con lo que ya sabes hacer: tu portfolio empieza a hablar por ti.
 4. Celébralo. Has hecho la parte más larga y más difícil del camino.
-5. Pídeme `revisa la fase 4` y empieza por la [clase 39](../fase-4/clase-39-primer-programa.md).
+5. Pídeme `revisa la fase NOC` y `escribe la fase NOC`, y empieza por el bloque A de la [fase NOC](../fase-noc/README.md): la CCST. La fase 4 viene después.

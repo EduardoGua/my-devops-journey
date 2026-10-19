@@ -102,6 +102,44 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 
 ---
 
+## Fase NOC — Monitoreo, operación y CCST
+
+Qué hacer en cada paso: [`fase-noc/README.md`](fase-noc/README.md). Lo que creas va en `projects/p3-noc-lab/`.
+
+### A. Redes de Cisco y CCST
+- [ ] Networking Basics de NetAcad terminado, con su insignia ·
+- [ ] Red en Packet Tracer: dos VLANs, DHCP y salida a internet ·
+- [ ] Examen final de Networking Basics con 80 % o más, y la CCST agendada ·
+- [ ] **CCST Networking aprobada** (fecha y puntuación: )
+
+### B. Monitoreo con Zabbix
+- [ ] Zabbix server en `zabbix-01` y el agente en `servidor-01` ·
+- [ ] CPU, disco, nginx y un ping (ICMP) monitoreados ·
+- [ ] Un trigger con aviso por correo o Telegram ·
+- [ ] Incidente simulado de la alerta al cierre, con su registro ·
+- [ ] README del P3 en inglés, con capturas y la configuración ·
+
+### C. Operación con tickets
+- [ ] Incidente, problema, solicitud y cambio; prioridad, SLA y escalado a N2 ·
+- [ ] 5 tickets de práctica, uno escalado a N2 ·
+- [ ] Hoja de troubleshooting ·
+
+### Criterios de salida de la fase NOC (sin mirar)
+- [ ] CCST Networking aprobada
+- [ ] Explico qué es una VLAN y para qué sirve DHCP, y lo muestro en mi red de Packet Tracer
+- [ ] Zabbix vigila un servidor y la alerta de un servicio caído llega, probada
+- [ ] Explico la diferencia entre incidente, problema, solicitud y cambio, y cómo se calcula la prioridad
+- [ ] Diagnostico en voz alta "no hay internet", paso a paso
+
+### ★ Hito NOC: postular (desde que apruebas la CCST, en paralelo con B y C)
+- [ ] CV de una página en español, y en inglés para los remotos
+- [ ] LinkedIn con el titular de NOC, y GitHub con `my-devops-journey` y Vigía fijados
+- [ ] Las cinco historias de entrevista, en puntos, y un simulacro hecho
+- [ ] Primeras postulaciones registradas en `notas/empleo/postulaciones.md`
+- [ ] Empleo conseguido (empresa, puesto y fecha: )
+
+---
+
 ## Fase 4 — Python para automatizar
 
 ### A. Python desde cero
@@ -230,7 +268,7 @@ Examen de las fases 4 a 7 (fecha · %):
 - [ ] Ninguna credencial de AWS en el repositorio ni en su historial
 - [ ] Explico la diferencia entre integración, entrega y despliegue continuos
 
-### ★ Hito: empezar a postular
+### ★ Hito Cloud/DevOps: postular a roles cloud
 - [ ] CV de una página, en inglés y en español
 - [ ] LinkedIn y GitHub al día, con Vigía fijado
 - [ ] Tres historias STAR escritas y grabadas
@@ -348,7 +386,7 @@ Examen final de las fases 8 a 10 (fecha · nota):
 
 ## Antes de cada fase
 
-Las diez fases están escritas. Antes de empezar cada una, pídeme `revisa la fase N`: compruebo que sus versiones, precios y comandos siguen al día. El temario completo y las horas de cada fase están en [`PLAN.md`](PLAN.md).
+Las diez fases están escritas. La fase NOC tiene su plan y sus entregables; sus clases se escriben al llegar a ella (pídeme `escribe la fase NOC` al terminar la clase 38). Antes de empezar cada fase, pídeme `revisa la fase N`: compruebo que sus versiones, precios y comandos siguen al día. El temario completo y las horas de cada fase están en [`PLAN.md`](PLAN.md).
 
 ---
 

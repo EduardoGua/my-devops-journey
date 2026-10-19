@@ -195,7 +195,7 @@ Escúchate y corrígete con la rúbrica.
 
 ### 1. A qué puestos (15 min)
 
-Repasa la tabla de *Empleo* de [`PLAN.md`](../PLAN.md). Con lo que tienes hoy, postula a:
+Repasa la tabla de *Empleo* de [`PLAN.md`](../PLAN.md). **Si ya trabajas en un NOC o una mesa de ayuda** (el hito NOC), pregunta primero por las vacantes internas de N2, cloud o SRE: el cambio interno es el más fácil, porque ya conocen tu trabajo. Con lo que tienes hoy, postula a:
 - **soporte cloud** y **soporte técnico de AWS** (o de proveedores que trabajan con AWS);
 - **NOC** y operaciones;
 - **junior DevOps**, **junior cloud** y **SRE junior**, sobre todo si piden Linux, Docker, AWS, CI/CD y Python o Bash.
@@ -221,14 +221,16 @@ Vigía — github.com/<tu usuario>/vigia                                       2
 • Runs on EC2 with an IAM role and no stored credentials; daily report to S3, logs in CloudWatch.
 • CI/CD with GitHub Actions: lint, tests and smoke tests on every PR; images to ECR and
   deployments over SSM with automatic rollback; OIDC instead of AWS keys.
-my-devops-journey — runbook of N incidents, a reproducible cloud-init server, 125 lessons.
+my-devops-journey — runbook of N incidents, a reproducible cloud-init server, a Zabbix NOC lab, 125 lessons.
 
 CERTIFICATIONS
 AWS Certified Cloud Practitioner (CLF-C02) — mes y año
+Cisco Certified Support Technician (CCST) Networking — mes y año
 
 SKILLS
-Linux & Bash · Git & GitHub · Networking (TCP/IP, DNS, HTTP, firewalls) · Python ·
-Docker & Compose · AWS (IAM, VPC, EC2, S3, ECR, CloudWatch, SSM) · GitHub Actions
+Linux & Bash · Git & GitHub · Networking (TCP/IP, DNS, HTTP, VLANs, firewalls) · Python ·
+Docker & Compose · AWS (IAM, VPC, EC2, S3, ECR, CloudWatch, SSM) · GitHub Actions ·
+Monitoring (Zabbix) · ITIL basics (tickets, SLA)
 
 EXPERIENCE
 <tu trabajo actual> — lo transferible: turnos, atención a clientes, resolver problemas en el momento
@@ -238,7 +240,7 @@ EDUCATION · LANGUAGES (Spanish: native · English: tu nivel real)
 Reglas:
 - **Nada inventado:** cada línea la puedes defender en una entrevista.
 - **Números reales:** cuenta tus pruebas, mide tu pipeline (`gh run list` dice cuánto tarda), calcula el costo por hora de tu despliegue.
-- **El trabajo actual cuenta:** turnos largos, atención a clientes y resolver problemas en el momento son lo que un puesto de soporte u operaciones usa cada día.
+- **El trabajo actual cuenta:** turnos largos, atención a clientes y resolver problemas en el momento son lo que un puesto de soporte u operaciones usa cada día. Si ya trabajas en un NOC o una mesa de ayuda, ese puesto va primero en *Experience*, con datos: herramientas, tickets por turno, incidentes que escalaste.
 - **En PDF**, con nombre de archivo profesional: `Eduardo-<apellido>-CV.pdf`.
 
 ### 3. LinkedIn y GitHub (1 h)
@@ -260,7 +262,7 @@ Reglas:
 
 | Historia | De dónde sale |
 |----------|---------------|
-| un incidente que diagnosticaste | tu runbook del P1 (clase 36) o las averías de la clase 63 |
+| un incidente que diagnosticaste | un incidente real de tu turno NOC, si ya trabajas en uno; si no, tu runbook del P1 (clase 36), el incidente simulado del P3 o las averías de la clase 63 |
 | algo que fallaba en la nube y por qué | el límite de saltos de IMDS de la clase 79, o un despliegue que volvió atrás solo |
 | una decisión de seguridad o de costos | OIDC en lugar de llaves, Session Manager en lugar de SSH, destruir al terminar |
 

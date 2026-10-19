@@ -23,3 +23,4 @@ Integration labs that live in this repository. Each one has its own README in En
 |-----|-------|--------|--------|
 | P1 — Incident runbook | 3 | `p1-incident-runbook/` | — |
 | P2 — Reproducible hardened server (cloud-init) | 3 | `p2-cloud-init-server/` | — |
+| P3 — NOC lab: Packet Tracer network, Zabbix monitoring, simulated incident, troubleshooting sheet | NOC | `p3-noc-lab/` | — |

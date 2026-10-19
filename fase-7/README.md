@@ -6,7 +6,7 @@
 - la despliega en tu EC2 con Session Manager;
 - comprueba que responde y, si no, vuelve sola a la versión anterior.
 
-Todo sin una sola llave de AWS en GitHub, gracias a **OIDC**. Y con eso llegas al **★ hito**: empiezas a postular.
+Todo sin una sola llave de AWS en GitHub, gracias a **OIDC**. Y con eso llegas al **★ hito Cloud/DevOps**: empiezas a postular a roles cloud.
 
 Automatizar las pruebas y los despliegues es el centro del trabajo DevOps: cada cambio recorre el mismo camino, sin pasos manuales ni "en mi máquina funciona".
 
