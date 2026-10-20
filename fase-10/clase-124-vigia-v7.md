@@ -2,6 +2,18 @@
 
 **Dónde:** tu Ubuntu + GitHub · **Tiempo:** 2 bloques largos (unas 5–6 h) · **Bloque:** C. Proyecto y cierre de la ruta · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** la última versión de Vigía **se vigila a sí misma**: la API publica `/metrics` con el estado de cada sitio y su propio RED, Prometheus lo recoge, una alerta probada avisa cuando un sitio lleva 5 minutos caído, Grafana lo dibuja desde archivos y Vigía tiene un SLO con su presupuesto. Todo lo de las clases 116 a 123, junto y sin chuleta.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Instrumentar con `prometheus_client` y un *middleware* (clase 117); PromQL (clase 118).
+> - Reglas, pruebas con `promtool`, Alertmanager y el receptor por webhook (clase 119).
+> - Grafana aprovisionado y los dashboards como código (clase 120); SLI, SLO y reglas de registro (clase 121).
+> - Vigía en Compose, con su API, su checker y PostgreSQL (clases 55 y 66).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **métrica calculada en el *scrape***: un valor que la API lee de la base de datos cada vez que Prometheus pregunta, en lugar de guardarlo en memoria.
+> - **prueba de punta a punta de una alerta**: provocar el fallo de verdad y ver llegar el `FIRING` y el `RESOLVED`.
+
 ## Objetivo
 
 Cerrar la última versión de Vigía: que **se vigile a sí mismo** y avise.
@@ -180,6 +192,19 @@ and the site-down alert was tested end to end: down at HH:MM, firing at HH:MM, n
 - Error budget: … per month
 ````
 
+Y para *What broke and how I found it*, una línea por campo:
+
+```markdown
+## What broke and how I found it (v7)
+
+- **Symptom:** ____
+- **What I checked:** ____
+- **Cause:** ____
+- **Fix:** ____
+```
+
+Un ejemplo, ya relleno (del Rómpelo 2 de la clase 119): *Symptom:* the error-ratio alert never fired, even with half the requests failing. *What I checked:* the alert's expression in the Prometheus UI, which returned an empty result. *Cause:* a typo in the metric name (`tienda_request_total`), which `promtool check rules` accepts. *Fix:* corrected the name and added a `promtool test rules` case that fails if the alert doesn't fire.
+
 Etiqueta y release:
 
 ```bash
@@ -197,10 +222,12 @@ Nada que pague. `docker compose down` para pararlo todo, o déjalo en marcha si 
 
 En `notas/fase-10/clase-124.md`:
 
-1. ¿Por qué las métricas de los sitios las publica la API y no el checker?
-2. Cuenta tu prueba de punta a punta de `VigiaSitioCaido`, con las horas.
-3. ¿Cuál es el SLO de Vigía, cuánto presupuesto deja al mes y por qué mide Vigía y no los sitios?
-4. **Repaso (clase 123, sin mirar):** ¿cómo sería `VigiaSitioCaido` como alarma de CloudWatch?
+1. ¿Por qué las métricas de los sitios las publica la API y no el checker? *(2 líneas. Empieza así: «Porque el checker es un proceso que…»)*
+2. Cuenta tu prueba de punta a punta de `VigiaSitioCaido`, con las horas. *(4 líneas, una por momento: «HH:MM, el sitio cae · HH:MM, pending · HH:MM, firing · HH:MM, aviso y resuelta»)*
+3. ¿Cuál es el SLO de Vigía, cuánto presupuesto deja al mes y por qué mide Vigía y no los sitios? *(2–3 líneas. Empieza así: «SLI: la parte de… Objetivo: el … % en 30 días, que deja…»)*
+4. **Repaso (clase 123, sin mirar):** ¿cómo sería `VigiaSitioCaido` como alarma de CloudWatch? *(2 líneas: métrica, estadística, periodos y datos que faltan.)*
+
+Después, escríbeme `examíname clase-124`.
 
 ## Autocorrección
 

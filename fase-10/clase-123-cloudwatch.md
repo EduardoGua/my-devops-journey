@@ -2,6 +2,22 @@
 
 **Dónde:** tu Ubuntu (+ AWS, opcional) · **Tiempo:** 75 min · **Bloque:** B. Avisar y entender
 
+> 💡 **La idea de hoy:** todo lo que has hecho con Prometheus, Alertmanager y Grafana tiene su equivalente en **CloudWatch**: métricas con **dimensiones**, **alarmas** que avisan por **SNS**, logs que se consultan con **Logs Insights** y dashboards. La gran diferencia: en CloudWatch tú **envías** las métricas y pagas por cada una, y a cambio no hay nada que mantener. Saber traducir de uno a otro demuestra que entiendes los conceptos, no solo una herramienta.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Los logs de Vigía v3 en CloudWatch, las alarmas y SNS (clase 76).
+> - Las reglas con `for`, Alertmanager y sus receptores (clase 119); la cardinalidad (clase 116).
+> - Los logs JSON y `jq` (clase 122); `aws login` (clase 70).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - ***namespace*** y **dimensión**: el grupo de una métrica y sus "etiquetas" en CloudWatch.
+> - ***push***: la aplicación envía sus métricas (con `PutMetricData`, el agente o EMF).
+> - **estados de una alarma**: `OK`, `ALARM` e `INSUFFICIENT_DATA`.
+> - **`datapoints-to-alarm`**: cuántos periodos deben incumplir para que salte (el `for` de CloudWatch).
+> - ***metric math***: combinar métricas con operaciones, por ejemplo dividir errores entre total.
+> - **EMF** (*embedded metric format*): una línea de log JSON de la que CloudWatch saca métricas.
+> - **Logs Insights**: el lenguaje de consultas de CloudWatch Logs.
+
 ## Objetivo
 
 - Traducir lo que has hecho con Prometheus, Alertmanager y Grafana a CloudWatch: métricas, alarmas, SNS, logs y dashboards.
@@ -15,9 +31,15 @@ Muchas empresas en AWS no montan Prometheus: usan CloudWatch, que ya está ahí,
 
 Ya lo usaste en la fase 6: los logs de Vigía v3 iban a CloudWatch (clase 76).
 
-## Teoría
+## Cómo va esta clase
 
-### De Prometheus a CloudWatch
+Cinco piezas. Las tres primeras son en papel; las dos últimas, **opcionales**, en tu cuenta de AWS, dentro de la capa gratuita.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 30 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre. Si haces las opcionales, termina el mismo día con "Destruir al terminar".
+
+## Las piezas
+
+### Pieza 1 — De Prometheus a CloudWatch
 
 | Lo que hiciste | En CloudWatch |
 |----------------|---------------|
@@ -30,7 +52,26 @@ Ya lo usaste en la fase 6: los logs de Vigía v3 iban a CloudWatch (clase 76).
 | tus logs JSON con `jq` | **CloudWatch Logs** y **Logs Insights**, que entiende los campos de tus JSON |
 | Grafana | dashboards de CloudWatch, o Amazon Managed Grafana |
 
-### El formato EMF: un log que es también una métrica
+**Pruébalo, en papel.** Para las dos alertas de la clase 119, escribe en tus notas la alarma equivalente: de qué métrica y con qué estadística (`Sum`, `Average`, `Maximum`), con qué periodo y cuántos periodos evaluados, y qué haces con los datos que faltan (`treat-missing-data`). Para `TiendaMuchosErrores` necesitas dividir dos métricas con *metric math*.
+
+<details>
+<summary>Comprueba</summary>
+
+- **`TiendaCaida`:** como en CloudWatch la aplicación envía sus métricas, "caída" es que **dejen de llegar**. Una alarma sobre las peticiones (`Sum`, periodo 60 s) con 1 periodo evaluado y `treat-missing-data breaching`: si no llegan datos, cuenta como incumplido.
+- **`TiendaMuchosErrores`:** *metric math* con dos métricas, `m1` (las compras fallidas, `Sum`) y `m2` (todas las compras, `Sum`), y la expresión `m1 / m2`. Periodo de 60 s, 5 periodos evaluados, 5 que superen `0.10`, y `treat-missing-data notBreaching`.
+</details>
+
+✋ **Sin mirar:** ¿cómo se dice `for: 5m` en una alarma de CloudWatch?
+
+<details>
+<summary>Comprueba</summary>
+
+Periodo de 60 segundos, `evaluation-periods 5` y `datapoints-to-alarm 5`: los cinco minutos tienen que incumplir.
+</details>
+
+**En resumen:** etiquetas → dimensiones; reglas → alarmas; Alertmanager → SNS; *pull* → *push*.
+
+### Pieza 2 — El formato EMF: un log que es también una métrica
 
 Si una línea de log JSON lleva un bloque `_aws` con la descripción de sus métricas, CloudWatch crea las métricas solo, sin llamar a `PutMetricData`:
 
@@ -43,7 +84,25 @@ Si una línea de log JSON lleva un bloque `_aws` con la descripción de sus mét
 
 Es lo que hace la librería de Powertools para Lambda. Encaja con los logs estructurados de la clase 122: un evento, y del mismo evento sale la métrica.
 
-### Lo que cuesta
+**Pruébalo, en papel.** En la línea de arriba: ¿cómo se llama la métrica, en qué *namespace* está, qué dimensión tiene y qué valor recibe? ¿Y `status`, qué es?
+
+<details>
+<summary>Comprueba</summary>
+
+La métrica `ms`, en el *namespace* `Laboratorio`, con la dimensión `path=/comprar`, recibe 81,2 milisegundos. `status` no aparece en `CloudWatchMetrics`: es un campo normal del log, que se puede consultar con Logs Insights pero no crea ninguna métrica.
+</details>
+
+✋ **Sin mirar:** ¿qué ventaja tiene EMF frente a llamar a `PutMetricData` en cada petición?
+
+<details>
+<summary>Comprueba</summary>
+
+Que no hace falta otra llamada al API: el log que ya escribes lleva la métrica dentro, y CloudWatch la saca solo. Un evento, dos usos.
+</details>
+
+**En resumen:** con EMF, el log estructurado lleva su métrica dentro.
+
+### Pieza 3 — Lo que cuesta, y lo gestionado frente a lo tuyo
 
 Precios de us-east-1, verificados el 2026-10-10 (están en la tabla "Datos que caducan" de la fase):
 
@@ -56,8 +115,6 @@ Precios de us-east-1, verificados el 2026-10-10 (están en la tabla "Datos que c
 
 Cuidado con las **dimensiones**: cada combinación distinta es una métrica facturada aparte. Una dimensión con el id de usuario es la cardinalidad de la clase 116 convertida en factura.
 
-### ¿Lo gestionado o lo tuyo?
-
 | | Prometheus + Grafana tuyos | CloudWatch |
 |-|----------------------------|------------|
 | Costo | el servidor donde corren | por métrica, alarma y GB: barato al principio, caro a escala |
@@ -68,22 +125,33 @@ Cuidado con las **dimensiones**: cada combinación distinta es una métrica fact
 
 En medio están **Amazon Managed Service for Prometheus** (Prometheus gestionado, que se consulta con PromQL) y **Amazon Managed Grafana**: tu forma de trabajar, sin servidores que mantener. Lo normal en una empresa mediana: CloudWatch para la infraestructura de AWS, y Prometheus (propio o gestionado) con Grafana para las aplicaciones.
 
-## Práctica guiada
+**Pruébalo, en papel.** La tienda publica en CloudWatch una métrica de compras con la dimensión `Path` (3 rutas) y otra de latencia con `Path` y `Status` (3 rutas × 4 códigos). ¿Cuántas métricas facturas, y cuánto al mes después de la capa gratuita?
 
-### 1. En papel: la tienda en CloudWatch (15 min)
+<details>
+<summary>Comprueba</summary>
 
-Escribe en tus notas, para las dos alertas de la clase 119, la alarma equivalente:
-- de qué métrica y con qué estadística (`Sum`, `Average`, `Maximum`);
-- con qué periodo y cuántos periodos evaluados;
-- qué haces con los datos que faltan (`treat-missing-data`).
+3 + 12 = 15 métricas. Menos las 10 gratuitas, 5 × 0,30 = **1,50 USD al mes**. Con una dimensión `Usuario`, serían miles.
+</details>
 
-Para `TiendaMuchosErrores` necesitas dividir dos métricas: busca *metric math* en la documentación de CloudWatch y escribe la expresión.
+✋ **Sin mirar:** ¿qué tiene CloudWatch que tu Prometheus no trae de serie?
 
-### 2. Opcional, en tu cuenta: una métrica, una alarma y su aviso (30 min)
+<details>
+<summary>Comprueba</summary>
+
+Las métricas de los servicios de AWS (EC2, RDS, los balanceadores, Lambda), que llegan solas, y no hay nada que instalar ni mantener.
+</details>
+
+**En resumen:** CloudWatch cobra por métrica, alarma y GB; lo gestionado ahorra trabajo, lo tuyo ahorra a escala.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, las piezas opcionales en tu cuenta, de un tirón y destruyendo al final.
+
+### Pieza 4 — Opcional, en tu cuenta: una métrica, una alarma y su aviso
 
 > 💰 **0 USD:** una métrica propia, una alarma, un *topic* de SNS y unos pocos KB de logs, todo dentro de la capa gratuita de CloudWatch, que no caduca. Borra todo al terminar.
 
-Con tu sesión de `aws login` (clase 70):
+Una alarma tiene dos caminos que probar: que **evalúa** bien (con datos de verdad) y que el **aviso llega** (forzando su estado). Es el `amtool` de la clase 119 al revés: aquí provocas el aviso para comprobar que llega.
+
+**Pruébalo.** Con tu sesión de `aws login` (clase 70):
 
 ```bash
 export AWS_PAGER=""
@@ -115,22 +183,36 @@ aws cloudwatch describe-alarms --alarm-names lab-compras-fallidas \
 
 🔮 **Predice:** ¿saltará la alarma con tus cinco valores? Haz la cuenta antes de seguir.
 
+👀 **Qué deberías ver:** `lab-compras-fallidas` en `INSUFFICIENT_DATA` al principio y después `OK`: no salta, porque necesita 5 periodos seguidos por encima de 5, y el primer valor es 2.
+
 Para probar el **camino del aviso** sin esperar a un incidente, fuerza el estado:
 
 ```bash
 aws cloudwatch set-alarm-state --alarm-name lab-compras-fallidas --state-value ALARM --state-reason "Prueba del aviso"
 ```
 
-En un minuto te llega un correo con el asunto `ALARM: "lab-compras-fallidas"…`. En la siguiente evaluación la alarma vuelve a su estado real, y como pusiste `--ok-actions`, llega también el `OK`. Es el `amtool` de la clase 119 al revés: aquí provocas el aviso para comprobar que llega.
+En un minuto te llega un correo con el asunto `ALARM: "lab-compras-fallidas"…`. En la siguiente evaluación la alarma vuelve a su estado real, y como pusiste `--ok-actions`, llega también el `OK`.
 
 ```bash
 aws cloudwatch describe-alarm-history --alarm-name lab-compras-fallidas \
   --query 'AlarmHistoryItems[].[Timestamp,HistorySummary]' --output text
 ```
 
-### 3. Opcional: logs JSON con Logs Insights (20 min)
+✋ **Sin mirar:** ¿por qué hay que confirmar la suscripción de correo de SNS?
 
-Un grupo de logs con un día de retención y tres eventos como los de tu tienda:
+<details>
+<summary>Comprueba</summary>
+
+Para que nadie pueda suscribir el correo de otra persona y llenarle el buzón de avisos: hasta que el dueño confirma, la suscripción está en `PendingConfirmation` y no llega nada (Rómpelo 1).
+</details>
+
+**En resumen:** una alarma se prueba dos veces: que evalúa bien y que el aviso llega.
+
+### Pieza 5 — Opcional: logs JSON con Logs Insights
+
+CloudWatch Logs entiende los campos de tus logs JSON: los **filtros** (`{ $.status >= 500 }`) son el `select` de `jq`, y **Logs Insights** cuenta, agrupa y ordena como el `jq -s` de la clase 122, sobre gigas de logs.
+
+**Pruébalo.** Un grupo de logs con un día de retención y tres eventos como los de tu tienda:
 
 ```bash
 aws logs create-log-group --log-group-name /laboratorio/tienda
@@ -163,9 +245,32 @@ sleep 5
 aws logs get-query-results --query-id "$Q"
 ```
 
-Pruébalo también en la consola: **CloudWatch → Logs Insights**, el grupo `/laboratorio/tienda` y la consulta `fields @timestamp, path, status, ms | sort @timestamp desc`.
+👀 **Qué deberías ver:** el filtro devuelve solo la línea con `"status":500`. Logs Insights, dos filas: `status` 200 con 2 peticiones y una media de unos 100,9 ms, y `status` 500 con 1 y 29 ms. Pruébalo también en la consola: **CloudWatch → Logs Insights**, el grupo `/laboratorio/tienda` y la consulta `fields @timestamp, path, status, ms | sort @timestamp desc`.
 
 Estas dos últimas partes las probé con un emulador, que no reproduce bien los filtros JSON ni Logs Insights. Si en tu cuenta algo no sale como aquí, tráemelo.
+
+✋ **Sin mirar:** ¿qué hace la retención de un día en este grupo de logs, y por qué la pones?
+
+<details>
+<summary>Comprueba</summary>
+
+Borra los eventos de más de un día. Sin retención, un grupo de logs guarda todo para siempre, y se paga cada mes (clase 76).
+</details>
+
+**En resumen:** filtros para buscar, Logs Insights para contar y agrupar; siempre con retención.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `aws cloudwatch put-metric-data --namespace … --metric-name … --value …` | enviar un valor de una métrica |
+| `aws cloudwatch put-metric-alarm … --period 60 --evaluation-periods 5 --datapoints-to-alarm 5` | una alarma con "for: 5m" |
+| `--treat-missing-data notBreaching` · `breaching` | qué hacer cuando faltan datos |
+| `--alarm-actions "$TOPIC" --ok-actions "$TOPIC"` | avisar al saltar y al resolverse |
+| `aws cloudwatch set-alarm-state --state-value ALARM` | probar el camino del aviso |
+| `aws sns create-topic` · `aws sns subscribe --protocol email` | el receptor |
+| `aws logs filter-log-events --filter-pattern '{ $.status >= 500 }'` | filtrar logs JSON |
+| `stats count(), avg(ms) by status` | una consulta de Logs Insights |
 
 ## Destruir al terminar
 
@@ -185,25 +290,59 @@ La métrica `ComprasFallidas` no se puede borrar: desaparece sola cuando lleva 1
 
 ## Reto
 
-1. Busca en la documentación de CloudWatch la diferencia entre una alarma estándar y una *composite alarm*. ¿Con cuál harías el `inhibit_rules` de la clase 119?
-2. Las métricas de tu EC2 de la fase 6: ¿cada cuánto las publica AWS por defecto (*basic monitoring*)? ¿Cuánto cuesta el *detailed monitoring*?
-3. Si Vigía corriera en EKS (clase 115), ¿qué usarías para sus métricas: CloudWatch Container Insights, Amazon Managed Service for Prometheus o tu propio Prometheus? Defiende tu elección en tres frases.
+Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** Busca en la documentación de CloudWatch la diferencia entre una alarma estándar y una *composite alarm*. ¿Con cuál harías el `inhibit_rules` de la clase 119?
+
+> 🧩 **Ejemplo resuelto:** el reto 1 de la clase 119: si `TiendaCaida` está disparada, Alertmanager no avisa de `TiendaMuchosErrores`.
+
+**Ahora tú, con huecos:** «Una *composite alarm* combina ____ de otras alarmas con ____, ____ y ____. El `inhibit_rules` sería: `ALARM(errores) AND ____ ALARM(caida)`».
+
+<details>
+<summary>Pista</summary>
+
+Busca *Combining alarms* en la guía de usuario de CloudWatch. La regla de una *composite alarm* se escribe con funciones como `ALARM("nombre")`.
+</details>
+
+**2.** Las métricas de tu EC2 de la fase 6: ¿cada cuánto las publica AWS por defecto (*basic monitoring*)? ¿Y el *detailed monitoring*?
+
+> 🧩 **Ejemplo resuelto:** la pieza 1: Prometheus lee cada 15 segundos, porque tú lo configuras así.
+
+**Ahora tú, con huecos:** «Con *basic monitoring*, cada ____ minutos, gratis. Con *detailed monitoring*, cada ____ minuto, y se paga como ____».
+
+<details>
+<summary>Pista</summary>
+
+Busca *Enable or turn off detailed monitoring for your instances* en la documentación de EC2, y mira en la página de precios de CloudWatch cómo se cobran esas métricas.
+</details>
+
+**3.** Si Vigía corriera en EKS (clase 115), ¿qué usarías para sus métricas: CloudWatch Container Insights, Amazon Managed Service for Prometheus o tu propio Prometheus? Defiende tu elección en tres frases.
+
+> 🧩 **Ejemplo resuelto:** la pieza 3: "CloudWatch para la infraestructura de AWS, y Prometheus (propio o gestionado) con Grafana para las aplicaciones".
+
+**Ahora tú, con huecos:** «Elegiría ____, porque ____. Me ahorra ____. A cambio, ____».
+
+<details>
+<summary>Pista</summary>
+
+Piensa en quién mantendría el Prometheus propio, en si quieres seguir usando tus consultas y alertas de PromQL, y en el costo por métrica.
+</details>
 
 ## Cierre
 
 En `notas/fase-10/clase-123.md`:
 
-1. Traduce a CloudWatch: una métrica con etiquetas, una regla de alerta con `for: 5m` y un receptor de Alertmanager.
-2. ¿Qué cobra CloudWatch, y qué entra gratis cada mes?
-3. ¿Cuándo elegirías CloudWatch y cuándo Prometheus con Grafana?
-4. **Repaso (clase 122, sin mirar):** ¿qué cinco piezas tiene un postmortem?
+1. Traduce a CloudWatch: una métrica con etiquetas, una regla de alerta con `for: 5m` y un receptor de Alertmanager. *(3 líneas, una por pieza.)*
+2. ¿Qué cobra CloudWatch, y qué entra gratis cada mes? *(2 líneas.)*
+3. ¿Cuándo elegirías CloudWatch y cuándo Prometheus con Grafana? *(2 líneas, una por herramienta.)*
+4. **Repaso (clase 122, sin mirar):** ¿qué cinco piezas tiene un postmortem? *(1 línea.)*
+
+Después, escríbeme `examíname clase-123`.
 
 ## Autocorrección
 
 <details>
 <summary>Ábrelo cuando hayas respondido el cierre</summary>
-
-**Práctica 2:** no saltará: necesita 5 periodos seguidos por encima de 5, y el primer valor es 2. Con `datapoints-to-alarm 5` de `evaluation-periods 5`, basta un minuto por debajo para que no salte. Es el `for: 5m`.
 
 **Cierre:**
 1. Una métrica con etiquetas es una métrica con **dimensiones** en un *namespace*. Una regla con `for: 5m` es una **alarma** con periodo de 60 segundos, 5 periodos evaluados y 5 que deben incumplirla. Un receptor de Alertmanager es un ***topic* de SNS** con sus suscripciones, en `--alarm-actions`.
@@ -215,7 +354,11 @@ En `notas/fase-10/clase-123.md`:
 
 **Rómpelo 3:** 5 000 métricas, unos 1 500 USD al mes (sin la capa gratuita), solo por esa dimensión.
 
-**Reto 1:** una *composite alarm* combina el estado de otras alarmas con `AND`, `OR` y `NOT`. Con ella: "avisa de los errores **solo si** la alarma de servicio caído no está en `ALARM`".
+**Reto 1:** una *composite alarm* combina el **estado** de otras alarmas con `AND`, `OR` y `NOT`. Con ella: `ALARM("lab-errores") AND NOT ALARM("lab-caida")`, "avisa de los errores **solo si** la alarma de servicio caído no está en `ALARM`".
+
+**Reto 2:** con *basic monitoring*, cada **5 minutos**, gratis. Con *detailed monitoring*, cada **1 minuto**, y esas métricas se cobran como métricas propias (por métrica al mes).
+
+**Reto 3:** por ejemplo: "Amazon Managed Service for Prometheus, porque Vigía ya tiene sus métricas, alertas y SLO en PromQL. Me ahorra instalar, actualizar y guardar un Prometheus dentro del cluster. A cambio, pago por muestras ingeridas y sigo necesitando Grafana para los dashboards". Container Insights también vale si lo justificas: viene integrado con EKS y no hay nada que mantener, pero sus consultas son más limitadas y cada métrica cuenta en la factura.
 </details>
 
 ## Inglés

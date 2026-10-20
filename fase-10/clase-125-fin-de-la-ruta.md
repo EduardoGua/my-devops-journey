@@ -2,6 +2,18 @@
 
 **Tiempo:** 1 sesión para el arranque desde cero · 1 o 2 para preparar la defensa · 3 h el examen · **Bloque:** C. Proyecto y cierre de la ruta · **Aprobado: ≥ 80 %**
 
+> 💡 **La idea de hoy:** el final de la ruta son tres pruebas. Vigía se levanta **desde cero** con un comando, en un clon limpio, y se destruye igual. Lo **defiendes en 10 minutos**, como en una entrevista técnica. Y demuestras sin apuntes lo que sabes de Terraform, Kubernetes y observabilidad en el **examen final**. Después, el CV al día y el siguiente paso.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Vigía de la v0 a la v7 (clases 21 a 124), con sus README y sus *What broke*.
+> - La recreación desde cero de la v5 (clase 101) y el pipeline de la v4 (clase 90).
+> - Tus historias STAR, el CV y el ritmo de postulación (clase 91); el examen de las fases 4 a 7.
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **clon limpio**: una copia recién clonada del repositorio, sin nada de tu máquina.
+> - **defensa técnica**: explicar un proyecto, sus decisiones y sus fallos ante alguien que pregunta.
+> - **rúbrica**: la tabla con la que se puntúa una defensa o un examen.
+
 ## Objetivo
 
 - Levantar Vigía **desde cero** con un comando, desde un clon limpio, y destruirlo igual.
@@ -312,6 +324,24 @@ En la sección de Vigía del CV de la clase 91, añade, con tus números:
 
 En *Skills*, Terraform, Kubernetes, Helm, Prometheus y Grafana. Y en LinkedIn, una publicación corta contando que terminaste la ruta, con el enlace a Vigía y lo que más aprendiste. Las publicaciones de proyectos reales abren conversaciones.
 
+Modelo para adaptar (lo escribió Claude). Cambia los huecos por tus datos, y quita lo que no sea verdad para ti:
+
+```
+I just finished a ____-month path from Linux basics to cloud and DevOps, and the result is Vigía,
+a small uptime monitor that I built, broke and rebuilt many times: ____.
+
+What it does today:
+• Runs on AWS with Terraform (rebuilt from scratch in ____ minutes) and on Kubernetes with kind
+• Ships through a GitHub Actions pipeline with OIDC, tests and automatic rollback
+• Watches itself: Prometheus metrics, tested alerts, Grafana dashboards and an SLO
+
+The lesson I didn't expect: ____.
+
+I'm now looking for my first role in cloud / DevOps / NOC. Feedback and conversations welcome.
+```
+
+Lo más tuyo es la línea de la lección: una sola frase, concreta (un fallo que te enseñó algo), vale más que tres párrafos generales.
+
 ### 2. Qué viene después
 
 - **Sigue postulando** con el ritmo de la clase 91: ahora con un proyecto completo.
@@ -323,10 +353,10 @@ En *Skills*, Terraform, Kubernetes, Helm, Prometheus y Grafana. Y en LinkedIn, u
 
 En `notas/fase-10/clase-125.md`:
 
-1. El tiempo de tu arranque desde cero, y qué tuviste que arreglar en el repositorio para que funcionara en un clon limpio.
-2. Tu nota de la defensa con la rúbrica, y la pregunta que peor respondiste.
-3. Tu nota del examen, por partes, y las dos clases que más vas a repasar.
-4. Lo que más te costó de toda la ruta, y lo que harías distinto si empezaras hoy.
+1. El tiempo de tu arranque desde cero, y qué tuviste que arreglar en el repositorio para que funcionara en un clon limpio. *(2 líneas. Empieza así: «Tardó … minutos. En el clon limpio faltaba…»)*
+2. Tu nota de la defensa con la rúbrica, y la pregunta que peor respondiste. *(2 líneas. Empieza así: «… de …. La que peor respondí fue … porque…»)*
+3. Tu nota del examen, por partes, y las dos clases que más vas a repasar. *(2 líneas: «A …, B …, C …, D …, E …. Repasaré la … y la …»)*
+4. Lo que más te costó de toda la ruta, y lo que harías distinto si empezaras hoy. *(2 líneas, una por pregunta.)*
 
 ## Al terminar la ruta
 

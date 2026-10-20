@@ -2,6 +2,24 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** A. Medir
 
+> 💡 **La idea de hoy:** Prometheus lee tu tienda cada 15 segundos según su `prometheus.yml`, y con **PromQL** le preguntas: cuántas peticiones por segundo (`rate` y `sum`), qué proporción falla (una división) y cuánto tardan (un **percentil** con `histogram_quantile`). Son las tres preguntas de RED, y con ellas se escriben después los paneles, las alertas y los SLO.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - La tienda instrumentada y la imagen `tienda:1` (clase 117).
+> - Counters, gauges, histogramas, `up` y `rate()` (clase 116).
+> - Docker Compose, los nombres de servicio como DNS y los volúmenes con nombre (clases 60 a 62).
+> - Expresiones regulares (clase 05); `curl` y `jq` (clase 47).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **`job` / `instance`**: las etiquetas que Prometheus añade a cada serie: el grupo de objetivos y el objetivo.
+> - **vector instantáneo / de rango**: el último valor de cada serie / sus muestras en un intervalo (`[5m]`).
+> - **selector**: el filtro entre llaves: `=`, `!=`, `=~` (expresión regular), `!~`.
+> - **`increase()`**: cuánto creció un counter en un rango.
+> - **`sum by (…)`**: sumar series conservando solo esas etiquetas.
+> - **percentil** (p50, p95, p99): el tiempo que no superó ese porcentaje de las peticiones.
+> - **`promtool`**: la herramienta que valida la configuración de Prometheus.
+> - **retención**: cuánto tiempo guarda Prometheus los datos.
+
 ## Objetivo
 
 - Configurar Prometheus para que recoja tu aplicación: `prometheus.yml`, objetivos, intervalo y retención.
@@ -13,9 +31,19 @@
 
 Una métrica sin consultas es un número que nadie mira. PromQL es el idioma con el que preguntas a Prometheus. Con él se escriben los paneles de Grafana (clase 120), las alertas (119) y los SLO (121). Lo usan Prometheus, Grafana, Thanos, Mimir, el servicio gestionado de AWS (clase 123)… Se aprende una vez y sirve en todas partes.
 
-## Teoría
+## Cómo va esta clase
 
-### La configuración
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber hecho la anterior. Todas usan la misma tienda con su tráfico.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 50 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre. Entre los dos días, `docker compose down` (sin `-v`) y, al volver, `docker compose up -d`: los datos se quedan en el volumen.
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-118 && cd ~/my-devops-journey/labs/clase-118
+```
+
+## Las piezas
+
+### Pieza 1 — La configuración: Prometheus lee tu tienda
 
 ```yaml
 global:
@@ -30,56 +58,7 @@ Prometheus añade a cada serie dos etiquetas: `job` (el nombre del trabajo) e `i
 
 En producción los objetivos no se escriben a mano: se **descubren** (en Kubernetes, en EC2, en Consul…). Aquí, con Compose, basta con el nombre del servicio.
 
-### Vectores
-
-| Tipo | Ejemplo | Qué devuelve |
-|------|---------|--------------|
-| vector instantáneo | `tienda_requests_total` | el último valor de cada serie |
-| vector de rango | `tienda_requests_total[5m]` | todas las muestras de cada serie en los últimos 5 minutos |
-| escalar | `0.95` | un número |
-
-Las funciones como `rate()` reciben un **rango** y devuelven un **instantáneo**: "el ritmo medio de los últimos 5 minutos, en cada momento".
-
-### Selectores
-
-```promql
-tienda_requests_total{path="/comprar"}             # igual
-tienda_requests_total{status!="200"}               # distinto
-tienda_requests_total{status=~"5.."}               # cumple la expresión regular: 500, 502, 503…
-tienda_requests_total{path!~"/health|/metrics"}    # no la cumple
-```
-
-### Las funciones que más vas a usar
-
-| Función | Qué hace | Para |
-|---------|----------|------|
-| `rate(c[5m])` | ritmo medio por segundo de un counter en el rango | peticiones por segundo, errores por segundo |
-| `increase(c[1h])` | cuánto creció el counter en el rango | "pedidos en la última hora" |
-| `sum by (status) (…)` | suma las series, conservando solo esas etiquetas | agrupar; `sum` sin `by` lo junta todo |
-| `a / b` | divide serie a serie (las que tienen las mismas etiquetas) | proporciones: errores entre total |
-| `histogram_quantile(0.95, sum by (le) (rate(h_bucket[5m])))` | el percentil 95 a partir de los cubos | latencia "que no supera el 95 %" |
-| `avg_over_time(g[1h])`, `max_over_time` | media o máximo de un gauge en el rango | la memoria media de la última hora |
-| `topk(3, …)` | las 3 series con más valor | las rutas más lentas |
-
-Dos reglas de oro:
-- `rate()` e `increase()`, **solo con counters**: detectan los reinicios (cuando el valor baja) y los descuentan.
-- El rango debe abarcar **al menos 4 *scrapes*** (con 15 s, `[1m]` o más). Con menos muestras, el resultado sale a saltos o vacío.
-
-### ¿Por qué percentiles y no la media?
-
-La media mezcla a todos los usuarios en un número que no describe a ninguno. Si 99 peticiones tardan 50 ms y una tarda 5 segundos, la media es de 100 ms, y nadie ha tenido 100 ms. El **p95** (95 de cada 100 tardaron eso o menos) y el **p99** cuentan cómo lo viven los usuarios peor tratados, que son los que se quejan.
-
-## Práctica guiada
-
-Copia la tienda de la clase 117 y prepara la carpeta de Compose:
-
-```bash
-mkdir -p ~/my-devops-journey/labs/clase-118 && cd ~/my-devops-journey/labs/clase-118
-```
-
-### 1. La tienda, su tráfico y Prometheus (20 min)
-
-`compose.yaml`:
+**Pruébalo.** `compose.yaml`:
 
 ```yaml
 services:
@@ -130,13 +109,40 @@ docker run --rm -v "$PWD:/r" -w /r --entrypoint promtool prom/prometheus:v3.15.0
 docker compose up -d --build
 ```
 
-Abre http://127.0.0.1:9090 → **Status → Target health**: `prometheus` y `tienda`, los dos `UP`. Deja pasar tres o cuatro minutos para tener datos.
+👀 **Qué deberías ver:** `SUCCESS: prometheus.yml is valid prometheus config file syntax`, y los tres servicios en marcha. En http://127.0.0.1:9090 → **Status → Target health**: `prometheus` y `tienda`, los dos `UP`. Deja pasar tres o cuatro minutos para tener datos.
 
-### 2. RED con PromQL (35 min)
+✋ **Sin mirar:** ¿qué etiquetas añade Prometheus a todas las series de la tienda, y qué serie crea para saber si la pudo leer?
 
-Escribe cada consulta en http://127.0.0.1:9090, primero en **Table** y luego en **Graph**.
+<details>
+<summary>Comprueba</summary>
 
-**R: cuántas peticiones.**
+`job="tienda"` e `instance="tienda:8000"`; y `up{job="tienda"}`, que vale 1 o 0.
+</details>
+
+**En resumen:** un `job` por grupo de objetivos; `promtool` valida antes de arrancar.
+
+### Pieza 2 — Cuántas peticiones: `rate` y `sum by`
+
+| Tipo | Ejemplo | Qué devuelve |
+|------|---------|--------------|
+| vector instantáneo | `tienda_requests_total` | el último valor de cada serie |
+| vector de rango | `tienda_requests_total[5m]` | todas las muestras de cada serie en los últimos 5 minutos |
+| escalar | `0.95` | un número |
+
+Las funciones como `rate()` reciben un **rango** y devuelven un **instantáneo**: "el ritmo medio de los últimos 5 minutos, en cada momento". Y `sum by (status) (…)` suma las series conservando solo esas etiquetas; `sum` sin `by` lo junta todo.
+
+| Función | Qué hace | Para |
+|---------|----------|------|
+| `rate(c[5m])` | ritmo medio por segundo de un counter en el rango | peticiones por segundo, errores por segundo |
+| `increase(c[1h])` | cuánto creció el counter en el rango | "pedidos en la última hora" |
+| `sum by (status) (…)` | suma las series, conservando solo esas etiquetas | agrupar |
+| `avg_over_time(g[1h])`, `max_over_time` | media o máximo de un gauge en el rango | la memoria media de la última hora |
+
+Dos reglas de oro:
+- `rate()` e `increase()`, **solo con counters**: detectan los reinicios (cuando el valor baja) y los descuentan.
+- El rango debe abarcar **al menos 4 *scrapes*** (con 15 s, `[1m]` o más). Con menos muestras, el resultado sale a saltos o vacío.
+
+**Pruébalo.** Escribe cada consulta en http://127.0.0.1:9090, primero en **Table** y luego en **Graph**:
 
 ```promql
 tienda_requests_total
@@ -147,23 +153,62 @@ sum by (status) (rate(tienda_requests_total[1m]))
 
 🔮 **Predice:** con una compra cada 0,2 s más lo que tarda cada una, ¿cuántas peticiones por segundo esperas?
 
-Unas 3. Fíjate en cómo `sum` sin `by` lo junta todo en una serie sin etiquetas, y `by (status)` deja una por código.
+👀 **Qué deberías ver:** unas 3. `sum` sin `by` lo junta todo en una serie sin etiquetas, y `by (status)` deja una por código: `200` con casi todo y `500` con un poco.
 
-**E: cuántas fallan.**
+✋ **Sin mirar:** ¿por qué `rate(…[15s])` con un *scrape* cada 15 segundos no sirve?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque en 15 segundos hay como mucho una muestra, y `rate()` necesita al menos dos. El rango, al menos 4 veces el intervalo: `[1m]`.
+</details>
+
+**En resumen:** `rate` para el ritmo de un counter; `sum by` para agrupar.
+
+### Pieza 3 — Cuántas fallan: selectores y proporciones
+
+```promql
+tienda_requests_total{path="/comprar"}             # igual
+tienda_requests_total{status!="200"}               # distinto
+tienda_requests_total{status=~"5.."}               # cumple la expresión regular: 500, 502, 503…
+tienda_requests_total{path!~"/health|/metrics"}    # no la cumple
+```
+
+`a / b` divide serie a serie (las que tienen las mismas etiquetas). Con dos `sum` sin `by`, cada lado es una sola serie: la división da la proporción.
+
+**Pruébalo:**
 
 ```promql
 sum(rate(tienda_requests_total{status=~"5.."}[2m])) / sum(rate(tienda_requests_total[2m]))
 ```
 
-Alrededor de 0,05: el 5 %. Sube los errores al 50 % y mira la gráfica de esa consulta durante dos minutos:
+👀 **Qué deberías ver:** alrededor de 0,05: el 5 %. Sube los errores al 50 % y mira la gráfica de esa consulta durante dos minutos:
 
 ```bash
 curl -s -X POST localhost:8080/errores/50
 ```
 
-El cambio no es instantáneo: `rate()` mira dos minutos hacia atrás, y la línea sube poco a poco. Vuelve al 5 % (`curl -s -X POST localhost:8080/errores/5`).
+El cambio no es instantáneo: `rate()` mira dos minutos hacia atrás, y la línea sube poco a poco hasta 0,5. Vuelve al 5 % (`curl -s -X POST localhost:8080/errores/5`).
 
-**D: cuánto tardan.**
+✋ **Sin mirar:** ¿qué selector elige todos los códigos 4xx?
+
+<details>
+<summary>Comprueba</summary>
+
+`{status=~"4.."}`: la expresión regular "un 4 y dos caracteres cualesquiera".
+</details>
+
+**En resumen:** errores entre total, cada lado con su `sum(rate(…))`.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. `docker compose down` (sin `-v`) y, mañana, `docker compose up -d` y unos minutos de tráfico.
+
+### Pieza 4 — Cuánto tardan: percentiles
+
+La media mezcla a todos los usuarios en un número que no describe a ninguno. Si 99 peticiones tardan 50 ms y una tarda 5 segundos, la media es de 100 ms, y nadie ha tenido 100 ms. El **p95** (95 de cada 100 tardaron eso o menos) y el **p99** cuentan cómo lo viven los usuarios peor tratados, que son los que se quejan.
+
+`histogram_quantile(0.95, sum by (le) (rate(h_bucket[5m])))` calcula el percentil a partir de los cubos. `sum by (le)` hace falta: `histogram_quantile` necesita los cubos (`le`) de todas las instancias juntos. Con varias réplicas de la tienda, así se calcula el percentil del servicio entero, algo que un *summary* no permite.
+
+**Pruébalo:**
 
 ```promql
 histogram_quantile(0.5, sum by (le) (rate(tienda_request_duration_seconds_bucket{path="/comprar"}[2m])))
@@ -171,11 +216,25 @@ histogram_quantile(0.99, sum by (le) (rate(tienda_request_duration_seconds_bucke
 sum(rate(tienda_request_duration_seconds_sum{path="/comprar"}[2m])) / sum(rate(tienda_request_duration_seconds_count{path="/comprar"}[2m]))
 ```
 
-En mis pruebas: **p50 de 84 ms, p99 de 477 ms y una media de 109 ms**. La media queda por encima de la mediana porque la arrastran las compras lentas, y aun así no cuenta lo que vive el 1 % peor tratado.
+🔮 **Predice:** ¿quedará la media por encima o por debajo de la mediana (el p50)?
 
-`sum by (le)` hace falta: `histogram_quantile` necesita los cubos (`le`) de todas las instancias juntos. Con varias réplicas de la tienda, así se calcula el percentil del servicio entero, algo que un *summary* no permite.
+👀 **Qué deberías ver:** en mis pruebas, **p50 de 84 ms, p99 de 477 ms y una media de 109 ms**. La media queda por encima de la mediana porque la arrastran las compras lentas, y aun así no cuenta lo que vive el 1 % peor tratado.
 
-### 3. Desde la terminal (10 min)
+✋ **Sin mirar:** ¿qué significa "el p95 es 300 ms"?
+
+<details>
+<summary>Comprueba</summary>
+
+Que 95 de cada 100 peticiones tardaron 300 ms o menos; las 5 restantes, más.
+</details>
+
+**En resumen:** percentiles desde los cubos, con `sum by (le)`; la media esconde la cola.
+
+### Pieza 5 — Desde la terminal
+
+El API de la clase 116 acepta cualquier consulta. `topk(3, …)` devuelve las 3 series con más valor: por ejemplo, las rutas más lentas o con más errores.
+
+**Pruébalo:**
 
 ```bash
 q() { curl -s --data-urlencode "query=$1" http://127.0.0.1:9090/api/v1/query | jq -c '.data.result[] | {etiquetas: .metric, valor: .value[1]}'; }
@@ -184,6 +243,32 @@ q 'topk(1, sum by (path, status) (rate(tienda_requests_total[2m])))'
 ```
 
 `--data-urlencode` codifica las llaves, comillas y espacios de la consulta por ti.
+
+👀 **Qué deberías ver:** dos líneas, `{"etiquetas":{"status":"200"},"valor":"2.8…"}` y la de `500`; y una sola en el `topk`: `/comprar` con `200`, la serie con más tráfico.
+
+✋ **Sin mirar:** ¿por qué la función `q` usa `--data-urlencode` en lugar de poner la consulta en la URL?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque la consulta lleva llaves, comillas, espacios y `~`, que en una URL hay que codificar. `--data-urlencode` lo hace solo.
+</details>
+
+**En resumen:** el API para scripts; `topk` para lo que más pesa.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `scrape_configs: - job_name: … static_configs: - targets: [...]` | qué lee Prometheus |
+| `promtool check config prometheus.yml` | validar la configuración |
+| `metrica{a="x", b=~"5.."}` | selectores: igual, regex… |
+| `rate(c_total[1m])` · `increase(c_total[1h])` | ritmo por segundo · cuánto creció |
+| `sum by (status) (…)` | agrupar por una etiqueta |
+| `sum(rate(errores[2m])) / sum(rate(total[2m]))` | proporción |
+| `histogram_quantile(0.95, sum by (le) (rate(h_bucket[5m])))` | percentil 95 |
+| `rate(h_sum[5m]) / rate(h_count[5m])` | media |
+| `topk(3, …)` · `offset 10m` · `resets(c[5m])` | las mayores · el pasado · reinicios |
 
 ## Rómpelo
 
@@ -194,9 +279,51 @@ q 'topk(1, sum by (path, status) (rate(tienda_requests_total[2m])))'
 
 ## Reto
 
-1. ¿Qué parte de las peticiones de `/comprar` tarda menos de 250 ms? Escríbelo solo con los cubos, sin `histogram_quantile`. (Pista: `…_bucket{le="0.25"}` entre `…_count`.)
-2. Compara la gráfica de `rate(tienda_requests_total[1m])` con la de `irate(tienda_requests_total[1m])`. ¿Qué diferencia ves? ¿Cuál pondrías en una alerta?
-3. `sum(rate(tienda_requests_total[5m] offset 10m))` devuelve el ritmo de hace 10 minutos. Escribe una consulta que diga cuánto ha cambiado el ritmo respecto a entonces, en porcentaje.
+Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** ¿Qué parte de las peticiones de `/comprar` tarda menos de 250 ms? Escríbelo solo con los cubos, sin `histogram_quantile`.
+
+> 🧩 **Ejemplo resuelto:** la pieza 3: la proporción de errores era `sum(rate(…{status=~"5.."}[2m])) / sum(rate(…[2m]))`.
+
+**Ahora tú, con huecos:**
+```promql
+sum(rate(tienda_request_duration_seconds_bucket{path="/comprar", le="____"}[5m]))
+/
+sum(rate(tienda_request_duration_seconds_____{path="/comprar"}[5m]))
+```
+
+<details>
+<summary>Pista</summary>
+
+Los cubos son acumulados (clase 117): el de `le="0.25"` ya cuenta todas las que tardaron 0,25 s o menos. Y el total de observaciones está en `_count`.
+</details>
+
+**2.** Compara la gráfica de `rate(tienda_requests_total[1m])` con la de `irate(tienda_requests_total[1m])`. ¿Qué diferencia ves? ¿Cuál pondrías en una alerta?
+
+> 🧩 **Ejemplo resuelto:** la pieza 3: al subir los errores al 50 %, la línea de `rate(…[2m])` subió **poco a poco**.
+
+**Ahora tú, con huecos:** completa: «`irate` usa solo ____ muestras del rango: reacciona ____ pero sale ____. `rate` promedia ____ y sale más suave. Para una alerta, ____, porque…».
+
+<details>
+<summary>Pista</summary>
+
+Piensa en un pico de 15 segundos a las 3 de la mañana: ¿quieres que despierte a alguien?
+</details>
+
+**3.** `sum(rate(tienda_requests_total[5m] offset 10m))` devuelve el ritmo de hace 10 minutos. Escribe una consulta que diga cuánto ha cambiado el ritmo respecto a entonces, en porcentaje.
+
+> 🧩 **Ejemplo resuelto:** si ahora hay 3 peticiones por segundo y hace 10 minutos 2, el cambio es `100 * (3 / 2 - 1)` = 50 %.
+
+**Ahora tú, con huecos:**
+```promql
+100 * (sum(rate(tienda_requests_total[5m])) / sum(rate(tienda_requests_total[5m] ____)) - ____)
+```
+
+<details>
+<summary>Pista</summary>
+
+`offset` va justo después del rango, dentro del `rate()`.
+</details>
 
 ## Destruir al terminar
 
@@ -210,10 +337,12 @@ Sin `-v`: la clase 119 sigue con esta carpeta y este volumen.
 
 En `notas/fase-10/clase-118.md`:
 
-1. Escribe las tres consultas de RED para la tienda: peticiones por segundo, proporción de errores y p95 de latencia.
-2. ¿Por qué `rate()` y no la diferencia entre dos valores del counter? ¿Qué hace con los reinicios?
-3. ¿Por qué el p95 dice más que la media sobre cómo lo viven los usuarios?
-4. **Repaso (clase 117, sin mirar):** ¿por qué la etiqueta `path` lleva la plantilla de la ruta?
+1. Escribe las tres consultas de RED para la tienda: peticiones por segundo, proporción de errores y p95 de latencia. *(3 líneas de PromQL, una por letra.)*
+2. ¿Por qué `rate()` y no la diferencia entre dos valores del counter? ¿Qué hace con los reinicios? *(2 líneas. Empieza así: «Porque `rate()` calcula el ritmo con todas las muestras del rango y…»)*
+3. ¿Por qué el p95 dice más que la media sobre cómo lo viven los usuarios? *(2 líneas. Empieza así: «Porque la media mezcla a todos:…»)*
+4. **Repaso (clase 117, sin mirar):** ¿por qué la etiqueta `path` lleva la plantilla de la ruta? *(1–2 líneas.)*
+
+Después, escríbeme `examíname clase-118`.
 
 ## Autocorrección
 
@@ -237,7 +366,7 @@ En `notas/fase-10/clase-118.md`:
 
 **Rómpelo 4:** `up{job="tienda"}` vale 0, y **Target health** muestra el error (`dial tcp: lookup tienda … no such host`, o `connection refused`). `rate(tienda_requests_total[1m])` deja de devolver datos al minuto: sin muestras nuevas, no hay ritmo. Por eso las alertas de "servicio caído" se escriben sobre `up`, que existe siempre (clase 119).
 
-**Reto 1:**
+**Reto 1:** `le="0.25"` y `_count`:
 ```promql
 sum(rate(tienda_request_duration_seconds_bucket{path="/comprar", le="0.25"}[5m]))
 /
@@ -247,7 +376,7 @@ Alrededor del 90 %. Es la base de un SLI de latencia (clase 121), y es exacto, p
 
 **Reto 2:** `irate` usa solo las **dos últimas** muestras del rango: reacciona al instante pero sale a picos. `rate` promedia todo el rango y sale más suave. Para alertas, `rate`: no quieres que un pico de 15 segundos despierte a nadie.
 
-**Reto 3:**
+**Reto 3:** `offset 10m` y `1`:
 ```promql
 100 * (sum(rate(tienda_requests_total[5m])) / sum(rate(tienda_requests_total[5m] offset 10m)) - 1)
 ```

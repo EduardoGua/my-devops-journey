@@ -2,6 +2,24 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** B. Avisar y entender
 
+> 💡 **La idea de hoy:** una **regla de alerta** es una consulta PromQL con un `for`: si se cumple ese tiempo seguido, la alerta pasa de *pending* a *firing*. Prometheus decide **qué** está mal; **Alertmanager** decide a quién avisar, agrupa los avisos y los silencia en un mantenimiento. Y una alerta se **prueba** antes de que haga falta, con `promtool`, como cualquier otro código.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - La tienda, su tráfico y Prometheus en Compose (clase 118); `/errores/{porcentaje}` (clase 117).
+> - `up`, `rate()`, las proporciones y los percentiles en PromQL (clases 116 y 118).
+> - Un servidor HTTP con la librería estándar de Python (clase 52); los *runbooks* (clase 112).
+> - Las pruebas que se pasan en el CI (clase 83).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **regla de alerta**: `expr` (la condición), `for` (cuánto tiempo seguido), `labels` y `annotations`.
+> - ***pending* / *firing* / *resolved***: activa sin avisar / disparada / resuelta.
+> - **prueba unitaria de una regla**: series simuladas y las alertas que se esperan en cada momento.
+> - **Alertmanager**: el que enruta, agrupa, silencia e inhibe los avisos.
+> - **receptor** (*receiver*): el destino de un aviso (correo, chat, webhook…).
+> - **silencio**: callar unas alertas un tiempo.
+> - **inhibición**: si salta una alerta, callar otras que son su consecuencia.
+> - **fatiga por alertas**: tantas alertas que se acaban ignorando.
+
 ## Objetivo
 
 - Escribir reglas de alerta en Prometheus: la condición, el `for`, las etiquetas y las anotaciones.
@@ -14,9 +32,21 @@
 
 Un dashboard solo sirve si alguien lo está mirando. Las alertas te miran a ti: te avisan cuando algo se tuerce, aunque estés durmiendo. Por eso tienen que ser **pocas, ciertas y accionables**. Una alerta que salta cada noche sin motivo se acaba ignorando, y el día que el problema es real, nadie la mira. Es el fallo más común de la monitorización, y una pregunta habitual en las entrevistas de SRE.
 
-## Teoría
+## Cómo va esta clase
 
-### Una regla de alerta
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber hecho la anterior.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 y 2** (unos 30 min, sin arrancar nada: solo `promtool`); el segundo, las **piezas 3 a 5**, el Rómpelo, el reto y el cierre. La pieza 4 necesita unos 15 minutos de espera: aprovéchalos para leer la pieza 5.
+
+Sigue en la carpeta de la clase 118:
+
+```bash
+cd ~/my-devops-journey/labs/clase-118
+```
+
+## Las piezas
+
+### Pieza 1 — Una regla de alerta
 
 ```yaml
 groups:
@@ -35,42 +65,7 @@ groups:
 - `for` evita avisos por un pico de un minuto. Mientras no se cumple, la alerta está **pending**; cuando se cumple, pasa a **firing** y Prometheus se la manda a Alertmanager.
 - Las `annotations` son el mensaje para quien la recibe: qué pasa, con el valor (`$value`) y las etiquetas (`$labels.url`). Una buena anotación incluye un enlace al *runbook*: qué hacer.
 
-### Alertmanager
-
-Prometheus decide **qué** está mal; Alertmanager decide **a quién avisar y cómo**:
-
-| Pieza | Para qué |
-|-------|----------|
-| `route` | por dónde va cada alerta según sus etiquetas: `severity: critical` al móvil, `warning` al chat… |
-| `group_by` | junta las alertas parecidas en un solo aviso: diez sitios caídos, un mensaje |
-| `group_wait`, `group_interval`, `repeat_interval` | cuánto espera antes del primer aviso, entre avisos de un grupo y para repetir uno que sigue activo |
-| `receivers` | los destinos: correo, Slack, Telegram, PagerDuty, un webhook… |
-| *silences* | callar unas alertas un tiempo, durante un mantenimiento |
-| *inhibit rules* | si salta una, callar otras: si la tienda está caída, no avises además de sus errores |
-
-Cuando la alerta deja de cumplirse, Alertmanager manda el aviso de **resuelta** (*resolved*), salvo que se lo prohíbas.
-
-### Alertas útiles y alertas ruidosas
-
-| Útil | Ruidosa |
-|------|---------|
-| por un **síntoma** que nota el usuario: errores, latencia, "no responde" | por una causa que puede no importar: CPU al 80 %, un disco al 70 % |
-| con `for`: unos minutos seguidos | sin `for`: salta y se apaga con cada pico |
-| con una acción clara: qué miro, qué hago | "investigar" |
-| probada: la has visto saltar y resolverse | "debería funcionar" |
-| en un canal que alguien mira, según su urgencia | todo al mismo correo, que nadie abre |
-
-## Práctica guiada
-
-Sigue en la carpeta de la clase 118:
-
-```bash
-cd ~/my-devops-journey/labs/clase-118
-```
-
-### 1. Dos reglas (15 min)
-
-`reglas.yml`:
+**Pruébalo.** `reglas.yml`:
 
 ```yaml
 groups:
@@ -96,11 +91,23 @@ groups:
 docker run --rm -v "$PWD:/r" -w /r --entrypoint promtool prom/prometheus:v3.15.0 check rules reglas.yml
 ```
 
-`SUCCESS: 2 rules found`. `check rules` solo mira que se puedan leer. Que **funcionen** es otra cosa.
+👀 **Qué deberías ver:** `SUCCESS: 2 rules found`. `check rules` solo mira que se puedan leer. Que **funcionen** es otra cosa (pieza 2).
 
-### 2. Probar una alerta sin esperar a que pase (15 min)
+✋ **Sin mirar:** una regla con `for: 5m` cumple su condición durante 3 minutos y deja de cumplirla. ¿Llega algún aviso?
 
-`promtool` simula series a lo largo del tiempo y comprueba qué alertas estarían disparadas en cada momento. `reglas_test.yml`:
+<details>
+<summary>Comprueba</summary>
+
+No: estuvo *pending* 3 minutos y volvió a inactiva sin pasar a *firing*. Nadie se entera.
+</details>
+
+**En resumen:** `expr` dice qué, `for` cuánto tiempo, `labels` a quién, `annotations` qué decir.
+
+### Pieza 2 — Probar una alerta sin esperar a que pase
+
+`promtool` simula series a lo largo del tiempo y comprueba qué alertas estarían disparadas en cada momento. En `input_series`, cada serie lleva una lista de valores, uno por intervalo; `'0+50x10'` es una forma corta de "empieza en 0 y suma 50, diez veces".
+
+**Pruébalo.** `reglas_test.yml`:
 
 ```yaml
 rule_files:
@@ -134,13 +141,47 @@ tests:
 docker run --rm -v "$PWD:/r" -w /r --entrypoint promtool prom/prometheus:v3.15.0 test rules reglas_test.yml
 ```
 
-`SUCCESS`. En el minuto 2 acaba de caer: la alerta está *pending*. En el 4 lleva dos minutos caída, más que su `for`, y está disparada. Cambia `for: 1m` por `for: 5m` en `reglas.yml` y repite: la prueba falla y te dice qué esperaba y qué obtuvo. Devuélvelo a `1m`.
+👀 **Qué deberías ver:** `SUCCESS`. En el minuto 2 acaba de caer: la alerta está *pending*. En el 4 lleva dos minutos caída, más que su `for`, y está disparada.
 
-Esto es lo que significa "una alerta probada": una prueba que demuestra cuándo salta y cuándo no, y que se pasa en el CI como cualquier otra.
+Cambia `for: 1m` por `for: 5m` en `TiendaCaida` y repite: la prueba falla y te dice qué esperaba y qué obtuvo:
 
-### 3. Alertmanager y un receptor (20 min)
+```
+  FAILED:
+    alertname: TiendaCaida, time: 4m,
+        exp:[ … severity="critical" … ],
+        got:[]
+```
 
-Para ver los avisos sin configurar correo ni chat, un receptor mínimo: un servidor HTTP que escribe en su log lo que le manda Alertmanager. `receptor.py`:
+Devuélvelo a `1m`. Esto es lo que significa "una alerta probada": una prueba que demuestra cuándo salta y cuándo no, y que se pasa en el CI como cualquier otra.
+
+✋ **Sin mirar:** `promtool check rules` dice `SUCCESS`. ¿Sabes ya que la alerta saltará cuando debe?
+
+<details>
+<summary>Comprueba</summary>
+
+No: solo sabes que el archivo se puede leer. Que salte cuando debe lo demuestra una prueba unitaria con `promtool test rules`.
+</details>
+
+**En resumen:** `check rules` para la sintaxis; `test rules` para el comportamiento.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. No has arrancado nada: mañana empiezas con la pieza 3.
+
+### Pieza 3 — Alertmanager y un receptor
+
+Prometheus decide **qué** está mal; Alertmanager decide **a quién avisar y cómo**:
+
+| Pieza | Para qué |
+|-------|----------|
+| `route` | por dónde va cada alerta según sus etiquetas: `severity: critical` al móvil, `warning` al chat… |
+| `group_by` | junta las alertas parecidas en un solo aviso: diez sitios caídos, un mensaje |
+| `group_wait`, `group_interval`, `repeat_interval` | cuánto espera antes del primer aviso, entre avisos de un grupo y para repetir uno que sigue activo |
+| `receivers` | los destinos: correo, Slack, Telegram, PagerDuty, un webhook… |
+| *silences* | callar unas alertas un tiempo, durante un mantenimiento |
+| *inhibit rules* | si salta una, callar otras: si la tienda está caída, no avises además de sus errores |
+
+Cuando la alerta deja de cumplirse, Alertmanager manda el aviso de **resuelta** (*resolved*), salvo que se lo prohíbas.
+
+**Pruébalo.** Para ver los avisos sin configurar correo ni chat, un receptor mínimo: un servidor HTTP que escribe en su log lo que le manda Alertmanager. `receptor.py`:
 
 ```python
 """Recibe los avisos de Alertmanager por webhook y los escribe en su log."""
@@ -224,9 +265,23 @@ y añade los dos servicios nuevos:
 docker compose up -d --build
 ```
 
-En http://127.0.0.1:9090 → **Alerts**: las dos reglas, inactivas. En http://127.0.0.1:9093, la web de Alertmanager, vacía.
+👀 **Qué deberías ver:** `amtool` dice `Checking 'alertmanager.yml'  SUCCESS` y lista `1 receivers`. En http://127.0.0.1:9090 → **Alerts**: las dos reglas, inactivas. En http://127.0.0.1:9093, la web de Alertmanager, vacía.
 
-### 4. Provocar un incidente (25 min)
+✋ **Sin mirar:** diez réplicas de la tienda caen a la vez. Con `group_by: ["alertname"]`, ¿cuántos avisos recibes?
+
+<details>
+<summary>Comprueba</summary>
+
+Uno, con las diez alertas dentro: todas se llaman `TiendaCaida`.
+</details>
+
+**En resumen:** Prometheus dispara; Alertmanager agrupa, espera y avisa.
+
+### Pieza 4 — Provocar un incidente
+
+Una alerta pasa por tres momentos: *pending* (la condición se cumple), *firing* (se cumplió durante todo el `for`) y *resolved* (dejó de cumplirse). Entre el *firing* y el aviso, Alertmanager espera el `group_wait`.
+
+**Pruébalo:**
 
 ```bash
 curl -s -X POST localhost:8080/errores/50
@@ -236,7 +291,7 @@ Abre la pestaña **Alerts** de Prometheus y recárgala cada minuto.
 
 🔮 **Predice:** ¿cuándo pasará `TiendaMuchosErrores` a *pending*, cuándo a *firing* y cuándo llegará al receptor?
 
-En mis pruebas:
+👀 **Qué deberías ver:** en mis pruebas:
 - a los **90 segundos**, *pending*: la proporción de errores en 5 minutos superó el 10 %;
 - a los **6 minutos y medio**, *firing*: 5 minutos más;
 - unos 30 segundos después (el `group_wait`), en el receptor:
@@ -266,9 +321,31 @@ RESOLVED  TiendaMuchosErrores: Fallan el 12.57% de las compras
 
 El aviso de resuelta lleva el **último** valor con el que la alerta estaba activa (12,57 %), no el actual. No lo leas como "aún falla el 12 %".
 
-### 5. Silenciar un mantenimiento (5 min)
+✋ **Sin mirar:** ¿por qué `TiendaMuchosErrores` tardó unos 90 segundos en pasar a *pending*, si los errores subieron al 50 % al instante?
 
-Vas a parar la tienda a propósito durante una hora. Silencia su alerta antes:
+<details>
+<summary>Comprueba</summary>
+
+Porque la expresión usa `rate(…[5m])`: la proporción en 5 minutos sube poco a poco, y tardó ese rato en superar el 10 %.
+</details>
+
+**En resumen:** *pending*, *firing* tras el `for`, aviso tras el `group_wait`, y *resolved* con el último valor.
+
+### Pieza 5 — Silenciar un mantenimiento, y alertas útiles
+
+Un silencio calla en Alertmanager las alertas que casan con sus etiquetas, durante un tiempo. Prometheus las sigue evaluando: solo deja de avisarse.
+
+Y la diferencia entre una alerta que ayuda y una que molesta:
+
+| Útil | Ruidosa |
+|------|---------|
+| por un **síntoma** que nota el usuario: errores, latencia, "no responde" | por una causa que puede no importar: CPU al 80 %, un disco al 70 % |
+| con `for`: unos minutos seguidos | sin `for`: salta y se apaga con cada pico |
+| con una acción clara: qué miro, qué hago | "investigar" |
+| probada: la has visto saltar y resolverse | "debería funcionar" |
+| en un canal que alguien mira, según su urgencia | todo al mismo correo, que nadie abre |
+
+**Pruébalo.** Vas a parar la tienda a propósito durante una hora. Silencia su alerta antes:
 
 ```bash
 docker run --rm --network host --entrypoint amtool prom/alertmanager:v0.34.1 \
@@ -278,7 +355,31 @@ docker run --rm --network host --entrypoint amtool prom/alertmanager:v0.34.1 \
   --alertmanager.url=http://127.0.0.1:9093 silence query
 ```
 
-El silencio aparece también en la web de Alertmanager. Prometheus sigue evaluando la alerta, pero Alertmanager no avisa. Quítalo con `silence expire <ID>`.
+👀 **Qué deberías ver:** el primero imprime el ID del silencio; el segundo, una tabla con ese ID, `alertname="TiendaCaida"`, la hora de fin, tu nombre y el comentario. El silencio aparece también en la web de Alertmanager. Quítalo con `silence expire <ID>`.
+
+✋ **Sin mirar:** "la CPU de la tienda pasa del 80 %": ¿es una buena alerta para despertar a alguien?
+
+<details>
+<summary>Comprueba</summary>
+
+No: es una causa que puede no importar (la tienda puede ir perfecta al 80 %). Se avisa por síntomas que nota el usuario: errores, latencia, "no responde".
+</details>
+
+**En resumen:** silencios para lo previsto; alertas por síntomas, con `for`, acción y prueba.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `- alert: X` + `expr` + `for` + `labels` + `annotations` | una regla de alerta |
+| `{{ $value \| humanizePercentage }}` · `{{ $labels.instance }}` | el valor y las etiquetas en el mensaje |
+| `promtool check rules reglas.yml` | ¿se puede leer? |
+| `promtool test rules reglas_test.yml` | ¿salta cuando debe? |
+| `values: '1 1 0 0'` · `'0+50x10'` | series simuladas |
+| `rule_files` + `alerting.alertmanagers` en `prometheus.yml` | cargar reglas y avisar |
+| `route` + `group_by` + `group_wait` + `receivers` | cómo y a quién avisa Alertmanager |
+| `amtool check-config` · `amtool silence add …` · `silence query` · `silence expire` | validar y silenciar |
+| `inhibit_rules: [{source_matchers, target_matchers}]` | callar las consecuencias |
 
 ## Rómpelo
 
@@ -288,9 +389,73 @@ El silencio aparece también en la web de Alertmanager. Prometheus sigue evaluan
 
 ## Reto
 
-1. **Una inhibición:** si `TiendaCaida` está disparada, que Alertmanager no avise de `TiendaMuchosErrores`. Busca `inhibit_rules` en la documentación de Alertmanager y pruébalo.
-2. Escribe `TiendaLenta`: el p95 de `/comprar` por encima de 500 ms durante 10 minutos. Escríbele su prueba unitaria. (Pista: en `input_series`, valores para `tienda_request_duration_seconds_bucket` con varias `le`; empieza por los cubos acumulados que sumarían más lento.)
-3. Un canal de verdad: Alertmanager admite `telegram_configs` y `discord_configs`. Configura uno con el token en un archivo **fuera de Git** (`bot_token_file`). ¿Te llega el aviso al móvil?
+Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** **Una inhibición:** si `TiendaCaida` está disparada, que Alertmanager no avise de `TiendaMuchosErrores`.
+
+> 🧩 **Ejemplo resuelto:** la pieza 5: un silencio calla `alertname=TiendaCaida` durante una hora, a mano.
+
+**Ahora tú, con huecos.** Añade a `alertmanager.yml`:
+```yaml
+inhibit_rules:
+  - source_matchers: ['alertname="____"']
+    target_matchers: ['alertname="____"']
+```
+Valídalo con `amtool check-config` y pruébalo parando la tienda con los errores al 50 %.
+
+<details>
+<summary>Pista</summary>
+
+`source` es la alerta que, si está disparada, calla; `target`, la que se calla. `amtool check-config` debe decir `1 inhibit rules`.
+</details>
+
+**2.** Escribe `TiendaLenta`: el p95 de `/comprar` por encima de 500 ms durante 10 minutos, y su prueba unitaria.
+
+> 🧩 **Ejemplo resuelto:** el p95 de la clase 118: `histogram_quantile(0.95, sum by (le) (rate(tienda_request_duration_seconds_bucket{path="/comprar"}[5m])))`.
+
+**Ahora tú, con huecos.** La regla:
+```yaml
+      - alert: TiendaLenta
+        expr: histogram_quantile(0.95, sum by (le) (rate(tienda_request_duration_seconds_bucket{path="/comprar"}[5m]))) > ____
+        for: ____
+        labels:
+          severity: warning
+        annotations:
+          summary: "El p95 de las compras es de {{ $value | humanizeDuration }}"
+```
+Y en la prueba, cubos acumulados que crecen cada minuto: 50 por debajo de `0.25`, 80 por debajo de `0.5` y 100 en `1` y en `+Inf`:
+```yaml
+      - series: 'tienda_request_duration_seconds_bucket{path="/comprar", le="0.25"}'
+        values: '0+50x20'
+      # … le="0.5" con '0+____x20', le="1" y le="+Inf" con '0+____x20'
+```
+Con `exp_alerts: []` en el minuto 5 y la alerta en el 15.
+
+<details>
+<summary>Pista</summary>
+
+Si el 80 % tarda 0,5 s o menos, el p95 está por encima: Prometheus lo interpola entre 0,5 y 1. Si la prueba falla porque "faltan" anotaciones, copia en `exp_annotations` el `summary` que te enseña en `got`.
+</details>
+
+**3.** Un canal de verdad: Alertmanager admite `telegram_configs` y `discord_configs`. Configura uno con el token en un archivo **fuera de Git** (`bot_token_file`). ¿Te llega el aviso al móvil?
+
+> 🧩 **Ejemplo resuelto:** la pieza 3: el receptor `receptor` con `webhook_configs` y una `url`.
+
+**Ahora tú, con huecos:**
+```yaml
+receivers:
+  - name: movil
+    telegram_configs:
+      - bot_token_file: /etc/alertmanager/____
+        chat_id: ____
+```
+Y el archivo montado en el servicio `alertmanager`, con su ruta en `.gitignore`.
+
+<details>
+<summary>Pista</summary>
+
+El token se lo pide a `@BotFather` en Telegram; el `chat_id`, escribiendo a tu bot y leyendo `https://api.telegram.org/bot<token>/getUpdates`. Nunca pegues el token en `alertmanager.yml`.
+</details>
 
 ## Destruir al terminar
 
@@ -304,10 +469,12 @@ Sin `-v`: la clase 120 añade Grafana a esta misma carpeta.
 
 En `notas/fase-10/clase-119.md`:
 
-1. ¿Qué hace el `for` de una regla? ¿Qué es una alerta *pending*?
-2. ¿Qué hace Prometheus y qué hace Alertmanager?
-3. Tres rasgos de una alerta útil y tres de una ruidosa.
-4. **Repaso (clase 118, sin mirar):** ¿por qué el rango de un `rate()` debe abarcar al menos cuatro *scrapes*?
+1. ¿Qué hace el `for` de una regla? ¿Qué es una alerta *pending*? *(2 líneas. Empieza así: «Exige que la condición se cumpla de forma continua…»)*
+2. ¿Qué hace Prometheus y qué hace Alertmanager? *(2 líneas, una por pieza.)*
+3. Tres rasgos de una alerta útil y tres de una ruidosa. *(2 líneas: «Útil: …, … y …. Ruidosa: …»)*
+4. **Repaso (clase 118, sin mirar):** ¿por qué el rango de un `rate()` debe abarcar al menos cuatro *scrapes*? *(1–2 líneas.)*
+
+Después, escríbeme `examíname clase-119`.
 
 ## Autocorrección
 
@@ -322,7 +489,23 @@ En `notas/fase-10/clase-119.md`:
 
 **Rómpelo 1:** varias veces: con un 5 % de media, la proporción en 5 minutos sube y baja alrededor del 6 %, y cada cruce es una alerta y su resolución. Un `for` y un umbral con margen sobre lo normal la convierten en útil.
 
-**Rómpelo 2:** nunca: la métrica mal escrita no existe, la expresión no devuelve nada y la alerta se queda inactiva para siempre. Una prueba con `input_series` de `tienda_requests_total` al 50 % de errores y un `exp_alerts` en el minuto 7 habría fallado.
+**Rómpelo 2:** nunca: la métrica mal escrita no existe, la expresión no devuelve nada y la alerta se queda inactiva para siempre. Esta prueba lo habría pillado (con la errata, `FAILED … TiendaMuchosErrores, time: 8m`):
+```yaml
+  - interval: 1m
+    input_series:
+      - series: 'tienda_requests_total{path="/comprar", status="200"}'
+        values: '0+50x10'
+      - series: 'tienda_requests_total{path="/comprar", status="500"}'
+        values: '0+50x10'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: TiendaMuchosErrores
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Fallan el 50% de las compras"
+```
 
 **Rómpelo 3:** diez, uno por réplica, porque cada una tiene un `instance` distinto. Agrupando por `alertname` (y, si acaso, `job`), uno solo con las diez dentro.
 
@@ -332,6 +515,34 @@ inhibit_rules:
   - source_matchers: ['alertname="TiendaCaida"']
     target_matchers: ['alertname="TiendaMuchosErrores"']
 ```
+
+**Reto 2:** `> 0.5` y `for: 10m`; los cubos, `'0+80x20'` para `le="0.5"` y `'0+100x20'` para `le="1"` y `le="+Inf"`. La prueba completa:
+```yaml
+  - interval: 1m
+    input_series:
+      - series: 'tienda_request_duration_seconds_bucket{path="/comprar", le="0.25"}'
+        values: '0+50x20'
+      - series: 'tienda_request_duration_seconds_bucket{path="/comprar", le="0.5"}'
+        values: '0+80x20'
+      - series: 'tienda_request_duration_seconds_bucket{path="/comprar", le="1"}'
+        values: '0+100x20'
+      - series: 'tienda_request_duration_seconds_bucket{path="/comprar", le="+Inf"}'
+        values: '0+100x20'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: TiendaLenta
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: TiendaLenta
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "El p95 de las compras es de 875ms"
+```
+875 ms: el 95 % cae entre el 80 % (0,5 s) y el 100 % (1 s), y Prometheus interpola: 0,5 + 0,15 / 0,20 × 0,5.
+
+**Reto 3:** `bot_token_file: /etc/alertmanager/telegram_token` (o el nombre que elijas) y tu `chat_id` numérico. El archivo se monta en el servicio y su ruta va a `.gitignore`.
 </details>
 
 ## Inglés

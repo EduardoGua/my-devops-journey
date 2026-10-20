@@ -2,6 +2,23 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** B. Avisar y entender
 
+> 💡 **La idea de hoy:** Grafana convierte las consultas de Prometheus en paneles que se entienden de un vistazo. Pero un dashboard hecho con clics vive en la base de datos de Grafana y se pierde con ella. Por eso la fuente de datos y los dashboards se **aprovisionan** desde archivos en Git: un Grafana nuevo arranca ya configurado, y lo aprovisionado no se puede guardar desde la interfaz. Es la idea de Terraform, aplicada a lo que miras.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - La tienda, Prometheus y Alertmanager en Compose (clases 118 y 119); las consultas RED en PromQL (clase 118).
+> - `.env` fuera de Git y `${VAR:?mensaje}` en Compose (clase 62); `openssl rand` (clase 78).
+> - La infraestructura como código y el *drift* (fase 8).
+> - `curl` y `jq` contra el API de Prometheus (clases 47 y 116).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **data source**: de dónde saca Grafana los datos (Prometheus, CloudWatch…).
+> - **dashboard** y **panel**: una página de paneles / una consulta con su forma de dibujarla.
+> - **Explore**: consultar sin dashboard, mientras investigas.
+> - ***provisioning***: archivos YAML que Grafana lee al arrancar para crear fuentes de datos y dashboards.
+> - **`uid`**: el identificador fijo que une un panel con su fuente de datos, o que da a un dashboard una URL estable.
+> - **`gridPos`**: la posición y el tamaño de un panel en una rejilla de 24 columnas.
+> - **umbral** (*threshold*): el valor a partir del cual un panel cambia de color.
+
 ## Objetivo
 
 - Añadir Grafana a tu Compose, con la contraseña de administración fuera del código.
@@ -15,9 +32,21 @@ Prometheus responde preguntas; Grafana las convierte en algo que se entiende de 
 
 Pero un dashboard hecho a mano vive en la base de datos de Grafana, y se pierde con ella, sin historial ni revisión. "Dashboards como código" es la misma idea que Terraform (fase 8) aplicada a lo que miras: el dashboard se recrea igual en cualquier entorno, y cada cambio pasa por un PR.
 
-## Teoría
+## Cómo va esta clase
 
-### Las piezas de Grafana
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber hecho la anterior.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 55 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre. Entre los dos días, `docker compose down` **sin** `-v`: tu dashboard de borrador vive en el volumen de Grafana.
+
+Sigue en la carpeta de las clases 118 y 119:
+
+```bash
+cd ~/my-devops-journey/labs/clase-118
+```
+
+## Las piezas
+
+### Pieza 1 — Grafana en el Compose, con la contraseña fuera
 
 | Pieza | Qué es |
 |-------|--------|
@@ -27,35 +56,11 @@ Pero un dashboard hecho a mano vive en la base de datos de Grafana, y se pierde 
 | **Explore** | para consultar sin dashboard, mientras investigas |
 | **provisioning** | archivos YAML que Grafana lee al arrancar, y vigila, para crear fuentes de datos y dashboards |
 
-### Provisioning
+Grafana trae un usuario `admin` con la contraseña `admin` de fábrica. Se cambia desde el primer arranque con una variable de entorno, y esa contraseña va en `.env`, nunca en el `compose.yaml`.
 
-```
-grafana/
-├── provisioning/
-│   ├── datasources/prometheus.yml   ← "hay un Prometheus en http://prometheus:9090, con uid prometheus"
-│   └── dashboards/tienda.yml        ← "carga los JSON de /etc/grafana/dashboards en la carpeta Laboratorio"
-└── dashboards/
-    └── tienda.json                  ← el dashboard
-```
-
-Lo que se aprovisiona desde archivos queda **bloqueado** en la interfaz: puedes cambiarlo para probar, pero no guardarlo. Así nadie arregla algo con clics que se pierde en el siguiente despliegue. El camino para cambiarlo es editar el archivo (o diseñar en la interfaz y exportar), y hacer un commit.
-
-El `uid` de la fuente de datos es lo que une los paneles con ella: si el JSON dice `"uid": "prometheus"`, tiene que existir una fuente con ese `uid`.
-
-### Qué va en un dashboard
-
-Arriba, lo que responde "¿está bien?" en dos segundos: un número de errores, en rojo o en verde. Debajo, las series RED en el tiempo. Más abajo, el detalle para investigar. Pocas cosas y con unidades: un dashboard con 40 paneles no lo lee nadie a las tres de la mañana.
-
-## Práctica guiada
-
-Sigue en `~/my-devops-journey/labs/clase-118`.
-
-### 1. Grafana en el Compose (15 min)
-
-La contraseña del administrador, en `.env`. El `.gitignore` del repositorio del curso ya ignora cualquier `.env`; en Vigía, también.
+**Pruébalo.** El `.gitignore` del repositorio del curso ya ignora cualquier `.env`; en Vigía, también.
 
 ```bash
-cd ~/my-devops-journey/labs/clase-118
 echo "GRAFANA_ADMIN_PASSWORD=$(openssl rand -hex 12)" > .env
 ```
 
@@ -80,15 +85,47 @@ volumes:
   grafana:
 ```
 
-`${…:?…}` hace que Compose se niegue a arrancar si falta la variable, en lugar de arrancar con una contraseña vacía (clase 65).
-
-Las carpetas del *provisioning*:
+`${…:?…}` hace que Compose se niegue a arrancar si falta la variable, en lugar de arrancar con una contraseña vacía (clase 62).
 
 ```bash
 mkdir -p grafana/provisioning/datasources grafana/provisioning/dashboards grafana/dashboards
+docker compose up -d
 ```
 
-La fuente de datos, `grafana/provisioning/datasources/prometheus.yml`:
+La imagen de Grafana ocupa casi 2 GB: la primera vez tarda. Abre http://127.0.0.1:3000 y entra como `admin`, con la contraseña de tu `.env` (`grep GRAFANA .env`).
+
+🔮 **Predice:** ¿podrás entrar con `admin`/`admin`, la contraseña de fábrica?
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -u admin:admin http://127.0.0.1:3000/api/datasources
+```
+
+👀 **Qué deberías ver:** `401`. No lo repitas muchas veces: tras unos pocos intentos fallidos seguidos, Grafana bloquea al usuario unos minutos, incluso con la contraseña buena. Es su protección contra quien prueba contraseñas a ciegas.
+
+✋ **Sin mirar:** ¿qué pasa si alguien clona el repositorio sin crear el `.env` y lanza `docker compose up`?
+
+<details>
+<summary>Comprueba</summary>
+
+Compose se niega a arrancar, con el mensaje de `${…:?…}`. Mejor eso que un Grafana con una contraseña vacía o la de fábrica (lo verás en el Rómpelo 3).
+</details>
+
+**En resumen:** Grafana en Compose, con la contraseña en `.env` y obligatoria.
+
+### Pieza 2 — La fuente de datos, desde un archivo
+
+```
+grafana/
+├── provisioning/
+│   ├── datasources/prometheus.yml   ← "hay un Prometheus en http://prometheus:9090, con uid prometheus"
+│   └── dashboards/tienda.yml        ← "carga los JSON de /etc/grafana/dashboards en la carpeta Laboratorio"
+└── dashboards/
+    └── tienda.json                  ← el dashboard
+```
+
+El `uid` de la fuente de datos es lo que une los paneles con ella: si el JSON de un panel dice `"uid": "prometheus"`, tiene que existir una fuente con ese `uid`. Hoy creas primero la fuente; el dashboard, en las piezas 4 y 5.
+
+**Pruébalo.** `grafana/provisioning/datasources/prometheus.yml`:
 
 ```yaml
 apiVersion: 1
@@ -105,24 +142,30 @@ datasources:
 `access: proxy` significa que Grafana, desde su contenedor, hace las consultas a `prometheus:9090`. Tu navegador solo habla con Grafana.
 
 ```bash
-docker compose up -d
+docker compose restart grafana
+P=$(sed -n 's/^GRAFANA_ADMIN_PASSWORD=//p' .env)
+curl -s -u "admin:$P" http://127.0.0.1:3000/api/datasources | jq '.[] | {name, uid, url, readOnly}'
 ```
 
-La imagen de Grafana ocupa casi 2 GB: la primera vez tarda. Abre http://127.0.0.1:3000 y entra como `admin`, con la contraseña de tu `.env` (`grep GRAFANA .env`).
+👀 **Qué deberías ver:** `{"name": "Prometheus", "uid": "prometheus", "url": "http://prometheus:9090", "readOnly": true}`. En **Connections → Data sources** está Prometheus, sin que lo hayas añadido a mano, y con el aviso de que se gestiona por *provisioning*.
 
-🔮 **Predice:** ¿podrás entrar con `admin`/`admin`, la contraseña de fábrica?
+✋ **Sin mirar:** ¿por qué la `url` es `http://prometheus:9090` y no `http://127.0.0.1:9090`?
 
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' -u admin:admin http://127.0.0.1:3000/api/datasources
-```
+<details>
+<summary>Comprueba</summary>
 
-`401`. No lo repitas muchas veces: tras unos pocos intentos fallidos seguidos, Grafana bloquea al usuario unos minutos, incluso con la contraseña buena. Es su protección contra quien prueba contraseñas a ciegas.
+Porque la consulta la hace Grafana desde su contenedor (`access: proxy`), y dentro de la red de Compose Prometheus se llama `prometheus`. `127.0.0.1` sería el propio contenedor de Grafana.
+</details>
 
-En **Connections → Data sources** está Prometheus, sin que lo hayas añadido a mano, y con el aviso de que se gestiona por *provisioning*.
+**En resumen:** la fuente de datos, en un YAML con un `uid` fijo; nada de clics.
 
-### 2. Explorar y dibujar a mano (25 min)
+### Pieza 3 — Explorar y dibujar a mano
 
-En **Explore**, con la fuente Prometheus, escribe las consultas RED de la clase 118 y cambia entre las vistas. Después, un dashboard nuevo (**Dashboards → New → New dashboard → Add visualization**) con cuatro paneles:
+Qué va en un dashboard: arriba, lo que responde "¿está bien?" en dos segundos, un número de errores en rojo o en verde. Debajo, las series RED en el tiempo. Más abajo, el detalle para investigar. Pocas cosas y con unidades: un dashboard con 40 paneles no lo lee nadie a las tres de la mañana.
+
+Para diseñar, la interfaz es cómoda: se dibuja a mano y después se lleva a código.
+
+**Pruébalo.** En **Explore**, con la fuente Prometheus, escribe las consultas RED de la clase 118 y cambia entre las vistas. Después, un dashboard nuevo (**Dashboards → New → New dashboard → Add visualization**) con cuatro paneles:
 
 | Panel | Visualización | Consulta | Unidad |
 |-------|---------------|----------|--------|
@@ -133,9 +176,30 @@ En **Explore**, con la fuente Prometheus, escribe las consultas RED de la clase 
 
 Guárdalo como **Tienda (borrador)**. Provoca un incidente (`curl -s -X POST localhost:8080/errores/50`) y míralo en directo. Vuelve al 5 %.
 
-### 3. Del clic al código (25 min)
+👀 **Qué deberías ver:** en un par de minutos, la serie `500` del primer panel sube hasta igualar a la de `200`, y el número de errores pasa del verde a rojo al cruzar el 10 %. La latencia apenas cambia: los errores de la tienda son rápidos.
 
-El dashboard que acabas de hacer vive en la base de datos de Grafana. Sácalo como JSON con su API:
+✋ **Sin mirar:** ¿qué panel pondrías arriba del todo, y por qué?
+
+<details>
+<summary>Comprueba</summary>
+
+El de errores, como un número grande con umbral: responde "¿está bien?" en dos segundos, que es lo primero que necesitas cuando salta una alerta.
+</details>
+
+**En resumen:** se diseña en la interfaz; arriba, lo que dice si está bien.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. `docker compose down` **sin** `-v`: el borrador está en el volumen de Grafana. Mañana, `docker compose up -d`.
+
+### Pieza 4 — Del clic al código: exportar el JSON
+
+El dashboard que acabas de hacer vive en la base de datos de Grafana. Su API lo devuelve como JSON. Antes de guardarlo en Git se limpia:
+- `.dashboard` es el JSON del dashboard, sin los metadatos de Grafana;
+- `id` y `version` son de la base de datos de esta instancia: fuera;
+- un `uid` fijo y legible, para que los enlaces no cambien.
+
+Grafana 13 guarda los dashboards nuevos en un formato propio más reciente (v2). Este API clásico te los devuelve convertidos al formato de siempre, el JSON con `panels`, que es el que se aprovisiona aquí. Si exportas desde la interfaz, elige ese formato clásico.
+
+**Pruébalo:**
 
 ```bash
 P=$(sed -n 's/^GRAFANA_ADMIN_PASSWORD=//p' .env)
@@ -147,15 +211,10 @@ Copia el `uid` de **Tienda (borrador)** y:
 ```bash
 curl -s -u "admin:$P" http://127.0.0.1:3000/api/dashboards/uid/<uid> \
   | jq '.dashboard | del(.id, .version) | .uid = "tienda" | .title = "Tienda"' > grafana/dashboards/tienda.json
+jq '.panels[] | {type, title, gridPos}' grafana/dashboards/tienda.json
 ```
 
-- `.dashboard` es el JSON del dashboard, sin los metadatos de Grafana;
-- `id` y `version` son de la base de datos de esta instancia: fuera;
-- un `uid` fijo y legible, para que los enlaces no cambien.
-
-Grafana 13 guarda los dashboards nuevos en un formato propio más reciente (v2). Este API clásico te los devuelve convertidos al formato de siempre, el JSON con `panels`, que es el que se aprovisiona aquí. Si exportas desde la interfaz, elige ese formato clásico.
-
-Ábrelo y busca un panel: su `type`, su `title`, su `gridPos` (posición y tamaño en una rejilla de 24 columnas) y, en `targets`, tu PromQL, con `"datasource": {"type": "prometheus", "uid": "prometheus"}`. Así se ve cada uno:
+👀 **Qué deberías ver:** tus cuatro paneles, cada uno con su `type` (`timeseries`, `stat`, `gauge`), su `title` y su `gridPos`. Ábrelo y busca en `targets` tu PromQL, con `"datasource": {"type": "prometheus", "uid": "prometheus"}`. Así se ve cada panel:
 
 ```json
 {
@@ -177,7 +236,21 @@ Grafana 13 guarda los dashboards nuevos en un formato propio más reciente (v2).
 }
 ```
 
-Ahora el *provisioning* de dashboards, `grafana/provisioning/dashboards/tienda.yml`:
+✋ **Sin mirar:** ¿por qué se borran `id` y `version` del JSON exportado?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque son de la base de datos de **esta** instancia de Grafana: en otra, chocarían o no significarían nada. Lo que identifica al dashboard en todas partes es su `uid`.
+</details>
+
+**En resumen:** exportar por el API, limpiar con `jq` y un `uid` fijo.
+
+### Pieza 5 — Aprovisionar el dashboard: bloqueado en la interfaz
+
+Lo que se aprovisiona desde archivos queda **bloqueado** en la interfaz: puedes cambiarlo para probar, pero no guardarlo. Así nadie arregla algo con clics que se pierde en el siguiente despliegue. El camino para cambiarlo es editar el archivo (o diseñar en la interfaz y exportar), y hacer un commit. Grafana vigila la carpeta y recarga los cambios solo.
+
+**Pruébalo.** `grafana/provisioning/dashboards/tienda.yml`:
 
 ```yaml
 apiVersion: 1
@@ -199,7 +272,30 @@ En **Dashboards** aparece la carpeta **Laboratorio** con **Tienda**. Borra el bo
 
 🔮 **Predice:** cambia el título de un panel de **Tienda** en la interfaz y pulsa **Save**. ¿Qué pasa?
 
-Grafana no deja guardarlo: es un dashboard aprovisionado. Por el API, el mismo intento devuelve `Cannot save provisioned dashboard`. Para cambiarlo, el archivo: cambia el `title` del dashboard en `tienda.json` y espera unos 10 segundos. Grafana vigila la carpeta y lo recarga solo, sin reiniciar.
+👀 **Qué deberías ver:** Grafana no deja guardarlo: es un dashboard aprovisionado. Por el API, el mismo intento devuelve `Cannot save provisioned dashboard`. Para cambiarlo, el archivo: cambia el `title` del dashboard en `tienda.json` y espera unos 10 segundos. Grafana lo recarga solo, sin reiniciar.
+
+✋ **Sin mirar:** un compañero quiere añadir un panel a **Tienda**. ¿Qué pasos sigue?
+
+<details>
+<summary>Comprueba</summary>
+
+Lo diseña en la interfaz (en una copia o sin guardar), exporta el JSON, lo copia a `grafana/dashboards/tienda.json` y abre un PR. Al unirlo, Grafana lo recarga.
+</details>
+
+**En resumen:** el dashboard vive en Git; la interfaz es para diseñar, no para guardar.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?…}` | la contraseña, obligatoria y fuera de Git |
+| `provisioning/datasources/*.yml` con `uid`, `url`, `editable: false` | la fuente de datos desde un archivo |
+| `provisioning/dashboards/*.yml` con `path` y `allowUiUpdates: false` | cargar los JSON de una carpeta |
+| `curl -u "admin:$P" …/api/search?type=dash-db` | los dashboards y su `uid` |
+| `curl -u "admin:$P" …/api/dashboards/uid/<uid> \| jq '.dashboard \| del(.id, .version)'` | exportar un dashboard |
+| `"datasource": {"type": "prometheus", "uid": "prometheus"}` | unir un panel con su fuente |
+| `gridPos: {x, y, w, h}` | dónde va el panel (24 columnas) |
+| `label_values(metrica, etiqueta)` | los valores de una etiqueta, para una variable |
 
 ## Rómpelo
 
@@ -216,9 +312,43 @@ Grafana no deja guardarlo: es un dashboard aprovisionado. Por el API, el mismo i
 
 ## Reto
 
-1. Una variable: añade al dashboard (desde la interfaz, y luego exporta) una variable `path` con la consulta `label_values(tienda_requests_total, path)` y úsala en los paneles: `{path="$path"}`. ¿Qué cambia en el JSON?
-2. Añade un panel de tipo **Stat** con el p95 de los últimos 5 minutos y umbrales: verde por debajo de 0,3 s, amarillo hasta 0,5 s, rojo por encima.
-3. Grafana también sabe hacer alertas. ¿Por qué en este curso las dejas en Prometheus? Escribe dos ventajas y una desventaja.
+Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** Una variable: añade al dashboard (desde la interfaz, y luego exporta) una variable `path` con los valores de esa etiqueta, y úsala en los paneles. ¿Qué cambia en el JSON?
+
+> 🧩 **Ejemplo resuelto:** la pieza 3: la leyenda `{{status}}` usaba el valor de una etiqueta en el panel.
+
+**Ahora tú, con huecos:** en **Dashboard settings → Variables → New variable**: tipo *Query*, nombre `____`, consulta `label_values(tienda_requests_total, ____)`. En los paneles, `tienda_requests_total{path="____"}`. Exporta como en la pieza 4 y completa: «En el JSON aparece ____, con…».
+
+<details>
+<summary>Pista</summary>
+
+Busca en el JSON exportado la clave `templating`: `jq '.templating' grafana/dashboards/tienda.json`.
+</details>
+
+**2.** Añade un panel de tipo **Stat** con el p95 de los últimos 5 minutos y umbrales: verde por debajo de 0,3 s, amarillo hasta 0,5 s, rojo por encima.
+
+> 🧩 **Ejemplo resuelto:** la pieza 3: el panel **Errores (5 min)** era un *Stat* con un umbral rojo en 0.1.
+
+**Ahora tú, con huecos:** consulta `histogram_quantile(____, sum by (le) (rate(tienda_request_duration_seconds_bucket{path="/comprar"}[____])))`, unidad `____`, y en *Thresholds*: base verde, amarillo en `____`, rojo en `____`.
+
+<details>
+<summary>Pista</summary>
+
+Los umbrales de un *Stat* se leen de abajo arriba: la base es el color por debajo del primer valor.
+</details>
+
+**3.** Grafana también sabe hacer alertas. ¿Por qué en este curso las dejas en Prometheus? Escribe dos ventajas y una desventaja.
+
+> 🧩 **Ejemplo resuelto:** la pieza 2 de la clase 119: las reglas de Prometheus tienen pruebas unitarias con `promtool`.
+
+**Ahora tú, con huecos:** «Ventajas de dejarlas en Prometheus: ____ y ____. Desventaja: Grafana puede alertar sobre ____ a la vez…».
+
+<details>
+<summary>Pista</summary>
+
+Piensa qué pasa con las alertas si Grafana se cae, y en qué otras fuentes de datos puede leer Grafana.
+</details>
 
 ## Destruir al terminar
 
@@ -232,10 +362,12 @@ Sin `-v` si quieres seguir con estos datos en la clase 121, que usa esta misma c
 
 En `notas/fase-10/clase-120.md`:
 
-1. ¿Qué es el *provisioning* de Grafana, y qué dos cosas aprovisionas?
-2. ¿Por qué un dashboard aprovisionado no se puede guardar desde la interfaz? ¿Cómo lo cambias entonces?
-3. ¿Qué pondrías arriba de todo en el dashboard de un servicio, y por qué?
-4. **Repaso (clase 119, sin mirar):** ¿qué es una alerta *pending*?
+1. ¿Qué es el *provisioning* de Grafana, y qué dos cosas aprovisionas? *(2 líneas. Empieza así: «Archivos YAML que Grafana lee al arrancar para… Aquí, la fuente de datos y…»)*
+2. ¿Por qué un dashboard aprovisionado no se puede guardar desde la interfaz? ¿Cómo lo cambias entonces? *(2 líneas. Empieza así: «Para que la verdad esté en un solo sitio:…»)*
+3. ¿Qué pondrías arriba de todo en el dashboard de un servicio, y por qué? *(1–2 líneas.)*
+4. **Repaso (clase 119, sin mirar):** ¿qué es una alerta *pending*? *(1 línea.)*
+
+Después, escríbeme `examíname clase-120`.
 
 ## Autocorrección
 
@@ -252,7 +384,9 @@ En `notas/fase-10/clase-120.md`:
 
 **Rómpelo 3:** `error while interpolating services.grafana.environment.GF_SECURITY_ADMIN_PASSWORD: required variable GRAFANA_ADMIN_PASSWORD is missing a value: falta GRAFANA_ADMIN_PASSWORD en .env`, y no arranca nada. Mejor no arrancar que arrancar con una contraseña vacía o la de fábrica.
 
-**Reto 1:** en el JSON aparece `templating.list`, con la variable y su consulta, y los paneles usan `$path`. Al aprovisionarlo, la variable viene incluida.
+**Reto 1:** nombre `path`, `label_values(tienda_requests_total, path)` y `{path="$path"}`. En el JSON aparece `templating.list`, con la variable y su consulta, y los paneles usan `$path`. Al aprovisionarlo, la variable viene incluida.
+
+**Reto 2:** `0.95`, `[5m]`, unidad `seconds (s)`, amarillo en `0.3` y rojo en `0.5`.
 
 **Reto 3:** en Prometheus, las alertas viven junto a las métricas, se prueban con `promtool` (clase 119), funcionan aunque Grafana esté caído y siguen el mismo flujo de Git. La desventaja: Grafana puede alertar sobre varias fuentes a la vez (Prometheus, CloudWatch, una base de datos) y tiene una interfaz más cómoda para quien no escribe YAML.
 </details>
