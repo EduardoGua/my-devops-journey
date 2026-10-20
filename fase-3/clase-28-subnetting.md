@@ -2,6 +2,20 @@
 
 **Dónde:** papel + tu PC (Python para comprobar) · **Tiempo:** 90 min · **Bloque:** A. Redes
 
+> 💡 **La idea de hoy:** dividir una red en subredes es **alargar el prefijo**: cada bit que añades duplica el número de subredes y reduce a la mitad su tamaño. Con eso diseñas una VPC: subredes públicas, de aplicación y de datos, repetidas en varias zonas de disponibilidad, sin solapes con otras redes y con espacio libre para crecer.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Prefijo, máscara, red, broadcast y las 5 IPs que reserva AWS (clase 27, piezas 2 y 3).
+> - El método del tamaño de bloque (clase 27, pieza 4).
+> - `ip_network` y `ip_interface` de Python para comprobar (clase 27).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **subnetting**: dividir una red en subredes más pequeñas.
+> - **VPC**: tu red privada en AWS, con su CIDR principal (`10.0.0.0/16`).
+> - **zona de disponibilidad (AZ)**: un centro de datos separado dentro de una región; una subred vive en una sola.
+> - **subred pública / privada**: con o sin ruta a un Internet Gateway (lo decide la ruta, no el nombre).
+> - **solapamiento**: dos redes que comparten alguna dirección; impide conectarlas.
+
 ## Objetivo
 
 - **Dividir** un bloque CIDR en subredes iguales sin solapes.
@@ -13,9 +27,19 @@
 
 Una VPC mal planificada no se arregla fácilmente: el CIDR principal no se puede cambiar, y las subredes no se redimensionan. Si dos VPCs (o tu VPC y la red de la oficina) usan rangos solapados, **no podrás conectarlas** por peering, VPN o Transit Gateway. Planificar las IPs es de las primeras tareas de un ingeniero cloud, y "diseña la red para esta aplicación" es una pregunta habitual de entrevista.
 
-## Teoría
+## Cómo va esta clase
 
-### Dividir es "pedir prestados" bits
+Cinco piezas. En cada una lees **una** idea, la calculas **en papel** y la compruebas en la terminal; no pases a la siguiente sin haber hecho la anterior.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 40 min); el segundo, las **piezas 4 y 5**, los ejercicios del Rómpelo, el proyecto y el cierre.
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-28 && cd ~/my-devops-journey/labs/clase-28
+```
+
+## Las piezas
+
+### Pieza 1 — Dividir: cada bit más duplica las subredes
 
 Si alargas el prefijo, divides la red. Cada bit que añades **duplica el número de subredes** y **reduce a la mitad** su tamaño.
 
@@ -38,9 +62,86 @@ Si alargas el prefijo, divides la red. Cada bit que añades **duplica el número
 | `/16` | `/24` | 256 | 256 |
 | `/16` | `/19` | 8 | 8.192 |
 
+**Pruébalo.** En papel: divide `10.0.0.0/24` en 4 subredes iguales. Escribe red, broadcast y rango de cada una. Comprueba:
+
+```bash
+python3 -c "
+import ipaddress as i
+for s in i.ip_network('10.0.0.0/24').subnets(new_prefix=26):
+    print(s, '→', s[0], '-', s[-1], '|', s.num_addresses, 'direcciones')
+"
+```
+
+👀 **Qué deberías ver:** cuatro líneas, de `10.0.0.0/26 → 10.0.0.0 - 10.0.0.63 | 64 direcciones` a `10.0.0.192/26 → 10.0.0.192 - 10.0.0.255 | 64 direcciones`.
+
+✋ **Sin mirar:** si divides una `/24` en subredes `/27`, ¿cuántas salen y de qué tamaño?
+
+<details>
+<summary>Comprueba</summary>
+
+2^(27 − 24) = **8** subredes de 2^(32 − 27) = **32** direcciones.
+</details>
+
+**En resumen:** de `/a` a `/b` salen 2^(b − a) subredes de 2^(32 − b) direcciones.
+
+### Pieza 2 — Saltar de bloque en bloque: la VPC por defecto de AWS
+
 Las subredes se escriben **saltando de bloque en bloque**: `/26` en el 4.º octeto salta de 64 en 64; `/20` en el 3.º salta de 16 en 16 (`10.0.0.0`, `10.0.16.0`, `10.0.32.0`…).
 
-### Anatomía de una VPC típica
+Toda cuenta de AWS trae en cada región una VPC por defecto: `172.31.0.0/16`, con una subred `/20` **pública** en cada AZ. (Sirve para pruebas rápidas; en proyectos reales se crea una propia, con subredes privadas.)
+
+**Pruébalo.** Calcula en papel las tres primeras subredes `/20` de `172.31.0.0/16` y comprueba:
+
+```bash
+python3 -c "
+import ipaddress as i
+print([str(s) for s in i.ip_network('172.31.0.0/16').subnets(new_prefix=20)][:3])
+"
+```
+
+👀 **Qué deberías ver:** `['172.31.0.0/20', '172.31.16.0/20', '172.31.32.0/20']`: el 3.er octeto salta de 16 en 16.
+
+✋ **Sin mirar:** ¿cuál es la cuarta subred `/20` de `172.31.0.0/16`?
+
+<details>
+<summary>Comprueba</summary>
+
+`172.31.48.0/20`: 32 + 16.
+</details>
+
+**En resumen:** las subredes van de bloque en bloque; en una `/20`, el 3.er octeto salta de 16 en 16.
+
+### Pieza 3 — Una herramienta tuya: `subredes.py`
+
+Para comprobar diseños grandes, una herramienta pequeña que lista las subredes de un bloque y cuántas IPs útiles deja AWS en cada una. Es para **comprobar** tus cálculos, nunca para sustituirlos.
+
+**Pruébalo.** Crea `subredes.py`:
+
+```python
+#!/usr/bin/env python3
+"""Uso: subredes.py <CIDR> <nuevo_prefijo>   Ej: subredes.py 10.0.0.0/16 20"""
+import ipaddress
+import sys
+
+red = ipaddress.ip_network(sys.argv[1])
+nuevo = int(sys.argv[2])
+for s in red.subnets(new_prefix=nuevo):
+    print(f"{str(s):<18} {str(s[0]):>15} - {str(s[-1]):<15}  útiles AWS: {s.num_addresses - 5}")
+```
+
+```bash
+chmod +x subredes.py
+./subredes.py 10.0.0.0/24 26
+./subredes.py 10.0.0.0/16 20 | head
+```
+
+👀 **Qué deberías ver:** las cuatro `/26` de la pieza 1, cada una con `útiles AWS: 59`; y las diez primeras `/20` de `10.0.0.0/16`, saltando de 16 en 16, con `útiles AWS: 4091`.
+
+**En resumen:** `subredes.py CIDR prefijo` lista las subredes y sus IPs útiles en AWS.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+
+### Pieza 4 — Anatomía de una VPC típica
 
 ```
 VPC 10.0.0.0/16  (región us-east-1)
@@ -65,63 +166,68 @@ Qué hay detrás de cada decisión:
 - **Numeración con patrón** (`10.0.0.x` públicas, `10.0.1x.x` app, `10.0.2x.x` datos): cualquiera entiende una IP de un vistazo durante un incidente.
 - **Margen**: no gastes el `/16` entero el primer día. Una AZ nueva, una capa nueva o **Kubernetes** (en EKS, **cada pod consume una IP de la VPC**) pueden necesitar muchas IPs.
 
-### Evitar solapes
+**Pruébalo.** Saca con tu herramienta las subredes del dibujo: la 1.ª y la 2.ª, la 11.ª y la 12.ª, y la 21.ª y la 22.ª `/24` de la VPC:
+
+```bash
+./subredes.py 10.0.0.0/16 24 | sed -n '1,2p;11,12p;21,22p'
+```
+
+👀 **Qué deberías ver:** `10.0.0.0/24`, `10.0.1.0/24`, `10.0.10.0/24`, `10.0.11.0/24`, `10.0.20.0/24` y `10.0.21.0/24`, cada una con `útiles AWS: 251`: las seis del dibujo.
+
+✋ **Sin mirar:** una subred se llama `publica-a`, pero su tabla de rutas no tiene salida a un Internet Gateway. ¿Es pública?
+
+<details>
+<summary>Comprueba</summary>
+
+No: lo que hace pública a una subred es **la ruta** al Internet Gateway, no el nombre.
+</details>
+
+**En resumen:** cada capa (pública, app, datos) en al menos dos AZs, con un patrón de numeración y mucho espacio libre.
+
+### Pieza 5 — Evitar solapes
 
 Antes de elegir un CIDR, pregunta qué otras redes existen: otras VPCs de la empresa, la oficina, la VPN, los entornos dev, staging y prod. Una convención habitual: **un `/16` distinto por VPC**: `10.0.0.0/16` prod, `10.1.0.0/16` staging, `10.2.0.0/16` dev. Y evita `192.168.0.0/16` y `172.17.0.0/16`: el primero es el de las redes domésticas (las VPNs de casa chocan con él) y el segundo lo usa Docker por defecto.
 
 Dos redes se solapan si una contiene **alguna** dirección de la otra. `10.0.0.0/16` y `10.0.128.0/17` se solapan: la segunda está **dentro** de la primera.
 
-## Práctica guiada
-
-### 1. Dividir a mano y comprobar
-
-En papel: divide `10.0.0.0/24` en 4 subredes iguales. Escribe red, broadcast y rango de cada una. Comprueba:
+**Pruébalo.** 🔮 **Predice** cada respuesta y compruébala:
 
 ```bash
 python3 -c "
 import ipaddress as i
-for s in i.ip_network('10.0.0.0/24').subnets(new_prefix=26):
-    print(s, '→', s[0], '-', s[-1], '|', s.num_addresses, 'direcciones')
+print(i.ip_network('10.0.0.0/16').overlaps(i.ip_network('10.0.128.0/17')))
+print(i.ip_network('10.0.0.0/16').overlaps(i.ip_network('10.1.0.0/16')))
+print(i.ip_network('10.0.0.0/8').overlaps(i.ip_network('10.1.0.0/16')))
 "
 ```
 
-### 2. La VPC por defecto de AWS
+👀 **Qué deberías ver:** `True`, `False` y `True`: la tercera es la red de una oficina que usa todo `10.0.0.0/8` y choca con cualquier VPC `10.x`.
 
-Toda cuenta de AWS trae en cada región una VPC por defecto: `172.31.0.0/16`, con una subred `/20` **pública** en cada AZ. Calcula en papel las tres primeras subredes y comprueba:
+✋ **Sin mirar:** ¿por qué conviene no usar `172.17.0.0/16` para una VPC?
 
-```bash
-python3 -c "
-import ipaddress as i
-print([str(s) for s in i.ip_network('172.31.0.0/16').subnets(new_prefix=20)][:3])
-"
-```
+<details>
+<summary>Comprueba</summary>
 
-(La VPC por defecto sirve para pruebas rápidas. En proyectos reales se crea una propia con subredes privadas.)
+Porque es la red que usa Docker por defecto: los contenedores de una máquina de esa VPC no sabrían si una IP `172.17.x.x` es un contenedor o una máquina de la VPC.
+</details>
 
-### 3. Una herramienta tuya
+**En resumen:** un `/16` distinto por VPC, sin chocar con la oficina, las VPNs ni Docker; `overlaps()` lo comprueba.
 
-Crea `~/my-devops-journey/labs/clase-28/subredes.py`:
+## Tu chuleta de la clase
 
-```python
-#!/usr/bin/env python3
-"""Uso: subredes.py <CIDR> <nuevo_prefijo>   Ej: subredes.py 10.0.0.0/16 20"""
-import ipaddress
-import sys
+| Cálculo o comando | Qué da |
+|-------------------|--------|
+| de `/a` a `/b` | 2^(b − a) subredes de 2^(32 − b) direcciones |
+| salto entre subredes | el tamaño de bloque en el octeto del corte (`/20` → 16 en el 3.º) |
+| `./subredes.py CIDR prefijo` | las subredes y sus IPs útiles en AWS |
+| `i.ip_network(A).overlaps(i.ip_network(B))` | `True` si dos redes se solapan |
 
-red = ipaddress.ip_network(sys.argv[1])
-nuevo = int(sys.argv[2])
-for s in red.subnets(new_prefix=nuevo):
-    print(f"{str(s):<18} {str(s[0]):>15} - {str(s[-1]):<15}  útiles AWS: {s.num_addresses - 5}")
-```
-
-```bash
-cd ~/my-devops-journey/labs/clase-28
-chmod +x subredes.py
-./subredes.py 10.0.0.0/24 26
-./subredes.py 10.0.0.0/16 20 | head
-```
-
-Úsala para **comprobar** tus cálculos, nunca para sustituirlos.
+| Decisión de diseño | Regla |
+|--------------------|-------|
+| AZs | cada capa en al menos 2 (mejor 3) |
+| pública o privada | la decide la ruta al Internet Gateway |
+| un CIDR por entorno | prod `10.0.0.0/16`, staging `10.1.0.0/16`, dev `10.2.0.0/16` |
+| evitar | `192.168.0.0/16` (redes de casa) y `172.17.0.0/16` (Docker) |
 
 ## Rómpelo: ejercicios de diseño
 
@@ -145,20 +251,61 @@ Diseña la red de **"TiendaOnline"** en AWS y guárdala en `notas/fase-3/clase-2
 - La capa app debe aguantar hasta **2.000 IPs por AZ** (va a correr Kubernetes).
 - Deja al menos la mitad de la VPC libre.
 
-Entrega:
-1. Una tabla con: nombre, AZ, CIDR, IPs útiles en AWS y si es pública o privada.
-2. Un diagrama en ASCII como el de la teoría.
-3. Tres líneas justificando tus decisiones.
-4. Los CIDR que reservarías para staging y dev.
+Sube en tres escalones: un **ejemplo resuelto** más pequeño, tu diseño **con huecos** y, si te atascas, la **pista**.
+
+> 🧩 **Ejemplo resuelto:** una VPC más pequeña, con 2 AZs y la capa app de 500 IPs por AZ.
+>
+> | Subred | AZ | CIDR | Útiles AWS | Tipo |
+> |--------|----|------|-----------|------|
+> | pub-a | a | 10.0.0.0/24 | 251 | pública |
+> | pub-b | b | 10.0.1.0/24 | 251 | pública |
+> | app-a | a | 10.0.16.0/23 | 507 | privada |
+> | app-b | b | 10.0.18.0/23 | 507 | privada |
+> | db-a | a | 10.0.32.0/24 | 251 | privada (sin NAT) |
+> | db-b | b | 10.0.33.0/24 | 251 | privada (sin NAT) |
+>
+> Staging `10.1.0.0/16` y dev `10.2.0.0/16`. Todo cabe por debajo de `10.0.34.0`: casi toda la VPC queda libre. `/23` = 512 − 5 = 507 ≥ 500 ✅.
+
+**Ahora tú, con huecos:** copia esta plantilla en tu nota y rellénala. Comprueba cada CIDR con `subredes.py` y los solapes con `overlaps()`.
+
+```
+VPC prod: 10.0.0.0/16 · staging: ____ · dev: ____
+
+| Subred | AZ | CIDR      | Útiles AWS | Tipo              |
+|--------|----|-----------|------------|-------------------|
+| pub-a  | a  | ____/24   | 251        | pública           |
+| pub-b  | b  | ____/24   | 251        | pública           |
+| pub-c  | c  | ____/24   | 251        | pública           |
+| app-a  | a  | ____/__   | ____       | privada           |
+| app-b  | b  | ____/__   | ____       | privada           |
+| app-c  | c  | ____/__   | ____       | privada           |
+| db-a   | a  | ____/24   | 251        | privada (sin NAT) |
+| db-b   | b  | ____/24   | 251        | privada (sin NAT) |
+| db-c   | c  | ____/24   | 251        | privada (sin NAT) |
+
+Libre: de ____ a 10.0.255.255 (al menos la mitad: 10.0.128.0/17).
+Por qué (una línea cada una):
+- Tres AZs porque ____
+- La capa app es /__ porque ____
+- La base de datos va sin NAT porque ____
+```
+
+<details>
+<summary>Pista</summary>
+
+Para 2.000 IPs por AZ: ¿qué prefijo da 2.048 direcciones? Resta las 5 de AWS. Después, elige para la capa app un inicio que sea múltiplo de su bloque en el 3.er octeto (por ejemplo, 32, 40, 48…), y para la base de datos, un rango posterior. Si todo queda por debajo de `10.0.128.0`, la mitad superior está libre.
+</details>
 
 ## Cierre
 
 En `notas/fase-3/clase-28.md`:
 
-1. ¿Cuántas subredes `/24` caben en un `/20`? Explica el cálculo.
-2. ¿Por qué se repite cada capa de subredes en al menos dos AZs?
-3. ¿Por qué es grave que dos VPCs tengan rangos solapados? Pon un ejemplo de cuándo te daría problemas.
-4. **Repaso (clase 27, sin mirar):** calcula red y broadcast de `10.0.0.200/28`.
+1. ¿Cuántas subredes `/24` caben en un `/20`? Explica el cálculo. *(1–2 líneas. Empieza así: «De `/20` a `/24` hay… bits más, así que 2^… =…»)*
+2. ¿Por qué se repite cada capa de subredes en al menos dos AZs? *(2 líneas. Empieza así: «Porque una subred vive en una sola AZ, y si esa AZ cae…»)*
+3. ¿Por qué es grave que dos VPCs tengan rangos solapados? Pon un ejemplo de cuándo te daría problemas. *(2–3 líneas. Empieza así: «Porque el enrutamiento no puede saber dónde está una IP que existe en los dos sitios… Por ejemplo,…»)*
+4. **Repaso (clase 27, sin mirar):** calcula red y broadcast de `10.0.0.200/28`. *(1 línea. Empieza así: «Bloque de…, así que la red es… y el broadcast…»)*
+
+Después, escríbeme `examíname clase-28`.
 
 ## Autocorrección
 
@@ -194,7 +341,7 @@ VPC prod `10.0.0.0/16`; staging `10.1.0.0/16`; dev `10.2.0.0/16`.
 | db-b | b | 10.0.65.0/24 | 251 | privada (sin NAT) |
 | db-c | c | 10.0.66.0/24 | 251 | privada (sin NAT) |
 
-Todo cabe por debajo de `10.0.127.255`: la mitad superior (`10.0.128.0/17`) queda libre. `/21` = 2.048 − 5 = 2.043 ≥ 2.000 ✅.
+Todo cabe por debajo de `10.0.127.255`: la mitad superior (`10.0.128.0/17`) queda libre. `/21` = 2.048 − 5 = 2.043 ≥ 2.000 ✅. Por qué: tres AZs para que la caída de una no tire la tienda; la capa app es `/21` porque Kubernetes da una IP de la VPC a cada pod; la base de datos va sin NAT porque no necesita salir a internet, y así nadie puede llegar a ella desde fuera ni ella hablar hacia fuera.
 </details>
 
 ## Inglés

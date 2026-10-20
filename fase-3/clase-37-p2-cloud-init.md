@@ -2,6 +2,22 @@
 
 **Dónde:** tu PC + VMs que crearás y destruirás · **Tiempo:** 2 bloques largos (unas 4–6 h) · **Bloque:** B. Proyectos y examen · **Laboratorio integrador**
 
+> 💡 **La idea de hoy:** en vez de configurar un servidor a mano, escribes **un archivo** que lo describe entero (usuarios, SSH endurecido, paquetes, nginx, firewall) y **cloud-init** lo aplica en el primer arranque. Si el servidor se rompe, lo destruyes y lo recreas idéntico en minutos. Es lo mismo que el *user-data* de una EC2, y el primer paso hacia la infraestructura como código.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Usuarios sin contraseña y llaves SSH, y SSH endurecido en `sshd_config.d` (clases 09 y 15).
+> - Paquetes y `unattended-upgrades` (clase 10).
+> - nginx con un sitio propio y un `/health` (clases 12 y 32).
+> - `ufw`, con OpenSSH siempre primero (clase 33).
+> - Scripts que salen con 0 solo si todo va bien (clases 17 y 19).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **cloud-init**: el programa que configura una VM en su primer arranque.
+> - **user-data**: la configuración que le das a cloud-init (en AWS, al lanzar la EC2).
+> - **YAML**: el formato del archivo, con la sangría hecha de espacios.
+> - **`fail2ban`**: el servicio que banea las IPs que fallan varias veces al entrar por SSH.
+> - **reproducible**: que se puede recrear idéntico, desde cero, con un comando.
+
 ## Objetivo
 
 Escribir **un único archivo** que convierta un Ubuntu recién creado en un servidor web **endurecido y verificado**, sin tocarlo a mano: usuario con llave, SSH sin contraseñas ni root, firewall, nginx con health check y actualizaciones automáticas. Después, demostrar que es **reproducible**: destruir el servidor y recrearlo idéntico en minutos.
@@ -14,7 +30,35 @@ Este proyecto junta las fases 1 a 3 y es el puente directo a AWS: el mismo archi
 
 Un servidor configurado a mano (una **mascota**) es irrepetible: nadie recuerda los 40 comandos que se le aplicaron, y si muere, se pierde. Un servidor definido en código (**ganado**) se recrea igual cuantas veces haga falta: para escalar, para recuperarse de un desastre o para tener staging igual a producción. Esa es la idea central de DevOps, y la que llevarás a Docker (fase 5), Terraform (fase 8) y Kubernetes (fase 9).
 
-## Teoría: cloud-init
+## Requisitos del proyecto
+
+El servidor `web-01` debe cumplir **todo** esto nada más arrancar, sin intervención:
+
+| # | Requisito | Clase |
+|---|-----------|-------|
+| R1 | Usuario `deploy` con tu llave pública, sin contraseña utilizable | 09, 15 |
+| R2 | SSH: sin contraseñas, sin root y con `MaxAuthTries 3` | 15 |
+| R3 | Paquetes actualizados y `unattended-upgrades` activo | 10 |
+| R4 | nginx sirve una página propia y `GET /health` → `200 ok` | 12, 32 |
+| R5 | Firewall: solo entran 22 y 80. Todo lo demás, descartado | 33 |
+| R6 | `fail2ban` activo (banea IPs tras intentos de SSH fallidos) | 13, 15 |
+| R7 | La configuración se puede recrear **idéntica** en < 5 minutos | 08 |
+| R8 | Un script `verify.sh` comprueba R1–R6 **desde fuera** y sale con código 0 solo si todo está bien | 04, 19, 26, 29 |
+
+## Práctica guiada
+
+Cinco pasos. La teoría de cloud-init está en el paso 2, justo donde empiezas a usarla. Si la haces en dos sesiones, la primera termina con el paso 3 (todos los requisitos en el YAML) y la segunda empieza con `verify.sh`.
+
+### 1. Estructura
+
+```bash
+mkdir -p ~/my-devops-journey/projects/p2-cloud-init-server
+cd ~/my-devops-journey/projects/p2-cloud-init-server
+```
+
+Tu llave pública **no** irá escrita en el repo: el YAML tendrá un marcador que sustituirás al lanzar. Así el archivo sirve a cualquier persona y no publicas ni siquiera tu pública por costumbre.
+
+### 2. Empieza pequeño
 
 **cloud-init** es el programa que se ejecuta en el **primer arranque** de casi cualquier imagen Linux de la nube (AWS, Azure, GCP… y Multipass). Lee una configuración (*user-data*) y la aplica: usuarios, paquetes, archivos, comandos.
 
@@ -47,35 +91,7 @@ Para depurar, dentro de la VM:
 
 **YAML es estricto con la indentación**: usa **espacios** (nunca tabuladores). Un error de sangría puede hacer que se ignore una sección entera sin avisar mucho.
 
-## Requisitos del proyecto
-
-El servidor `web-01` debe cumplir **todo** esto nada más arrancar, sin intervención:
-
-| # | Requisito | Clase |
-|---|-----------|-------|
-| R1 | Usuario `deploy` con tu llave pública, sin contraseña utilizable | 09, 15 |
-| R2 | SSH: sin contraseñas, sin root y con `MaxAuthTries 3` | 15 |
-| R3 | Paquetes actualizados y `unattended-upgrades` activo | 10 |
-| R4 | nginx sirve una página propia y `GET /health` → `200 ok` | 12, 32 |
-| R5 | Firewall: solo entran 22 y 80. Todo lo demás, descartado | 33 |
-| R6 | `fail2ban` activo (banea IPs tras intentos de SSH fallidos) | 13, 15 |
-| R7 | La configuración se puede recrear **idéntica** en < 5 minutos | 08 |
-| R8 | Un script `verify.sh` comprueba R1–R6 **desde fuera** y sale con código 0 solo si todo está bien | 04, 19, 26, 29 |
-
-## Práctica guiada
-
-### 1. Estructura
-
-```bash
-mkdir -p ~/my-devops-journey/projects/p2-cloud-init-server
-cd ~/my-devops-journey/projects/p2-cloud-init-server
-```
-
-Tu llave pública **no** irá escrita en el repo: el YAML tendrá un marcador que sustituirás al lanzar. Así el archivo sirve a cualquier persona y no publicas ni siquiera tu pública por costumbre.
-
-### 2. Empieza pequeño
-
-Primero, solo el usuario. Crea `cloud-init.yaml`:
+**Ahora, tu primer YAML.** Primero, solo el usuario. Crea `cloud-init.yaml`:
 ```yaml
 #cloud-config
 hostname: web-01
@@ -193,12 +209,40 @@ Opcional: convierte ese bloque en un script `rebuild.sh`.
 - `cloud-init.yaml`: con el marcador `__SSH_PUBKEY__`, **nunca** con una llave real.
 - `verify.sh`: ejecutable, código 0 solo si todo pasa.
 - `rebuild.sh` (opcional).
-- `README.md` **en inglés**:
-  - qué hace (requisitos R1–R8 como lista),
-  - cómo usarlo (Multipass y, como referencia, cómo se pondría como *user-data* en EC2),
-  - la salida de `verify.sh` en verde y el tiempo de reconstrucción,
-  - decisiones y límites (por ejemplo: `deploy` tiene sudo sin contraseña. ¿Por qué? ¿Qué mejorarías?),
-  - qué aprendiste.
+- `README.md` **en inglés**, a partir de este modelo (lo escribió Claude). Copia y rellena los huecos: no hace falta escribir más.
+
+````markdown
+# P2 — Reproducible hardened server (cloud-init)
+
+One `cloud-init.yaml` builds a hardened nginx server from scratch, and `verify.sh`
+checks it from outside. Rebuild time: ____ minutes.
+
+## What it does
+- R1: user `deploy` with my SSH key, no usable password
+- R2: SSH without passwords or root, `MaxAuthTries 3`
+- R3: updated packages and `unattended-upgrades`
+- R4: nginx serves my page and `GET /health` → `200 ok`
+- R5: firewall: only 22 and 80 come in
+- R6: `fail2ban` bans IPs after failed SSH logins
+
+## How to use it
+```bash
+sed "s|__SSH_PUBKEY__|$(cat ~/.ssh/lab_ed25519.pub)|" cloud-init.yaml > /tmp/p2.yaml
+multipass launch lts --name web-01 --cloud-init /tmp/p2.yaml
+./verify.sh <IP>
+```
+On AWS, the same file goes in **User data** when you launch an EC2 instance
+(the firewall part would be a security group instead of ufw).
+
+## verify.sh
+```
+(paste the green output of verify.sh)
+```
+
+## Decisions and limits
+- `deploy` has passwordless sudo because ____. To improve: ____.
+- ____
+````
 
 Súbelo con rama y PR. Actualiza `projects/README.md`: P2 → ✅.
 
@@ -206,10 +250,12 @@ Súbelo con rama y PR. Actualiza `projects/README.md`: P2 → ✅.
 
 En `notas/fase-3/clase-37.md`:
 
-1. ¿Qué significa *cattle, not pets*? ¿Qué ganas al definir un servidor en un archivo?
-2. ¿Qué equivalencia hay entre este proyecto y lanzar una EC2? ¿Qué partes cambiarían en AWS (piensa en el firewall y en las llaves)?
-3. ¿Por qué `verify.sh` comprueba desde **fuera** y no con comandos dentro de la VM?
-4. **Repaso (clase 36, sin mirar):** cuenta en 4 líneas tu incidente favorito del P1 con el formato STAR.
+1. ¿Qué significa *cattle, not pets*? ¿Qué ganas al definir un servidor en un archivo? *(2–3 líneas. Empieza así: «Que los servidores se tratan como ganado y no como mascotas: si uno se rompe, no se cura a mano, se… Definirlo en un archivo me da…»)*
+2. ¿Qué equivalencia hay entre este proyecto y lanzar una EC2? ¿Qué partes cambiarían en AWS (piensa en el firewall y en las llaves)? *(2–3 líneas. Empieza así: «El YAML es el user-data de la EC2… En AWS, el firewall sería… y la llave…»)*
+3. ¿Por qué `verify.sh` comprueba desde **fuera** y no con comandos dentro de la VM? *(2 líneas. Empieza así: «Porque así compruebo lo que ve un cliente de verdad: algo puede funcionar dentro y fallar fuera, como…»)*
+4. **Repaso (clase 36, sin mirar):** cuenta en voz alta tu incidente favorito del P1 con el formato STAR. *(Después, escribe sus 4 líneas, una por letra. Empieza así: «S: … T: … A: … R: …»)*
+
+Después, escríbeme `examíname clase-37`.
 
 ## Autocorrección
 

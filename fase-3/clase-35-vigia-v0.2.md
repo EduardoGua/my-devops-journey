@@ -2,11 +2,25 @@
 
 **Dónde:** tu Ubuntu + GitHub · **Tiempo:** 1 bloque largo (unas 3 h) · **Bloque:** B. Proyectos y examen · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** Vigía ya sabe si una web responde; hoy aprende a medir **dos capas más**: cuánto tarda la **resolución DNS** y cuántos días le quedan al **certificado TLS**. Un certificado caducado tumba una web igual que un servidor apagado, y con este aviso te enteras dos semanas antes.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - `dig` y la caché de `systemd-resolved` (clase 31).
+> - `openssl s_client` y `openssl x509 -enddate` para las fechas de un certificado (clase 32, pieza 6 y reto 2).
+> - Recortar texto con `${URL#*://}` y `${h%%/*}` (clase 16, pieza 4).
+> - Funciones, `set -euo pipefail`, `|| true` y `logger` (clase 19).
+> - El ciclo rama → PR → squash y la etiqueta con su *release* (clases 24 y 25).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **`dns_ms`**: los milisegundos que tarda la consulta DNS de una URL.
+> - **`cert_days`**: los días que le quedan al certificado antes de vencer.
+> - **desglose de una petición**: el tiempo de cada fase (DNS, TCP, TLS, primer byte y total) que da `curl -w`.
+
 ## Objetivo
 
-Que Vigía mida las capas que acabas de estudiar: cuánto tarda la **resolución DNS** (`dig`) y cuántos días faltan para que **venza el certificado TLS** (`openssl`). Y escribir en el README, en inglés y con tus palabras, qué pasa desde que escribes una URL hasta que ves la página, con mediciones reales de tus sitios.
+Que Vigía mida las capas que acabas de estudiar: cuánto tarda la **resolución DNS** (`dig`) y cuántos días faltan para que **venza el certificado TLS** (`openssl`). Y completar en el README, en inglés, la sección de qué pasa desde que escribes una URL hasta que ves la página, con mediciones reales de tus sitios. Partes de un modelo ya escrito (en el Entregable): tú pones tus números.
 
-Esa sección del README es la respuesta a una de las preguntas más típicas de entrevista, y es uno de los criterios de salida de esta fase: explicarlo en voz alta, sin notas.
+Esa sección del README es la respuesta a una de las preguntas más típicas de entrevista, y es uno de los criterios de salida de esta fase: explicarlo **en voz alta**, sin notas. Escrita, te sirve para repasarla.
 
 ## Requisitos
 
@@ -136,18 +150,54 @@ Si `badssl.com` no responde el día que lo pruebes, busca otro sitio de pruebas 
 - `vigia.sh` con las tres funciones nuevas, `shellcheck` sin avisos.
 - README actualizado:
   - el formato nuevo del log (siete campos) y qué significa cada uno;
-  - la sección **What happens when you type a URL**: de 8 a 15 líneas en inglés, de la caché DNS a la página renderizada, con tu desglose real de `curl -w` (DNS, TCP, TLS, primer byte, total) y qué parte tarda más en tu sitio;
-  - *What broke and how I found it* de esta versión.
+  - la sección **What happens when you type a URL**, a partir del modelo de abajo, con tu desglose real de `curl -w`;
+  - *What broke and how I found it* de esta versión, con los cuatro campos de abajo.
 - PR fusionado, etiqueta `v0.2` y release.
+
+### Modelo para adaptar (lo escribió Claude)
+
+Cópialo en tu README y rellena los huecos con tu desglose de `curl -w` de uno de tus sitios. No hace falta escribir más.
+
+```markdown
+## What happens when you type a URL
+
+Example: `curl https://____`, measured from my laptop on ____ (date).
+
+1. **DNS:** my laptop asks `systemd-resolved` (127.0.0.53) for the IP of the host.
+   If the answer is not in its cache, a recursive resolver asks the root servers,
+   the TLD servers and the authoritative servers. *(____ ms)*
+2. **TCP:** my laptop opens a connection to port 443 with the three-way handshake
+   (SYN, SYN-ACK, ACK). *(____ ms)*
+3. **TLS:** the server sends its certificate. My laptop checks the chain of trust,
+   the name and the dates, and both sides agree on the encryption keys. *(____ ms)*
+4. **HTTP:** my laptop sends `GET / HTTP/1.1` with the `Host` header, and the server
+   answers `200 OK`. Time to first byte: *____ ms*.
+5. **Total:** *____ ms*. On this site the slowest part is ____, because ____.
+```
+
+Y para *What broke and how I found it*, una línea por campo:
+
+```markdown
+## What broke and how I found it (v0.2)
+
+- **Symptom:** ____
+- **What I checked:** ____
+- **Cause:** ____
+- **Fix:** ____
+```
+
+Un ejemplo de esa sección, ya relleno: *Symptom:* the script stopped on `no-existe.invalid`. *What I checked:* `bash -x vigia.sh` showed `openssl` failing inside a pipe. *Cause:* with `pipefail`, the failing pipe killed the script. *Fix:* `|| true` and an empty date becomes `-`.
 
 ## Cierre
 
 En `notas/fase-3/clase-35.md`:
 
-1. Con los números de tu desglose de `curl -w`, ¿qué fase de la petición tarda más en uno de tus sitios? ¿A qué crees que se debe?
-2. ¿Por qué la segunda consulta DNS seguida tarda 0 ms? ¿Es un problema para Vigía?
-3. ¿Qué ve un usuario cuando un certificado vence? ¿Por qué conviene saberlo 14 días antes?
-4. **Repaso (clase 34, sin mirar):** recita tu checklist de diagnóstico capa a capa para "la web no carga".
+1. Con los números de tu desglose de `curl -w`, ¿qué fase de la petición tarda más en uno de tus sitios? ¿A qué crees que se debe? *(2 líneas. Empieza así: «En `<sitio>`, la fase que más tarda es…, con … ms. Creo que se debe a…»)*
+2. ¿Por qué la segunda consulta DNS seguida tarda 0 ms? ¿Es un problema para Vigía? *(2 líneas. Empieza así: «Porque la respuesta sale de la caché de `systemd-resolved` durante su TTL… Para Vigía…»)*
+3. ¿Qué ve un usuario cuando un certificado vence? ¿Por qué conviene saberlo 14 días antes? *(2 líneas. Empieza así: «El navegador muestra un aviso de… y la mayoría… Conviene saberlo antes para…»)*
+4. **Repaso (clase 34, sin mirar):** recita en voz alta tu checklist de diagnóstico capa a capa para "la web no carga". *(Después, escribe solo el nombre de cada paso, uno por línea. Empieza así: «1. Qué devuelve el cliente. 2. …»)*
+
+Después, escríbeme `examíname clase-35`.
 
 ## Autocorrección
 
