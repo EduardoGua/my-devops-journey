@@ -2,6 +2,22 @@
 
 **Dónde:** tu Ubuntu + GitHub · **Tiempo:** 2 bloques largos (unas 5–6 h) · **Bloque:** C. Proyecto · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** Vigía pasa de Bash a Python. Hoy escribes el chequeo: leer y validar `config.yaml`, revisar cada URL con `requests` y guardar cada resultado como una fila en SQLite, todo detrás de `python -m vigia check`. Unas pruebas de aceptación del curso comprueban desde fuera que cumples el contrato; cómo lo organizas por dentro es cosa tuya.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Paquetes, `import` y `if __name__ == "__main__":` (clase 45); `.venv` y `requirements.txt` (clase 46).
+> - `yaml.safe_load` y validar una configuración (clase 47); `argparse` con subcomandos y `logging` (clase 48).
+> - Tu excepción propia `ConfigError` y los códigos de salida (clase 44).
+> - `revisar()` con `requests`: `Timeout` antes que `ConnectionError` y un `User-Agent` propio (clase 49).
+> - La tabla `checks` y el `INSERT` con `?` (clase 51); `pytest` (clase 52).
+> - El flujo rama → PR de la v0.1 (clases 24 y 25) y tu línea de cron (clase 20).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **prueba de aceptación**: la que comprueba el programa desde fuera, como lo usaría alguien, sin mirar el código.
+> - **contrato**: lo que el programa promete (argumentos, códigos de salida, columnas de la tabla) y que esas pruebas comprueban.
+> - **`python -m paquete`**: ejecutar un paquete; Python busca y ejecuta su `__main__.py`.
+> - **separación de responsabilidades**: un módulo por tarea (configuración, chequeo, almacenamiento, línea de comandos).
+
 ## Objetivo
 
 Reescribir el corazón de Vigía en Python: leer la configuración de un YAML, revisar cada URL con `requests` y guardar cada resultado en una base de datos SQLite, con una línea de comandos `python -m vigia check`. En la clase 55 le añadirás la API, tus pruebas y la versión `v1`.
@@ -184,10 +200,12 @@ Sustituye la línea de la v0 con `crontab -e`. Comprueba a los 5 minutos `journa
 
 En `notas/fase-4/clase-54.md`:
 
-1. Dibuja (en texto) cómo viaja una revisión por tus módulos: desde `python -m vigia check` hasta la fila en `checks`.
-2. ¿Por qué la ruta relativa de `database` se resuelve desde la carpeta del archivo de configuración y no desde la carpeta actual?
-3. ¿Qué prueba de aceptación te costó más hacer pasar y qué aprendiste al arreglarla?
-4. **Repaso (clase 53, sin mirar):** ¿por qué hay que abrir la conexión de SQLite dentro de cada petición en una API de FastAPI?
+1. Escribe cómo viaja una revisión por tus módulos, desde `python -m vigia check` hasta la fila en `checks`. *(Una línea con flechas. Empieza así: «`__main__.py` → `cli.main()` (lee los argumentos y…) → `config.____()` (…) → por cada URL, `checker.____()` → `storage.____()` → …»)*
+2. ¿Por qué la ruta relativa de `database` se resuelve desde la carpeta del archivo de configuración y no desde la carpeta actual? *(2 líneas. Empieza así: «Porque la carpeta actual depende de quién lance el programa (yo, cron…), y la del archivo de configuración…»)*
+3. ¿Qué prueba de aceptación te costó más hacer pasar y qué aprendiste al arreglarla? *(1–2 líneas. Empieza así: «La que más me costó fue `test_…`: fallaba porque… y lo arreglé…»)*
+4. **Repaso (clase 53, sin mirar):** ¿por qué hay que abrir la conexión de SQLite dentro de cada petición en una API de FastAPI? *(1–2 líneas. Empieza así: «Porque FastAPI atiende las peticiones en varios hilos, y…»)*
+
+Después, escríbeme `examíname clase-54`.
 
 ## Autocorrección
 

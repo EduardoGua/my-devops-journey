@@ -2,6 +2,21 @@
 
 **Dónde:** tu Ubuntu + GitHub · **Tiempo:** 2 bloques largos (unas 5–6 h) · **Bloque:** C. Proyecto · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** Vigía v1 se termina hoy. Una API (`python -m vigia serve`) lee la base de datos **en cada petición** y devuelve en JSON el último estado de cada sitio; tus pruebas unitarias comprueban cada módulo por separado; y el README en inglés y la etiqueta `v1` la dejan lista para tu portafolio. Con eso cierras la fase 4.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - La consulta del último chequeo de cada URL con `MAX(id)` (clase 51, pieza 4).
+> - FastAPI, la fábrica `crear_app(ruta_db)`, `TestClient` y `fila | {"up": bool(…)}` (clase 53).
+> - `pytest`, `tmp_path`, `pytest.raises` y el servidor falso (clase 52).
+> - El parser común con `parents=[comun]` (clase 54, pista 2) y tus `config.py`, `checker.py` y `storage.py`.
+> - El PR con *squash*, la etiqueta y la release (clases 24 y 25); la sección *What broke and how I found it* (clase 35).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **prueba unitaria**: la que prueba una pieza (una función, un módulo) por separado, con datos que tú controlas.
+> - **prueba de caja negra** (*black-box*): la que prueba el programa entero desde fuera, sin mirar el código; las de aceptación lo son.
+> - **`uvicorn.run(app, host=…, port=…)`**: arrancar el servidor desde tu código, en lugar de con el comando `uvicorn`.
+> - **notas de la versión** (*release notes*): el texto que acompaña a una versión publicada en GitHub.
+
 ## Objetivo
 
 Terminar Vigía v1: una API mínima con FastAPI (`python -m vigia serve`) que devuelve el estado de cada sitio en JSON, tus propias pruebas con `pytest` (al menos 5), un README en inglés al día y la etiqueta `v1`. Al terminar, cierras la fase 4.
@@ -34,7 +49,7 @@ Terminar Vigía v1: una API mínima con FastAPI (`python -m vigia serve`) que de
 |---|-----------|--------|
 | R15 | Al menos **5 pruebas tuyas** en `tests/`, que pasan con `pytest`: de la configuración, del chequeo (con un servidor falso), del almacenamiento y de la API (con `TestClient`) | 52, 53 |
 | R16 | Las 26 pruebas de aceptación pasan y `ruff check` no da avisos | 46, 52 |
-| R17 | README en inglés: qué hace, cómo se instala desde cero, la configuración, `check` y `serve` con ejemplos de `curl`, la línea de cron, *What broke and how I found it* de esta versión y sus límites | — |
+| R17 | README en inglés: qué hace, cómo se instala desde cero, la configuración, `check` y `serve` con ejemplos de `curl`, la línea de cron, *What broke and how I found it* de esta versión y sus límites. Partes del modelo del Entregable | 35 |
 | R18 | PR fusionado, etiqueta `v1` y su release en GitHub | 25 |
 
 ## Plan de trabajo
@@ -51,7 +66,7 @@ Terminar Vigía v1: una API mínima con FastAPI (`python -m vigia serve`) que de
 6. Tus pruebas en `tests/` (abajo, ideas). Commit.
 7. `ruff check vigia tests` hasta que no dé avisos.
 8. Despídete de la v0: borra `vigia.sh` y `urls.txt` (el historial y la etiqueta `v0` los conservan) y explica en el README que la v0 era Bash.
-9. README, PR con una buena descripción, *squash and merge*, etiqueta `v1` y release.
+9. README (del modelo del Entregable), PR con la descripción del modelo, *squash and merge*, etiqueta `v1` y release.
 
 ## Ideas para tus pruebas
 
@@ -125,6 +140,90 @@ and exposes the latest status of each site through a JSON API.
 ## Limitations
 ````
 
+### Modelo para adaptar (lo escribió Claude)
+
+Cópialo en tu README y rellena los huecos (`____`). No hace falta escribir más.
+
+````markdown
+# Vigía
+
+A small uptime monitor: it checks a list of URLs, stores every result in SQLite
+and exposes the latest status of each site through a JSON API.
+
+> **v1 — Python.** v0 was a Bash script with cron. Each version adds a layer:
+> next come Docker, AWS, CI/CD, Terraform, Kubernetes and observability.
+
+## Install
+
+```bash
+git clone https://github.com/____/vigia.git && cd vigia
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Configure
+
+`config.yaml`:
+
+| Key | Meaning | Default |
+|-----|---------|---------|
+| `urls` | the URLs to check; each one starts with `http://` or `https://` | required |
+| `timeout` | seconds to wait for each URL | `10` |
+| `database` | the SQLite file; a relative path starts from the folder of `config.yaml` | `vigia.db` |
+
+## Run
+
+```bash
+python -m vigia check                  # exit code: 0 all up, 1 some down, 2 bad config
+python -m vigia serve                  # API on http://127.0.0.1:8000
+curl -s localhost:8000/health          # {"status": "ok"}
+curl -s localhost:8000/status | jq     # the latest result of each URL
+```
+
+## Schedule
+
+```
+*/5 * * * * cd /home/____/vigia && .venv/bin/python -m vigia check >> /home/____/logs/vigia-cron.log 2>&1
+```
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/                          # ____ unit tests
+```
+
+## What broke and how I found it (v1)
+
+- **Symptom:** ____
+- **What I checked:** ____
+- **Cause:** ____
+- **Fix:** ____
+
+## Limitations
+
+- It runs on my laptop, only while it is on (v3 moves it to AWS).
+- You need Python and its dependencies to run it (v2 puts it in a Docker image).
+- It does not alert anyone when a site goes down (v7 adds alerts).
+- The API has no authentication, so it only listens on 127.0.0.1.
+````
+
+Un ejemplo de *What broke*, ya relleno: *Symptom:* running `python -m vigia check --config ~/vigia/config.yaml` from `/tmp` created a new `vigia.db` in `/tmp`. *What I checked:* `ls /tmp/*.db` and the database path in the log. *Cause:* the relative path was resolved from the current folder. *Fix:* resolve it from the folder of `config.yaml`.
+
+Y la descripción del PR, para copiar tal cual (cambia lo que no encaje):
+
+```markdown
+## What
+Rewrite Vigía in Python: YAML config, SQLite history, `check` and `serve` (JSON API).
+
+## How to test
+pip install -r requirements-dev.txt
+pytest tests/ ~/my-devops-journey/recursos/vigia/v1
+
+## Notes
+v0 (`vigia.sh`) is removed; it is still in the `v0` tag.
+```
+
 - Etiqueta y release:
 
 ```bash
@@ -138,10 +237,12 @@ gh release create v1 --title "v1" --notes "Python rewrite: YAML config, SQLite h
 
 En `notas/fase-4/clase-55.md`:
 
-1. ¿Por qué `/status` lee la base de datos en cada petición en lugar de guardar los resultados en memoria al arrancar?
-2. ¿Qué diferencia hay entre tus pruebas de `tests/` y las pruebas de aceptación del curso? ¿Por qué tienen sentido las dos?
-3. Nombra tres límites de la v1 y qué versión de Vigía los resuelve.
-4. **Repaso (clase 54, sin mirar):** ¿por qué la línea de cron entra en `~/vigia` antes de lanzar `python -m vigia`?
+1. ¿Por qué `/status` lee la base de datos en cada petición en lugar de guardar los resultados en memoria al arrancar? *(2 líneas. Empieza así: «Porque `check` y `serve` son procesos distintos: cron lanza `check`… y la API…»)*
+2. ¿Qué diferencia hay entre tus pruebas de `tests/` y las pruebas de aceptación del curso? ¿Por qué tienen sentido las dos? *(2–3 líneas. Empieza así: «Las mías son unitarias: prueban cada pieza… Las de aceptación son de caja negra:… Tienen sentido las dos porque…»)*
+3. Nombra tres límites de la v1 y qué versión de Vigía los resuelve. *(3 líneas, una por límite. Empieza así: «Corre solo en mi portátil → v3, en AWS.»)*
+4. **Repaso (clase 54, sin mirar):** ¿por qué la línea de cron entra en `~/vigia` antes de lanzar `python -m vigia`? *(1–2 líneas. Empieza así: «Porque `python -m vigia` busca el paquete en…»)*
+
+Después, escríbeme `examíname clase-55`.
 
 ## Autocorrección
 

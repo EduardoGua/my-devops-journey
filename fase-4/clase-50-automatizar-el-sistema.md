@@ -2,6 +2,20 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** B. Python para operaciones
 
+> 💡 **La idea de hoy:** Python no sustituye a las herramientas del sistema: las llama. `subprocess.run` lanza un comando y te da su código de salida y su salida; `os.environ` lee la configuración del entorno; `shutil` copia, comprime y mide el disco. La regla de seguridad del día: los argumentos de un comando van en una **lista**, nunca en un texto con `shell=True`.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Las variables de entorno y que un proceso hijo hereda una **copia** del entorno (clase 07).
+> - Los códigos de salida y `systemctl is-active` (clase 17); la errata de Steam y `${DIR:?}` (clases 16 y 19).
+> - Tu `backup.sh` con fecha en el nombre y rotación (clase 20).
+> - `pathlib` (clase 43), `try`/`except` (clase 44), `argparse` y `logging` (clase 48).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **subproceso** (*child process*): un programa que tu programa lanza y espera.
+> - **inyección de comandos**: cuando un dato de fuera acaba ejecutándose como comando.
+> - **bytes**: el contenido sin decodificar, como `b'Linux\n'`; con `text=True` lo recibes como texto.
+> - **aplicación de doce factores** (*twelve-factor app*): una guía de buenas prácticas; una de ellas es configurar la aplicación por el entorno.
+
 ## Objetivo
 
 - Lanzar comandos del sistema desde Python con `subprocess.run`, leer su salida y su código, y tratar sus errores.
@@ -14,15 +28,26 @@
 
 Muchas automatizaciones combinan las dos cosas: lógica y datos (lo fuerte de Python) con herramientas del sistema que ya existen (`systemctl`, `git`, `docker`, `aws`). `subprocess` es el puente. Y las variables de entorno son la forma estándar de configurar una aplicación en Docker, Kubernetes, GitHub Actions y AWS (clase 07): la misma imagen sirve para desarrollo y producción cambiando solo el entorno. Vigía v2 leerá así la dirección de su base de datos.
 
-## Teoría
+## Cómo va esta clase
 
-### `subprocess.run`
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. La 4 rehace en Python tu `backup.sh` de la clase 20.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 35 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+
+```bash
+source ~/my-devops-journey/labs/.venv/bin/activate
+mkdir -p ~/my-devops-journey/labs/clase-50 && cd ~/my-devops-journey/labs/clase-50
+```
+
+## Las piezas
+
+### Pieza 1 — `subprocess.run`, con los argumentos en lista
 
 ```python
 import subprocess
 
 r = subprocess.run(["systemctl", "is-active", "cron"], capture_output=True, text=True, timeout=10)
-r.returncode        # 0 si está activo, 3 si no (clase 17)
+r.returncode        # 0 si está activo; otro número si no
 r.stdout            # 'active\n'
 r.stderr            # los errores del comando
 ```
@@ -35,9 +60,7 @@ r.stderr            # los errores del comando
 | `check=True` | lanza `CalledProcessError` si el código no es 0 |
 | `timeout=10` | lanza `TimeoutExpired` si tarda más |
 
-Si el programa no existe, `subprocess.run` lanza `FileNotFoundError`.
-
-### Nunca `shell=True` con datos de fuera
+**Nunca `shell=True` con datos de fuera:**
 
 ```python
 archivo = input()                                   # imagina que viene de un usuario o de un archivo
@@ -45,51 +68,11 @@ subprocess.run(f"wc -l {archivo}", shell=True)      # ❌ si archivo = "x; rm -r
 subprocess.run(["wc", "-l", archivo])               # ✅ archivo es SIEMPRE un solo argumento
 ```
 
-Con `shell=True`, el texto pasa por un shell que interpreta `;`, `|`, `$()`… Es la **inyección de comandos**, una de las vulnerabilidades más comunes. Con una lista no hay shell de por medio. Si necesitas un pipe, haz esa parte en Python.
+Con `shell=True`, el texto pasa por un shell que interpreta `;`, `|`, `$()`… Es la **inyección de comandos**, una de las vulnerabilidades más comunes; la verás en el Rómpelo 1. Con una lista no hay shell de por medio. Si necesitas un pipe, haz esa parte en Python.
 
-### Variables de entorno
+🔮 **Predice** el código de salida de `is-active` para `cron` y para un servicio que no existe.
 
-```python
-import os
-
-entorno = os.environ.get("APP_ENV", "desarrollo")   # con valor por defecto
-token = os.environ["API_TOKEN"]                     # obligatoria: KeyError si no existe
-os.environ.get("NO_EXISTE") is None                 # True
-```
-
-Lee la configuración del entorno **al arrancar** y falla pronto, con un mensaje claro, si falta algo obligatorio. Y recuerda la clase 07: un programa hijo hereda una **copia** del entorno. Para pasarle una variable más: `subprocess.run([...], env={**os.environ, "APP_ENV": "pruebas"})`.
-
-### `shutil`
-
-| Función | Equivale a |
-|---------|------------|
-| `shutil.copy2(origen, destino)` | `cp -p` (conserva fechas) |
-| `shutil.copytree(a, b)` | `cp -r` |
-| `shutil.move(a, b)` | `mv` |
-| `shutil.rmtree(carpeta)` | `rm -rf` (con el mismo peligro) |
-| `shutil.which("docker")` | `command -v docker` |
-| `shutil.disk_usage("/")` | `df` |
-| `shutil.make_archive(base, "gztar", root_dir, base_dir)` | `tar -czf base.tar.gz -C root_dir base_dir` |
-
-### ¿Bash o Python?
-
-| Bash si… | Python si… |
-|----------|------------|
-| encadenas comandos del sistema | hay lógica, datos o estructuras (listas, diccionarios) |
-| cabe en unas 50 líneas | crece, o lo van a mantener otros |
-| es el *entrypoint* de un contenedor o un paso corto de CI | hablas con una API, parseas JSON o YAML |
-| no necesitas pruebas | necesitas pruebas automáticas y buen manejo de errores |
-
-No es una competición: un buen ingeniero usa los dos, y a menudo uno llama al otro.
-
-## Práctica guiada
-
-```bash
-source ~/my-devops-journey/labs/.venv/bin/activate
-mkdir -p ~/my-devops-journey/labs/clase-50 && cd ~/my-devops-journey/labs/clase-50
-```
-
-### 1. Lanzar comandos
+**Pruébalo:**
 
 ```bash
 python
@@ -104,12 +87,33 @@ python
 >>> r = subprocess.run(["systemctl", "is-active", "no-existe"], capture_output=True, text=True)
 >>> r.returncode, r.stdout.strip()
 >>> subprocess.run(["ls", "/no-existe"], capture_output=True, text=True).stderr
+>>> subprocess.run(["echo", "hola; uname"]).returncode
 >>> exit()
 ```
 
-🔮 **Predice** el código de salida de `is-active` para `cron` y para `no-existe` (clase 17).
+👀 **Qué deberías ver:** `(0, '7.0.0-…')` con la versión de tu kernel; `(0, 'active')` para `cron`; `(4, 'inactive')` para `no-existe` (un servicio que existe pero está parado da 3; uno que no existe, 4); el mensaje de error de `ls` como texto, `"ls: no se puede acceder a '/no-existe': No existe el archivo o directorio\n"`; y `hola; uname` tal cual, seguido de `0`: con una lista, el `;` es solo texto y `uname` no se ejecuta.
 
-### 2. Errores de `subprocess`
+✋ **Sin mirar:** ¿qué parámetro hace que `r.stdout` sea texto y no bytes?
+
+<details>
+<summary>Comprueba</summary>
+
+`text=True`. Sin él, recibes bytes (`b'Linux\n'`), como verás en el Rómpelo 2.
+</details>
+
+**En resumen:** `subprocess.run([...], capture_output=True, text=True, timeout=…)` y miras `returncode`, `stdout` y `stderr`; la lista evita el shell y la inyección.
+
+### Pieza 2 — Cuando el comando falla
+
+Tres cosas distintas pueden ir mal, y cada una tiene su excepción:
+
+| Qué pasa | Qué obtienes |
+|----------|--------------|
+| el comando sale con un código distinto de 0 | nada especial: `r.returncode`; con `check=True`, `CalledProcessError` |
+| el programa no existe | `FileNotFoundError` |
+| tarda más que el `timeout` | `TimeoutExpired` |
+
+**Pruébalo:**
 
 ```bash
 python -c '
@@ -129,7 +133,33 @@ except subprocess.TimeoutExpired:
 '
 ```
 
-### 3. Configuración desde el entorno
+👀 **Qué deberías ver:** `falló con código 2: ls: no se puede acceder a '/no-existe'…`, `ese programa no existe` y, al cabo de 1 segundo (no de 5), `tardó demasiado`. Ninguna traza: cada error tiene su `except`.
+
+✋ **Sin mirar:** sin `check=True`, ¿lanza `subprocess.run` una excepción cuando el comando sale con código 2?
+
+<details>
+<summary>Comprueba</summary>
+
+No: el código queda en `r.returncode` y eres tú quien lo comprueba. Con `check=True`, lanza `CalledProcessError`.
+</details>
+
+**En resumen:** código distinto de 0 → `returncode` (o `CalledProcessError` con `check=True`); programa inexistente → `FileNotFoundError`; demasiado lento → `TimeoutExpired`.
+
+### Pieza 3 — Configuración desde el entorno
+
+```python
+import os
+
+entorno = os.environ.get("APP_ENV", "desarrollo")   # con valor por defecto
+token = os.environ["API_TOKEN"]                     # obligatoria: KeyError si no existe
+os.environ.get("NO_EXISTE") is None                 # True
+```
+
+Lee la configuración del entorno **al arrancar** y falla pronto, con un mensaje claro, si falta algo obligatorio. Y recuerda la clase 07: un programa hijo hereda una **copia** del entorno. Para pasarle una variable más: `subprocess.run([...], env={**os.environ, "APP_ENV": "pruebas"})`.
+
+🔮 **Predice** qué pasará en cada una de las tres ejecuciones.
+
+**Pruébalo:**
 
 ```bash
 cat > config_env.py <<'EOF'
@@ -151,9 +181,35 @@ DATABASE_URL=sqlite:///vigia.db python config_env.py
 APP_ENV=produccion APP_TIMEOUT=5 DATABASE_URL=postgresql://db:5432/vigia python config_env.py
 ```
 
-Es el patrón de *la aplicación de doce factores*: el mismo código, configurado por el entorno. Lo verás en Docker Compose (fase 5) y en los Secrets de Kubernetes (fase 9).
+👀 **Qué deberías ver:** `Error: falta la variable DATABASE_URL` y `código: 1` (`sys.exit` con un texto lo escribe en stderr y sale con 1); luego `entorno=desarrollo timeout=10.0 base_datos=sqlite:///vigia.db`, con los valores por defecto; y por último `entorno=produccion timeout=5.0 base_datos=postgresql://db:5432/vigia`. El mismo código, configurado solo por el entorno.
 
-### 4. El backup de la clase 20, en Python
+Es el patrón de *la aplicación de doce factores*. Lo verás en Docker Compose (fase 5) y en los Secrets de Kubernetes (fase 9).
+
+✋ **Sin mirar:** ¿qué devuelve `os.environ.get("NO_EXISTE")` si la variable no existe? ¿Y `os.environ["NO_EXISTE"]`?
+
+<details>
+<summary>Comprueba</summary>
+
+`get` devuelve `None` (o el valor por defecto que le pases); con corchetes, lanza `KeyError`.
+</details>
+
+**En resumen:** `os.environ.get("X", "defecto")` para lo opcional; `os.environ["X"]` con su `except KeyError` para lo obligatorio, al arrancar.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, lo primero: `source ~/my-devops-journey/labs/.venv/bin/activate` y `cd ~/my-devops-journey/labs/clase-50`.
+
+### Pieza 4 — `shutil`: el backup de la clase 20, en Python
+
+| Función | Equivale a |
+|---------|------------|
+| `shutil.copy2(origen, destino)` | `cp -p` (conserva fechas) |
+| `shutil.copytree(a, b)` | `cp -r` |
+| `shutil.move(a, b)` | `mv` |
+| `shutil.rmtree(carpeta)` | `rm -rf` (con el mismo peligro) |
+| `shutil.which("docker")` | `command -v docker` |
+| `shutil.disk_usage("/")` | `df` |
+| `shutil.make_archive(base, "gztar", root_dir, base_dir)` | `tar -czf base.tar.gz -C root_dir base_dir` |
+
+**Pruébalo:**
 
 ```bash
 cat > backup.py <<'EOF'
@@ -218,9 +274,27 @@ ls copias
 tar -tzf "$(ls -t copias/*.tar.gz | head -1)"
 ```
 
-🔮 **Predice:** ¿desaparece la copia "vieja"? Compara este script con tu `backup.sh`: hace lo mismo, con más líneas, pero cada pieza es una función que podrías probar por separado (clase 52), y los errores y los argumentos se tratan con las herramientas de las clases 44 y 48. Para algo tan corto, el de Bash era razonable; si mañana hay que subir la copia a S3 (fase 6), el de Python crece mejor.
+🔮 **Predice:** ¿desaparece la copia "vieja" que fabricas con `touch -d "8 days ago"`?
 
-### 5. Un informe de salud en JSON
+👀 **Qué deberías ver:** cada ejecución, `[INFO] creado …/copias/datos-<fecha>.tar.gz (0.2 KB)` y la línea de rotación: la primera vez, `0 copias…`; la segunda, `1 copias de más de 7 días borradas`. En `ls copias` quedan solo las dos copias de hoy, y dentro, `datos/` y `datos/a.txt`.
+
+Compara este script con tu `backup.sh`: hace lo mismo, con más líneas, pero cada parte es una función que podrías probar por separado (clase 52), y los errores y los argumentos se tratan con las herramientas de las clases 44 y 48.
+
+✋ **Sin mirar:** ¿qué comando de Bash equivale a `shutil.which("docker")`?
+
+<details>
+<summary>Comprueba</summary>
+
+`command -v docker`: devuelve la ruta del programa, o `None` en Python si no está instalado.
+</details>
+
+**En resumen:** `shutil` hace en Python lo de `cp`, `mv`, `rm -rf`, `tar` y `df`; con `argparse` y `logging`, un backup completo.
+
+### Pieza 5 — Un informe de salud en JSON, y ¿Bash o Python?
+
+Este programa junta todo lo de hoy: `subprocess` para los servicios, `shutil` para el disco y las herramientas, y `os` para la carga.
+
+**Pruébalo:**
 
 ```bash
 cat > salud.py <<'EOF'
@@ -253,7 +327,42 @@ python salud.py
 python salud.py | jq '.servicios'
 ```
 
-Este informe en JSON lo puede consumir otro programa, una API o un sistema de monitoreo. Es la idea de un agente de monitoreo, en 25 líneas.
+👀 **Qué deberías ver:** un JSON con el nombre de tu equipo, la carga, las CPU, el porcentaje de disco usado, y `true` o `false` en cada servicio y herramienta según lo que tengas instalado y en marcha (`cron` estará en `true`). `jq` lo lee sin problema: este informe lo puede consumir otro programa, una API o un sistema de monitoreo. Es la idea de un agente de monitoreo, en 25 líneas.
+
+Hoy has escrito en Python cosas que ya sabías hacer en Bash. ¿Cuándo usar cada uno?
+
+| Bash si… | Python si… |
+|----------|------------|
+| encadenas comandos del sistema | hay lógica, datos o estructuras (listas, diccionarios) |
+| cabe en unas 50 líneas | crece, o lo van a mantener otros |
+| es el *entrypoint* de un contenedor o un paso corto de CI | hablas con una API, parseas JSON o YAML |
+| no necesitas pruebas | necesitas pruebas automáticas y buen manejo de errores |
+
+No es una competición: un buen ingeniero usa los dos, y a menudo uno llama al otro. Para algo tan corto como el backup, el de Bash era razonable; si mañana hay que subir la copia a S3 (fase 6), el de Python crece mejor.
+
+✋ **Sin mirar:** tienes que leer la respuesta JSON de una API, filtrarla y guardar un CSV. ¿Bash o Python?
+
+<details>
+<summary>Comprueba</summary>
+
+Python: hay datos, estructuras y una API, y seguramente querrás pruebas.
+</details>
+
+**En resumen:** `subprocess`, `shutil` y `os` juntos dan un informe del sistema en JSON; Bash para encadenar comandos cortos, Python cuando hay datos, lógica o pruebas.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `subprocess.run(["cmd", "arg"], capture_output=True, text=True, timeout=10)` | lanzar un comando y capturar su salida |
+| `r.returncode` · `r.stdout` · `r.stderr` | el código, la salida, los errores |
+| `check=True` → `CalledProcessError` · `FileNotFoundError` · `TimeoutExpired` | los tres fallos |
+| `env={**os.environ, "X": "valor"}` | pasar una variable más al hijo |
+| `os.environ.get("X", "defecto")` · `os.environ["X"]` | variable opcional · obligatoria (`KeyError`) |
+| `shutil.copy2` · `copytree` · `move` · `rmtree` | `cp -p` · `cp -r` · `mv` · `rm -rf` |
+| `shutil.which("git")` · `shutil.disk_usage("/")` | `command -v` · `df` |
+| `shutil.make_archive(base, "gztar", root_dir=…, base_dir=…)` | un `.tar.gz` |
+| ❌ `shell=True` con datos de fuera | inyección de comandos |
 
 ## Rómpelo
 
@@ -289,18 +398,83 @@ Si la variable no existe, `Path("")` es la carpeta **actual**. Un `shutil.rmtree
 
 ## Reto
 
-1. Mejora `salud.py`: que salga con 1 si algún servicio de la lista está parado o el disco pasa del 90 %, y con 0 si todo va bien, y que la lista de servicios se pueda pasar con `--servicios cron ssh` (`nargs="+"` en `argparse`).
-2. `git_resumen.py <carpeta>`: con `subprocess`, muestra la rama actual (`git rev-parse --abbrev-ref HEAD`), el último commit (`git log -1 --format=%s`) y si hay cambios sin guardar (`git status --porcelain`). Pruébalo con tu repo del curso y con una carpeta que no sea un repo, y sin trazas.
-3. Haz que `backup.py` lea el destino por defecto de la variable de entorno `BACKUP_DIR` si existe.
+En `labs/clase-50/`. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** Mejora `salud.py`: que salga con 1 si algún servicio de la lista está parado o el disco pasa del 90 %, y con 0 si todo va bien, y que la lista de servicios se pueda pasar con `--servicios cron ssh`.
+
+> 🧩 **Ejemplo resuelto:** la opción `--dias` de `backup.py` (`parser.add_argument("--dias", type=int, default=7)`) y su `sys.exit(main())`.
+
+**Ahora tú, con huecos** (añade `import argparse` e `import sys` arriba):
+```python
+parser = argparse.ArgumentParser(prog="salud")
+parser.add_argument("--servicios", nargs="____", default=["cron", "ssh"])
+args = parser.parse_args()
+# … en el diccionario informe:
+    "servicios": {s: servicio_activo(s) for s in args.____},
+# … al final, después del print:
+problemas = [s for s, ok in informe["servicios"].items() if not ____]
+if informe["disco_uso_pct"] > ____:
+    problemas.append("disco")
+sys.exit(1 if problemas else ____)
+```
+
+<details>
+<summary>Pista</summary>
+
+`nargs="+"` acepta uno o más valores después de la opción y te los da como lista. Pruébalo con `python salud.py --servicios cron no-existe ; echo $?`.
+</details>
+
+**2.** `git_resumen.py <carpeta>`: con `subprocess`, muestra la rama actual (`git rev-parse --abbrev-ref HEAD`), el último commit (`git log -1 --format=%s`) y si hay cambios sin guardar (`git status --porcelain`). Pruébalo con tu repo del curso y con una carpeta que no sea un repo, y sin trazas.
+
+> 🧩 **Ejemplo resuelto:** `servicio_activo` de la pieza 5: una función que lanza un comando y decide según `returncode`.
+
+**Ahora tú, con huecos:**
+```python
+def git(carpeta: str, argumentos: list[str]) -> str:
+    r = subprocess.run(["git", "-C", carpeta] + argumentos, capture_output=____, text=____)
+    if r.returncode != ____:
+        raise RuntimeError(r.stderr.strip())
+    return r.stdout.strip()
+
+
+carpeta = sys.argv[1] if len(sys.argv) > 1 else "."
+try:
+    rama = git(carpeta, ["rev-parse", "--abbrev-ref", "HEAD"])
+    ultimo = git(carpeta, ["log", "-1", "--format=%s"])
+    cambios = git(carpeta, ["status", "--porcelain"])
+except RuntimeError as e:
+    sys.exit(f"Error: {e}")
+print(f"rama {rama} · último commit: {ultimo} · {'con cambios' if ____ else 'limpio'}")
+```
+
+<details>
+<summary>Pista</summary>
+
+`git -C carpeta` ejecuta git como si estuvieras en esa carpeta. `git status --porcelain` no imprime nada si no hay cambios, y un texto vacío es falso en un `if`.
+</details>
+
+**3.** Haz que `backup.py` lea el destino por defecto de la variable de entorno `BACKUP_DIR` si existe.
+
+> 🧩 **Ejemplo resuelto:** `entorno = os.environ.get("APP_ENV", "desarrollo")` de la pieza 3.
+
+**Ahora tú, con huecos:** `import ____` arriba, y en `main`, `parser.add_argument("--destino", type=Path, default=Path(os.environ.get("____") or Path.home() / "backups"))`.
+
+<details>
+<summary>Pista</summary>
+
+El `or` cubre también una `BACKUP_DIR` que exista pero esté vacía: `Path("")` sería la carpeta actual (Rómpelo 3). Pruébalo con `BACKUP_DIR=otras python backup.py datos` y `ls otras`.
+</details>
 
 ## Cierre
 
 En `notas/fase-4/clase-50.md`:
 
-1. ¿Por qué se pasan los argumentos de `subprocess.run` como lista y no como un texto con `shell=True`?
-2. ¿Qué diferencia hay entre `os.environ.get("X", "valor")` y `os.environ["X"]`? ¿Cuándo usas cada uno?
-3. Da dos situaciones en las que elegirías Bash y dos en las que elegirías Python.
-4. **Repaso (clase 49, sin mirar):** ¿por qué toda petición con `requests` debe llevar `timeout`?
+1. ¿Por qué se pasan los argumentos de `subprocess.run` como lista y no como un texto con `shell=True`? *(2 líneas. Empieza así: «Con una lista, cada elemento llega como un argumento exacto, sin pasar por un shell; con `shell=True`…»)*
+2. ¿Qué diferencia hay entre `os.environ.get("X", "valor")` y `os.environ["X"]`? ¿Cuándo usas cada uno? *(2 líneas. Empieza así: «`get` devuelve… si no existe; con corchetes… Uso `get` para… y los corchetes para…»)*
+3. Da dos situaciones en las que elegirías Bash y dos en las que elegirías Python. *(2 líneas. Empieza así: «Bash: … y …. Python: … y ….»)*
+4. **Repaso (clase 49, sin mirar):** ¿por qué toda petición con `requests` debe llevar `timeout`? *(1–2 líneas. Empieza así: «Porque sin `timeout`…»)*
+
+Después, escríbeme `examíname clase-50`.
 
 ## Autocorrección
 
@@ -315,25 +489,11 @@ En `notas/fase-4/clase-50.md`:
 
 **4.** Porque sin `timeout` puede esperar indefinidamente a un servidor que no responde, y el programa (y el cron o el pipeline que lo lanzó) se queda colgado.
 
-**Reto 1 (lo esencial):**
-```python
-parser.add_argument("--servicios", nargs="+", default=["cron", "ssh"])
-...
-problemas = [s for s, ok in informe["servicios"].items() if not ok]
-if informe["disco_uso_pct"] > 90:
-    problemas.append("disco")
-sys.exit(1 if problemas else 0)
-```
+**Reto 1:** `nargs="+"`, `args.servicios`, `if not ok`, `> 90` y `else 0`.
 
-**Reto 2 (lo esencial):**
-```python
-def git(carpeta, *args):
-    r = subprocess.run(["git", "-C", str(carpeta), *args], capture_output=True, text=True)
-    if r.returncode != 0:
-        raise RuntimeError(r.stderr.strip())
-    return r.stdout.strip()
-```
-`git -C carpeta` ejecuta git como si estuvieras en esa carpeta. Fuera de un repo, git sale con 128 y el `RuntimeError` lleva su mensaje (`fatal: not a git repository…`), que muestras sin traza.
+**Reto 2:** `capture_output=True`, `text=True`, `!= 0` y `if cambios`. Fuera de un repo, git sale con 128 y el `RuntimeError` lleva su mensaje (`fatal: no es un repositorio git…`), que muestras sin traza.
+
+**Reto 3:** `import os` y `os.environ.get("BACKUP_DIR")`.
 </details>
 
 ## Inglés

@@ -2,6 +2,22 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** B. Python para operaciones
 
+> 💡 **La idea de hoy:** la nube se maneja con APIs, y hablar con ellas desde un programa es hacer peticiones HTTP. Con `requests` cada petición es una línea, pero hay que distinguir dos cosas que en Vigía v0 se veían igual: que el servidor **responda con un error** (404, 500, 503) y que **no haya respuesta** (el nombre no resuelve, la conexión se rechaza o nadie contesta a tiempo). Lo primero llega como un `status_code`; lo segundo, como una excepción. Y toda petición lleva `timeout`.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Los métodos y los códigos de estado HTTP, las redirecciones 3xx y los certificados TLS (clase 32).
+> - Vigía v0: `curl -w '%{http_code}'`, que da `000` cuando no hay respuesta (clase 21).
+> - Los reintentos con espera creciente de Bash (clase 18).
+> - `try`/`except` y que una excepción puede heredar de otra (clase 44); el entorno virtual con `requests` instalado (clase 46).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **petición / respuesta** (*request / response*): lo que envías al servidor y lo que te devuelve.
+> - **`timeout`**: el máximo de segundos que esperas una respuesta.
+> - **redirección**: una respuesta 3xx que te manda a otra URL (cabecera `Location`).
+> - **límite de peticiones** (*rate limit*): cuántas peticiones te deja hacer una API por hora.
+> - **`User-Agent`**: la cabecera que dice qué programa hace la petición.
+> - **backoff exponencial**: esperar cada vez el doble entre reintentos (1 s, 2 s, 4 s…).
+
 ## Objetivo
 
 - Hacer peticiones HTTP con `requests`: parámetros, cabeceras, *timeout*, código de estado y cuerpo JSON.
@@ -13,9 +29,22 @@
 
 La nube se maneja con APIs: AWS, GitHub, Docker Hub, Slack, el monitoreo… Todo lo que haces en una consola web tiene una API detrás, y automatizar consiste en hablar con ella desde un programa. Además, `requests` es el corazón de Vigía v1: cada chequeo es una petición HTTP cuyo resultado hay que clasificar bien, incluso cuando no llega respuesta.
 
-## Teoría
+## Cómo va esta clase
 
-### Una petición
+Seis piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. La 5 junta todo en la función que usará Vigía.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 35 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
+
+```bash
+source ~/my-devops-journey/labs/.venv/bin/activate
+mkdir -p ~/my-devops-journey/labs/clase-49 && cd ~/my-devops-journey/labs/clase-49
+```
+
+`requests` ya está en tu entorno desde la clase 46. Necesitas conexión a internet.
+
+## Las piezas
+
+### Pieza 1 — Una petición, siempre con `timeout`
 
 ```python
 import requests
@@ -31,15 +60,65 @@ datos["default_branch"]         # 'main'
 r.elapsed.total_seconds()       # cuánto tardó la respuesta
 ```
 
-`params={"per_page": 5}` añade `?per_page=5` a la URL, ya codificado. Para enviar datos, `requests.post(url, json={...})`. Repasa en la clase 32 los métodos y los códigos de estado.
+- `params={"per_page": 5}` añade `?per_page=5` a la URL, ya codificado. Para enviar datos, `requests.post(url, json={...})`.
+- **Toda petición lleva `timeout`.** Sin él, `requests` espera **indefinidamente** a que el servidor responda, y un servidor colgado colgaría tu programa (y tu cron, y tu pipeline). Puede ser un número (`timeout=10`) o una pareja `(conectar, leer)`: `timeout=(3, 10)`.
+- Un programa educado **se identifica** con la cabecera `User-Agent`. La de `requests` es genérica (`python-requests/2.34.2`) y algunos sitios la bloquean para frenar robots (Rómpelo 6). Para un programa tuyo, usa una propia: `headers={"User-Agent": "Vigia/1.0 (+https://github.com/TU_USUARIO/vigia)"}`.
 
-Un programa educado **se identifica**: la cabecera `User-Agent` dice quién hace la petición. La de `requests` es genérica (`python-requests/2.34.2`), y algunos sitios la bloquean para frenar robots (Rómpelo 6). Para un programa tuyo, usa una propia: `headers={"User-Agent": "Vigia/1.0 (+https://github.com/TU_USUARIO/vigia)"}`.
+**Pruébalo:**
 
-### Siempre con `timeout`
+```bash
+python
+```
 
-Sin `timeout`, `requests` espera **indefinidamente** a que el servidor responda. Un servidor colgado colgaría tu programa (y tu cron, y tu pipeline). La regla no tiene excepciones: **toda petición lleva `timeout`**. Puede ser un número (`timeout=10`) o una pareja `(conectar, leer)`: `timeout=(3, 10)`.
+```python
+>>> import requests
+>>> r = requests.get("https://example.com", timeout=10)
+>>> r.status_code, r.ok, r.headers["Content-Type"]
+>>> r.elapsed.total_seconds()
+>>> r.text[:60]
+```
 
-### Dos clases de "fallo"
+👀 **Qué deberías ver:** `(200, True, 'text/html; charset=utf-8')`; un tiempo de unas décimas de segundo; y el principio del HTML, que empieza por `<!doctype html>`. Esta página no es JSON: `r.text` es el cuerpo como texto. No salgas todavía del intérprete.
+
+✋ **Sin mirar:** ¿qué añade `params={"per_page": 5}` a la URL?
+
+<details>
+<summary>Comprueba</summary>
+
+`?per_page=5`, ya codificado: no tienes que montar la URL a mano.
+</details>
+
+**En resumen:** `requests.get(url, timeout=…)` devuelve una respuesta con `status_code`, `headers`, `text` y `.json()`; sin `timeout`, nunca.
+
+### Pieza 2 — Redirecciones
+
+`requests.get` sigue las redirecciones por defecto: pides `http://github.com`, recibes un 301 y `requests` va solo a `https://github.com/` y te da el 200 final. `r.history` guarda los pasos intermedios. Con `allow_redirects=False` te quedas con el 301. Vigía hará esto último, para que un 3xx cuente como UP igual que en la v0.
+
+🔮 **Predice** qué códigos verás con y sin `allow_redirects=False`.
+
+**Pruébalo** (en el mismo intérprete):
+
+```python
+>>> r = requests.get("http://github.com", timeout=10)
+>>> r.status_code, r.url, [paso.status_code for paso in r.history]
+>>> r = requests.get("http://github.com", timeout=10, allow_redirects=False)
+>>> r.status_code, r.headers["Location"]
+>>> exit()
+```
+
+👀 **Qué deberías ver:** `(200, 'https://github.com/', [301])`: el 301 quedó en el historial. Y sin seguir la redirección, `(301, 'https://github.com/')`: la cabecera `Location` dice adónde ir.
+
+✋ **Sin mirar:** pides `http://github.com` sin más opciones. ¿Qué `status_code` recibes, y dónde quedó el 301?
+
+<details>
+<summary>Comprueba</summary>
+
+200, el de la página final. El 301 quedó en `r.history`.
+</details>
+
+**En resumen:** `requests` sigue las redirecciones solo; `allow_redirects=False` te da la respuesta 3xx tal cual.
+
+### Pieza 3 — Dos clases de "fallo"
 
 | Qué pasa | Qué hace `requests` | En Vigía v0 era |
 |----------|---------------------|-----------------|
@@ -63,58 +142,46 @@ except RequestException:         # cualquier otro problema de requests
     ...
 ```
 
-El orden importa: `ConnectTimeout` es a la vez `Timeout` **y** `ConnectionError`. Python usa el primer `except` que encaja, así que si pusieras `ConnectionError` primero, un tiempo agotado al conectar se clasificaría como "conexión fallida".
+El orden importa: `ConnectTimeout` es a la vez `Timeout` **y** `ConnectionError`. Python usa el primer `except` que encaja, así que si pusieras `ConnectionError` primero, un tiempo agotado al conectar se clasificaría como "conexión fallida" (lo verás en el Rómpelo 2).
 
-### Redirecciones
+🔮 **Predice** qué imprimirá cada URL: una página que no existe, un dominio que no existe y una IP de documentación (192.0.2.1) a la que nadie responde.
 
-`requests.get` sigue las redirecciones por defecto: pides `http://github.com`, recibes un 301 y `requests` va solo a `https://github.com/` y te da el 200 final (`r.history` guarda los pasos intermedios). Con `allow_redirects=False` te quedas con el 301. Vigía hará esto último, para que un 3xx cuente como UP igual que en la v0.
+**Pruébalo:**
 
-### Reintentar con cabeza
-
-```python
-for intento in range(1, 4):
+```bash
+python -c '
+import requests
+from requests.exceptions import ConnectionError, Timeout
+for url in ["https://example.com/no-existe", "https://no-existe.invalid", "http://192.0.2.1"]:
     try:
-        r = requests.get(url, timeout=5)
-        break
-    except (Timeout, ConnectionError):
-        if intento == 3:
-            raise
-        time.sleep(2 ** intento)          # 2, 4… segundos: backoff exponencial (clase 18)
+        r = requests.get(url, timeout=3)
+        print(url, "→ respuesta", r.status_code)
+    except Timeout as e:
+        print(url, "→ excepción", type(e).__name__)
+    except ConnectionError as e:
+        print(url, "→ excepción", type(e).__name__)
+'
 ```
 
-Reintenta solo lo que es seguro repetir (un `GET`) y ante fallos que pueden ser pasajeros (red, tiempo agotado, un 503). Nunca reintentes sin límite.
+👀 **Qué deberías ver:** `→ respuesta 404` para la primera: el servidor contestó. `→ excepción ConnectionError` para la segunda, al instante: el nombre no resuelve. Y `→ excepción ConnectTimeout` para la tercera, a los 3 segundos.
 
-## Práctica guiada
+✋ **Sin mirar:** ¿un 500 hace que `requests.get` lance una excepción?
 
-```bash
-source ~/my-devops-journey/labs/.venv/bin/activate
-mkdir -p ~/my-devops-journey/labs/clase-49 && cd ~/my-devops-journey/labs/clase-49
-```
+<details>
+<summary>Comprueba</summary>
 
-`requests` ya está en tu entorno desde la clase 46.
+No: devuelve la respuesta con `status_code=500`. Solo `r.raise_for_status()` la convierte en `HTTPError`.
+</details>
 
-### 1. Una petición desde el intérprete
+**En resumen:** los códigos de error llegan como respuesta; la falta de respuesta llega como excepción, y `Timeout` se captura antes que `ConnectionError`.
 
-```bash
-python
-```
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, lo primero: `source ~/my-devops-journey/labs/.venv/bin/activate` y `cd ~/my-devops-journey/labs/clase-49`.
 
-```python
->>> import requests
->>> r = requests.get("https://example.com", timeout=10)
->>> r.status_code, r.ok, r.headers["Content-Type"]
->>> r.elapsed.total_seconds()
->>> r.text[:60]
->>> r = requests.get("http://github.com", timeout=10)
->>> r.status_code, r.url, [paso.status_code for paso in r.history]
->>> r = requests.get("http://github.com", timeout=10, allow_redirects=False)
->>> r.status_code, r.headers["Location"]
->>> exit()
-```
+### Pieza 4 — Una API pública: GitHub
 
-🔮 **Predice** qué códigos verás con y sin `allow_redirects=False`.
+La API de GitHub sin autenticar permite **60 peticiones por hora** desde tu IP; las cabeceras `X-RateLimit-Limit` y `X-RateLimit-Remaining` te dicen cuántas te quedan. Este programa pide los datos de un repositorio y trata los dos tipos de fallo de la pieza 3.
 
-### 2. Una API pública: GitHub
+**Pruébalo:**
 
 ```bash
 cat > repo_github.py <<'EOF'
@@ -160,7 +227,7 @@ python repo_github.py torvalds linux
 python repo_github.py EduardoGua no-existe-este-repo ; echo "código: $?"
 ```
 
-La API sin autenticar permite 60 peticiones por hora desde tu IP; las cabeceras `X-RateLimit-*` te dicen cuántas te quedan. `dueno` y `repo` toman los argumentos si los hay y, si no, unos valores por defecto (en la clase 48 lo harías con `argparse`).
+👀 **Qué deberías ver:** una línea con el nombre, la rama, las estrellas y la fecha del último push de tu repositorio y del de Linux, cada una precedida de `(te quedan … peticiones de 60 esta hora)`; y para el repositorio que no existe, `Error: GitHub respondió 404 para EduardoGua/no-existe-este-repo` y `código: 1`, sin traza. `dueno` y `repo` toman los argumentos si los hay y, si no, unos valores por defecto (con lo de la clase 48 lo harías con `argparse`).
 
 Ahora el criterio de salida: **corta la red** (desactiva el wifi o desenchufa el cable) y vuelve a ejecutarlo.
 
@@ -168,9 +235,23 @@ Ahora el criterio de salida: **corta la red** (desactiva el wifi o desenchufa el
 python repo_github.py ; echo "código: $?"
 ```
 
-Sale `Error de red: ConnectionError. ¿Hay conexión?` y código 1, sin traza. Vuelve a conectar la red.
+👀 **Qué deberías ver:** `Error de red: ConnectionError. ¿Hay conexión?` y `código: 1`, sin traza. Vuelve a conectar la red.
 
-### 3. Revisar una URL como lo hará Vigía
+✋ **Sin mirar:** ¿qué cabecera te dice cuántas peticiones te quedan en la API de GitHub?
+
+<details>
+<summary>Comprueba</summary>
+
+`X-RateLimit-Remaining` (y `X-RateLimit-Limit`, el total por hora: 60 sin autenticar).
+</details>
+
+**En resumen:** con `raise_for_status()` y dos `except` (`HTTPError` y `RequestException`) un programa sobrevive a un 404 y a un corte de red con un mensaje claro.
+
+### Pieza 5 — Revisar una URL como lo hará Vigía
+
+La función `revisar` junta todo: `timeout`, sin seguir redirecciones, los `except` en el orden correcto y un diccionario con el resultado. `time.perf_counter()` mide el tiempo también cuando no hubo respuesta (y no hay `r.elapsed`).
+
+**Pruébalo:**
 
 ```bash
 cat > revisar.py <<'EOF'
@@ -208,9 +289,38 @@ time python revisar.py https://example.com https://example.com/no-existe http://
   https://no-existe.invalid http://192.0.2.1 example.com
 ```
 
-🔮 **Predice** la línea de cada URL y el tiempo total. La última, `example.com` sin `https://`, no es una URL completa: `requests` lanza `MissingSchema`, que cae en el `except RequestException`. Vigía v1 la rechazará antes, al validar la configuración.
+🔮 **Predice** la línea de cada URL y el tiempo total.
 
-### 4. Reintentos con espera creciente
+👀 **Qué deberías ver:** `200 UP` para `example.com`; `404 DOWN` con `error: None` para la página que no existe (el servidor contestó); `301 UP` para `http://github.com`; `0 DOWN` con `error: 'connection'` para el dominio que no existe; `0 DOWN` con `error: 'timeout'` y unos 3 segundos para 192.0.2.1; y `0 DOWN` con `error: 'MissingSchema'` para la última. `example.com` sin `https://` no es una URL completa: `requests` lanza `MissingSchema`, que cae en el `except RequestException`. Vigía v1 la rechazará antes, al validar la configuración. En total, unos 4 segundos: casi todo es la espera de 192.0.2.1.
+
+✋ **Sin mirar:** en `revisar`, ¿qué `codigo`, `estado` y `error` devuelve una URL cuyo nombre no resuelve?
+
+<details>
+<summary>Comprueba</summary>
+
+`codigo` 0, `estado` `DOWN` y `error` `'connection'`: el mismo `000 … DOWN` de Vigía v0, pero ahora con el motivo.
+</details>
+
+**En resumen:** `revisar` devuelve siempre un diccionario: con respuesta, su código; sin respuesta, código 0 y el motivo en `error`.
+
+### Pieza 6 — Reintentar con cabeza
+
+```python
+for intento in range(1, 4):
+    try:
+        r = requests.get(url, timeout=5)
+        break
+    except (Timeout, ConnectionError):
+        if intento == 3:
+            raise
+        time.sleep(2 ** intento)          # 2, 4… segundos: backoff exponencial (clase 18)
+```
+
+Reintenta solo lo que es seguro repetir (un `GET`) y ante fallos que pueden ser pasajeros (red, tiempo agotado, un 503). Nunca reintentes sin límite.
+
+🔮 **Predice** cuánto tardará la segunda ejecución: 3 intentos de 2 s más esperas de 1 y 2 s.
+
+**Pruébalo:**
 
 ```bash
 cat > con_reintentos.py <<'EOF'
@@ -243,7 +353,31 @@ python con_reintentos.py https://example.com
 time python con_reintentos.py http://192.0.2.1 ; echo "código: $?"
 ```
 
-🔮 **Predice** cuánto tardará la segunda: 3 intentos de 2 s más esperas de 1 y 2 s, unos 9 segundos.
+👀 **Qué deberías ver:** `respuesta: 200` a la primera. En la segunda, `intento 1/3: ConnectTimeout`, `intento 2/3…` e `intento 3/3…`, luego `no respondió tras los reintentos`, unos 9 segundos en total y `código: 1`.
+
+✋ **Sin mirar:** ¿qué peticiones es seguro reintentar, y ante qué fallos?
+
+<details>
+<summary>Comprueba</summary>
+
+Las que se pueden repetir sin efectos extra, como un `GET`, y ante fallos pasajeros: red, tiempo agotado o un 503. Siempre con un número máximo de intentos.
+</details>
+
+**En resumen:** un bucle con `try`, `time.sleep(2 ** …)` entre intentos y un `raise` en el último: reintentos con límite y espera creciente.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `requests.get(url, timeout=10)` | una petición; el `timeout`, siempre |
+| `params={…}` · `headers={…}` · `requests.post(url, json={…})` | parámetros · cabeceras · enviar JSON |
+| `r.status_code` · `r.ok` · `r.headers[…]` · `r.text` · `r.json()` · `r.elapsed` | leer la respuesta |
+| `allow_redirects=False` · `r.history` | no seguir redirecciones · los pasos seguidos |
+| `r.raise_for_status()` | convertir un 4xx/5xx en `HTTPError` |
+| `except Timeout` → `except ConnectionError` → `except RequestException` | los fallos sin respuesta, en este orden |
+| `time.perf_counter()` | medir el tiempo, haya o no respuesta |
+| `time.sleep(2 ** (intento - 1))` | backoff exponencial entre reintentos |
+| `headers={"User-Agent": "Vigia/1.0 (+…)"}` | identificar tu programa |
 
 ## Rómpelo
 
@@ -304,18 +438,72 @@ Comprobado en octubre de 2026: **403** con el `User-Agent` de `requests` y **200
 
 ## Reto
 
-1. `repos_usuario.py <usuario>`: lista los repositorios públicos de un usuario de GitHub (`/users/<usuario>/repos`, con `params={"per_page": 100}`), ordenados por estrellas, con nombre, estrellas y lenguaje. Si el usuario no existe, mensaje claro y código 1; si no hay red, otro mensaje y código 1; nunca una traza.
-2. Modifica `revisar.py` para que lea las URLs de un `config.yaml` como el de la clase 47 (`urls` y `timeout`) y muestre una tabla alineada en lugar de diccionarios.
-3. ¿Qué devuelve `revisar("https://expired.badssl.com/")`? Explica por qué, para un usuario, ese sitio está caído aunque el servidor funcione.
+En `labs/clase-49/`. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** `repos_usuario.py <usuario>`: lista los repositorios públicos de un usuario de GitHub, ordenados por estrellas, con nombre, estrellas y lenguaje. Si el usuario no existe, mensaje claro y código 1; si no hay red, otro mensaje y código 1; nunca una traza.
+
+> 🧩 **Ejemplo resuelto:** `datos_repo` y `main` de la pieza 4: piden `/repos/{dueno}/{repo}` y tratan el 404 y el corte de red.
+
+**Ahora tú, con huecos** (la parte central, dentro de un `try` con `except requests.exceptions.RequestException`, como en `main`):
+```python
+r = requests.get(f"https://api.github.com/users/{usuario}/____",
+                 params={"per_page": ____}, timeout=10)
+if r.status_code == ____:
+    print(f"Error: el usuario {usuario} no existe", file=sys.stderr)
+    return 1
+r.raise_for_status()
+for repo in sorted(r.json(), key=lambda x: x["____"], reverse=True):
+    print(f"{repo['name']:<30} {repo['stargazers_count']:>6} ★  {repo['language'] or '-'}")
+```
+
+<details>
+<summary>Pista</summary>
+
+La API devuelve 30 repositorios por página si no pides más; el máximo es 100. `repo['language']` puede ser `None`, y por eso el `or '-'`. Ordenar con `key=lambda` es lo de la clase 41.
+</details>
+
+**2.** Modifica `revisar.py` para que lea las URLs de un `config.yaml` como el de la clase 47 (`urls` y `timeout`) y muestre una tabla alineada en lugar de diccionarios.
+
+> 🧩 **Ejemplo resuelto:** la pieza 3 de la clase 47: `with open("config.yaml", encoding="utf-8") as f: config = yaml.safe_load(f)`.
+
+**Ahora tú, con huecos** (sustituye el bloque `if __name__ == "__main__":` y añade `import yaml` arriba):
+```python
+if __name__ == "__main__":
+    with open("config.yaml", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    for url in config["____"]:
+        res = revisar(url, timeout=config["____"])
+        print(f"{res['estado']:<5} {res['codigo']:>3} {res['segundos']:>7.3f} s  {res['url']}  {res['error'] or ''}")
+```
+
+<details>
+<summary>Pista</summary>
+
+Copia el archivo con `cp ../clase-47/config.yaml .`. `:<5` alinea a la izquierda en 5 caracteres y `:>3`, a la derecha (clase 41).
+</details>
+
+**3.** ¿Qué devuelve `revisar("https://expired.badssl.com/")`? Explica por qué, para un usuario, ese sitio está caído aunque el servidor funcione.
+
+> 🧩 **Ejemplo resuelto:** el Rómpelo 5: sin `verify=False`, `requests` rechaza el certificado vencido con `SSLError`.
+
+**Ahora tú, con huecos:** ejecuta `python -c 'from revisar import revisar; print(revisar("https://expired.badssl.com/"))'` y completa: «Devuelve `codigo` ____ y `error` ____, porque `SSLError` hereda de ____. Para un usuario está caído porque el navegador ____».
+
+<details>
+<summary>Pista</summary>
+
+`python -c 'import requests; print(requests.exceptions.SSLError.__mro__)'` muestra de qué clases hereda.
+</details>
 
 ## Cierre
 
 En `notas/fase-4/clase-49.md`:
 
-1. ¿Por qué toda petición debe llevar `timeout`? ¿Qué pasa sin él?
-2. ¿Qué diferencia hay entre recibir un 503 y recibir un `ConnectionError`? ¿Cómo lo trata Vigía?
-3. ¿Por qué el `except Timeout` va antes que el `except ConnectionError`?
-4. **Repaso (clase 48, sin mirar):** ¿por qué los mensajes del log van a stderr y no a stdout?
+1. ¿Por qué toda petición debe llevar `timeout`? ¿Qué pasa sin él? *(2 líneas. Empieza así: «Porque sin `timeout`, requests espera… y mi programa…»)*
+2. ¿Qué diferencia hay entre recibir un 503 y recibir un `ConnectionError`? ¿Cómo lo trata Vigía? *(2–3 líneas. Empieza así: «Un 503 es una respuesta: el servidor contestó… Un `ConnectionError` es que no hubo… Para Vigía los dos son DOWN, pero…»)*
+3. ¿Por qué el `except Timeout` va antes que el `except ConnectionError`? *(1–2 líneas. Empieza así: «Porque `ConnectTimeout` hereda de las dos, y Python…»)*
+4. **Repaso (clase 48, sin mirar):** ¿por qué los mensajes del log van a stderr y no a stdout? *(1–2 líneas. Empieza así: «Para que stdout lleve solo los datos y…»)*
+
+Después, escríbeme `examíname clase-49`.
 
 ## Autocorrección
 
@@ -330,7 +518,7 @@ En `notas/fase-4/clase-49.md`:
 
 **4.** Para que stdout lleve solo los datos (que puedes redirigir a un archivo o pasar por un pipe) y los mensajes no los contaminen. Desde cron, puedes mandar cada flujo a un sitio distinto.
 
-**Reto 1 (la parte central):**
+**Reto 1:** `repos`, `100`, `404` y `stargazers_count`. Completo:
 ```python
 r = requests.get(f"https://api.github.com/users/{usuario}/repos",
                  params={"per_page": 100}, timeout=10)
@@ -342,6 +530,8 @@ for repo in sorted(r.json(), key=lambda x: x["stargazers_count"], reverse=True):
     print(f"{repo['name']:<30} {repo['stargazers_count']:>6} ★  {repo['language'] or '-'}")
 ```
 (dentro de un `try` con `except requests.exceptions.RequestException` para los fallos de red)
+
+**Reto 2:** `config["urls"]` y `config["timeout"]`.
 
 **Reto 3:** `{'codigo': 0, 'estado': 'DOWN', 'error': 'connection', …}`: `requests` rechaza el certificado vencido con `SSLError`, que hereda de `ConnectionError`. Un navegador mostraría un aviso de seguridad y la mayoría de usuarios no podría entrar: para ellos el sitio está caído. Por eso Vigía v0.2 avisa antes de que el certificado venza.
 </details>

@@ -2,6 +2,23 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** A. Python desde cero
 
+> 💡 **La idea de hoy:** casi todo en operaciones es leer un archivo de texto (un log, una lista de servidores) y escribir otro (un informe). Python lo hace en tres pasos: abrir el archivo con `with open(...)`, que lo cierra solo pase lo que pase; tratar cada línea con los métodos de texto (`strip`, `split`…); y manejar las rutas con `pathlib`, que no se rompen con un espacio ni dependen de en qué carpeta estés.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - `>` y `>>` para escribir y añadir a un archivo (clase 04).
+> - Contar campos de un log de nginx con `awk` (clase 05): el mismo `access.log`, hoy en Python.
+> - Leer un archivo línea a línea en Bash y saltar vacías y comentarios (clase 18).
+> - El problema de cron con las rutas relativas (clase 20, pieza 3).
+> - Funciones, `main()` y contar con `get(…, 0) + 1` (clases 41 y 42).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **método de texto**: una función que se usa con un punto: `linea.strip()`, `texto.split()`.
+> - **inmutable**: que no cambia; los textos de Python lo son, y sus métodos devuelven uno nuevo.
+> - **`with open(...) as f`**: abrir un archivo de forma que se cierre solo al salir del bloque.
+> - **modo**: cómo se abre: `"r"` (leer), `"w"` (escribir desde cero) o `"a"` (añadir al final).
+> - **`pathlib`**: el módulo de Python para trabajar con rutas.
+> - **`__file__`**: la ruta del propio script que se está ejecutando.
+
 ## Objetivo
 
 - Manipular texto con los métodos de `str`: `strip`, `split`, `join`, `startswith`, `replace`…
@@ -13,9 +30,19 @@
 
 Gran parte del trabajo de operaciones consiste en leer archivos de texto (logs, configuraciones, listas de servidores) y escribir otros (informes, inventarios). En las clases 05 y 18 lo hiciste con `awk`, `cut` y bucles de Bash. En Python es más legible y mucho más rápido que un bucle de Bash, y con `pathlib` las rutas dejan de ser texto que se rompe con un espacio.
 
-## Teoría
+## Cómo va esta clase
 
-### Métodos de texto
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. La última junta todo con el log de nginx de la clase 05.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 40 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-43 && cd ~/my-devops-journey/labs/clase-43
+```
+
+## Las piezas
+
+### Pieza 1 — Los métodos de texto
 
 | Método | Ejemplo | Resultado |
 |--------|---------|-----------|
@@ -30,7 +57,35 @@ Gran parte del trabajo de operaciones consiste en leer archivos de texto (logs, 
 
 Los textos son **inmutables**: los métodos no cambian el original, devuelven uno nuevo. `nombre.strip()` sin guardar el resultado no hace nada útil.
 
-### Abrir archivos con `with`
+**Pruébalo**, en `python3`, con una línea del log de nginx:
+
+```python
+>>> linea = '203.0.113.6 - - [03/Oct/2026:08:00:08 +0000] "POST /login HTTP/1.1" 200 1879'
+>>> partes = linea.split()
+>>> partes[0], partes[5], partes[6], partes[8]
+>>> metodo = partes[5].strip('"')
+>>> metodo
+>>> " | ".join(["web-01", "web-02"])
+>>> "  https://example.com  \n".strip()
+>>> "https://example.com".startswith(("http://", "https://"))
+>>> exit()
+```
+
+🔮 **Predice** qué hay en `partes[5]` antes de verlo.
+
+👀 **Qué deberías ver:** `('203.0.113.6', '"POST', '/login', '200')`: `split()` corta por espacios, así que la comilla de `"POST` sigue pegada, y `strip('"')` la quita (`'POST'`). Después, `'web-01 | web-02'`, `'https://example.com'` y `True`: `startswith` acepta una tupla, "¿empieza por alguna de estas?".
+
+✋ **Sin mirar:** ¿qué pasa si escribes `nombre.strip()` en una línea, sin guardar el resultado?
+
+<details>
+<summary>Comprueba</summary>
+
+Nada útil: el texto es inmutable, `strip()` devuelve uno nuevo y se pierde. Hay que guardarlo: `nombre = nombre.strip()`.
+</details>
+
+**En resumen:** `strip` limpia los extremos, `split` parte, `join` une y `startswith` pregunta cómo empieza; siempre devuelven un texto nuevo.
+
+### Pieza 2 — Abrir archivos con `with`
 
 ```python
 with open("urls.txt", encoding="utf-8") as f:       # "r" (leer) es el modo por defecto
@@ -44,11 +99,43 @@ with open("historial.log", "a", encoding="utf-8") as f: # "a" añade al final
     print("otra línea", file=f)
 ```
 
-`with` cierra el archivo al salir del bloque, también si hay un error. Es el equivalente a cerrar bien un recurso, y así se trabaja siempre. Los modos recuerdan a la clase 04: `"w"` es como `>` y `"a"` como `>>`.
+`with` cierra el archivo al salir del bloque, también si hay un error. Así se trabaja siempre. Los modos recuerdan a la clase 04: `"w"` es como `>` y `"a"` como `>>`. Escribe siempre `encoding="utf-8"`: así tu programa lee igual tildes y eñes en cualquier sistema.
 
-Escribe siempre `encoding="utf-8"`: así tu programa lee igual tildes y eñes en cualquier sistema.
+**Pruébalo:**
 
-### `pathlib`: rutas que no se rompen
+```bash
+cat > urls.txt <<'EOF'
+# Sitios que quiero vigilar
+https://example.com
+
+   https://www.wikipedia.org
+https://github.com
+EOF
+python3 -c '
+with open("urls.txt", encoding="utf-8") as f:
+    for linea in f:
+        print(f"[{linea.strip()}]")
+with open("historial.log", "w", encoding="utf-8") as f:
+    f.write("primera\n")
+with open("historial.log", "a", encoding="utf-8") as f:
+    print("segunda", file=f)
+'
+cat historial.log
+```
+
+👀 **Qué deberías ver:** cada línea de `urls.txt` entre corchetes y sin espacios en los extremos (también `[]` para la vacía y el comentario, que aún no saltamos); y en `historial.log`, `primera` y `segunda`.
+
+✋ **Sin mirar:** ¿por qué conviene escribir siempre `encoding="utf-8"`?
+
+<details>
+<summary>Comprueba</summary>
+
+Para que el programa lea y escriba igual las tildes y las eñes en cualquier sistema, sin depender de su configuración.
+</details>
+
+**En resumen:** `with open(ruta, modo, encoding="utf-8") as f:`; `"r"` lee, `"w"` empieza de cero y `"a"` añade.
+
+### Pieza 3 — `pathlib`: rutas que no se rompen
 
 ```python
 from pathlib import Path
@@ -66,7 +153,53 @@ for p in curso.glob("fase-*/README.md"):    # comodines, como en Bash
     print(p)
 ```
 
-### Rutas relativas a tu script
+**Pruébalo, primero un informe con fecha:**
+
+```bash
+cat > informe.py <<'EOF'
+from datetime import date
+from pathlib import Path
+
+carpeta = Path("informes")
+carpeta.mkdir(exist_ok=True)
+destino = carpeta / f"informe-{date.today()}.txt"
+lineas = ["web-01 UP", "web-02 DOWN", "db-01 UP"]
+destino.write_text("\n".join(lineas) + "\n", encoding="utf-8")
+print(f"escrito {destino} ({destino.stat().st_size} bytes)")
+print(destino.read_text(encoding="utf-8"))
+EOF
+python3 informe.py
+ls informes/
+```
+
+👀 **Qué deberías ver:** `escrito informes/informe-AAAA-MM-DD.txt (31 bytes)` con la fecha de hoy, sus tres líneas, y el archivo en `informes/`. `date.today()` da la fecha en formato `2026-10-20`, como el `date +%F` de Bash.
+
+**Y recorrer carpetas:**
+
+```bash
+python3 -c '
+from pathlib import Path
+curso = Path.home() / "my-devops-journey"
+for readme in sorted(curso.glob("fase-*/README.md")):
+    print(readme.parent.name, readme.stat().st_size, "bytes")
+'
+```
+
+👀 **Qué deberías ver:** una línea por fase (`fase-1`, `fase-10`, `fase-2`…, en orden alfabético) con el tamaño de su README.
+
+✋ **Sin mirar:** ¿cómo creas con `pathlib` una carpeta, con todas las que falten por el camino, sin error si ya existe?
+
+<details>
+<summary>Comprueba</summary>
+
+`Path("a/b/c").mkdir(parents=True, exist_ok=True)`: lo mismo que `mkdir -p`.
+</details>
+
+**En resumen:** `Path` une rutas con `/` y sabe mirar (`exists`, `stat`), leer y escribir (`read_text`, `write_text`), crear (`mkdir`) y buscar (`glob`).
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+
+### Pieza 4 — Rutas relativas a tu script
 
 Una ruta relativa se resuelve desde la carpeta **actual**, igual que en Bash: desde cron (clase 20), esa carpeta es tu HOME. Para encontrar archivos que viven junto al script:
 
@@ -77,43 +210,9 @@ config = AQUI / "urls.txt"
 
 Es el equivalente en Python del `DIR="$(cd "$(dirname "$0")" && pwd)"` de Vigía v0.
 
-## Práctica guiada
+**Pruébalo: lee la lista de URLs como Vigía**, ignorando vacías y comentarios, y ejecútalo desde dos carpetas distintas.
 
 ```bash
-mkdir -p ~/my-devops-journey/labs/clase-43 && cd ~/my-devops-journey/labs/clase-43
-```
-
-### 1. Métodos de texto
-
-```bash
-python3
-```
-
-```python
->>> linea = '203.0.113.6 - - [03/Oct/2026:08:00:08 +0000] "POST /login HTTP/1.1" 200 1879'
->>> partes = linea.split()
->>> partes[0], partes[5], partes[6], partes[8]
->>> metodo = partes[5].strip('"')
->>> metodo
->>> " | ".join(["web-01", "web-02"])
->>> "  https://example.com  \n".strip()
->>> "https://example.com".startswith(("http://", "https://"))
->>> exit()
-```
-
-🔮 **Predice** qué hay en `partes[5]` antes de verlo. `split()` corta por espacios, así que la comilla de `"POST` sigue pegada. `strip('"')` la quita. `startswith` acepta una tupla: "¿empieza por alguna de estas?".
-
-### 2. Leer una lista de URLs, como Vigía
-
-```bash
-cat > urls.txt <<'EOF'
-# Sitios que quiero vigilar
-https://example.com
-
-   https://www.wikipedia.org
-https://github.com
-EOF
-
 cat > cargar_urls.py <<'EOF'
 #!/usr/bin/env python3
 """cargar_urls.py: lee una lista de URLs ignorando vacías y comentarios."""
@@ -140,9 +239,23 @@ python3 cargar_urls.py
 cd /tmp && python3 ~/my-devops-journey/labs/clase-43/cargar_urls.py; cd -
 ```
 
-La segunda ejecución, desde `/tmp`, funciona igual gracias a `Path(__file__)`. Compara con el bucle `while read` de la clase 18: sin `IFS=`, sin `-r` y sin el truco de la última línea sin salto, porque Python la lee igual.
+👀 **Qué deberías ver:** las tres URLs, sin espacios ni comentarios, **las dos veces**: la segunda, desde `/tmp`, funciona igual gracias a `Path(__file__)`. Compara con el bucle `while read` de la clase 18: sin `IFS=`, sin `-r` y sin el truco de la última línea sin salto, porque Python la lee igual.
 
-### 3. Analizar el log de nginx de la clase 05
+✋ **Sin mirar:** ¿qué es `Path(__file__).resolve().parent`?
+
+<details>
+<summary>Comprueba</summary>
+
+La carpeta donde está el propio script, en ruta absoluta, se ejecute desde donde se ejecute.
+</details>
+
+**En resumen:** para los archivos que acompañan al script, `Path(__file__).resolve().parent / "archivo"`; así funciona igual desde cron.
+
+### Pieza 5 — Todo junto: analizar el log de nginx de la clase 05
+
+Leer línea a línea con `with`, partir con `split`, contar con un diccionario y encontrar el archivo con `pathlib`.
+
+**Pruébalo:**
 
 ```bash
 cat > analizar_log.py <<'EOF'
@@ -179,39 +292,34 @@ EOF
 time python3 analizar_log.py
 ```
 
-🔮 **Predice** los totales: son los mismos que dio tu `contar-codigos.sh` de la clase 18 (1611, 155, 252 y 102). Compara también el tiempo con el del bucle de Bash.
+🔮 **Predice** los totales: son los mismos que dio tu `contar-codigos.sh` de la clase 18.
 
-### 4. Escribir un informe
+👀 **Qué deberías ver:** `2120 peticiones`; `2xx: 1611`, `3xx: 155`, `4xx: 252` y `5xx: 102`; y arriba del todo la IP `198.51.100.7`, con 169 peticiones: la del ataque de la clase 05. Compara también el tiempo con el del bucle de Bash.
 
-```bash
-cat > informe.py <<'EOF'
-from datetime import date
-from pathlib import Path
+✋ **Sin mirar:** si `codigo` vale `"503"`, ¿qué da `codigo[0] + "xx"`?
 
-carpeta = Path("informes")
-carpeta.mkdir(exist_ok=True)
-destino = carpeta / f"informe-{date.today()}.txt"
-lineas = ["web-01 UP", "web-02 DOWN", "db-01 UP"]
-destino.write_text("\n".join(lineas) + "\n", encoding="utf-8")
-print(f"escrito {destino} ({destino.stat().st_size} bytes)")
-print(destino.read_text(encoding="utf-8"))
-EOF
-python3 informe.py
-ls informes/
-```
+<details>
+<summary>Comprueba</summary>
 
-`date.today()` da la fecha de hoy en formato `2026-10-20`, como el `date +%F` de Bash.
+`"5xx"`: `codigo[0]` es el primer carácter del texto.
+</details>
 
-### 5. Recorrer carpetas
+**En resumen:** un log se procesa con `with open`, `split` por línea y un diccionario para contar; mucho más rápido que un bucle de Bash.
 
-```bash
-python3 -c '
-from pathlib import Path
-curso = Path.home() / "my-devops-journey"
-for readme in sorted(curso.glob("fase-*/README.md")):
-    print(readme.parent.name, readme.stat().st_size, "bytes")
-'
-```
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `s.strip()` · `s.split()` · `s.split(":")` · `", ".join(l)` | limpiar · partir por espacios · por `:` · unir |
+| `s.startswith(("http://", "https://"))` · `"x" in s` | ¿empieza por alguno? · ¿contiene? |
+| `with open(ruta, encoding="utf-8") as f: for linea in f:` | leer línea a línea |
+| `open(ruta, "w", …)` · `open(ruta, "a", …)` · `print(x, file=f)` | escribir desde cero · añadir · escribir una línea |
+| `Path.home() / "carpeta" / "archivo"` | unir rutas |
+| `p.exists()` · `p.is_file()` · `p.stat().st_size` · `p.name` · `p.parent` | mirar una ruta |
+| `p.read_text(encoding="utf-8")` · `p.write_text(texto, encoding="utf-8")` | leer o escribir todo de una vez |
+| `Path("d").mkdir(parents=True, exist_ok=True)` · `p.glob("*.log")` · `p.rglob("*")` | `mkdir -p` · buscar · buscar también en subcarpetas |
+| `Path(__file__).resolve().parent` | la carpeta del propio script |
+| `from datetime import date; date.today()` | la fecha de hoy (`2026-10-20`) |
 
 ## Rómpelo
 
@@ -251,18 +359,93 @@ cd /tmp && python3 ~/my-devops-journey/labs/clase-43/relativa.py; cd -
 
 ## Reto
 
-1. `grandes.py <carpeta>`: lista los 5 archivos más grandes dentro de una carpeta y de sus subcarpetas (`Path.rglob("*")`, `is_file()` y `stat().st_size`), con el tamaño en KB. Recibe la carpeta con `sys.argv[1]` (`import sys`; `sys.argv` es la lista de argumentos, como `$@`).
-2. `errores.py`: guarda en `errores-5xx.txt` solo las líneas del `access.log` con código 5xx y di cuántas escribiste.
-3. `limpiar.py`: lee `urls.txt` y escribe `urls-limpias.txt` sin comentarios, sin líneas vacías, sin repetidos y en orden alfabético.
+En `labs/clase-43/`. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** `grandes.py <carpeta>`: lista los 5 archivos más grandes dentro de una carpeta y de sus subcarpetas, con el tamaño en KB. Recibe la carpeta con `sys.argv[1]` (`import sys`; `sys.argv` es la lista de argumentos, como `$@`).
+
+> 🧩 **Ejemplo resuelto:** los archivos de **una** carpeta, sin subcarpetas, con su tamaño.
+> ```python
+> from pathlib import Path
+> for p in Path(".").glob("*"):
+>     if p.is_file():
+>         print(p.stat().st_size, p)
+> ```
+
+**Ahora tú, con huecos:**
+```python
+import sys
+from pathlib import Path
+
+carpeta = Path(sys.argv[____])
+archivos = [p for p in carpeta.____("*") if p.is_file()]
+for p in sorted(archivos, key=lambda p: p.stat().____, reverse=True)[:____]:
+    print(f"{p.stat().st_size / 1024:10.1f} KB  {p}")
+```
+
+<details>
+<summary>Pista</summary>
+
+`sys.argv[0]` es el nombre del script, como `$0`; la carpeta llega en la siguiente posición. Para entrar también en las subcarpetas, el `glob` que lleva una `r` delante (está en la chuleta).
+</details>
+
+**2.** `errores.py`: guarda en `errores-5xx.txt` solo las líneas del `access.log` con código 5xx y di cuántas escribiste.
+
+> 🧩 **Ejemplo resuelto:** contar (sin guardar) las peticiones `POST`.
+> ```python
+> n = 0
+> with open(LOG, encoding="utf-8") as f:
+>     for linea in f:
+>         if linea.split()[5] == '"POST':
+>             n += 1
+> print(n, "POST")
+> ```
+
+**Ahora tú, con huecos:**
+```python
+n = 0
+with open(LOG, encoding="utf-8") as entrada, open("errores-5xx.txt", "____", encoding="utf-8") as salida:
+    for linea in entrada:
+        if linea.split()[8].startswith("____"):
+            salida.write(linea)
+            n += 1
+print(f"{n} líneas escritas en errores-5xx.txt")
+```
+
+<details>
+<summary>Pista</summary>
+
+Un `with` puede abrir dos archivos a la vez. La salida se escribe desde cero, y un código 5xx empieza por un carácter concreto. Deberían salir las mismas 102 de la pieza 5.
+</details>
+
+**3.** `limpiar.py`: lee `urls.txt` y escribe `urls-limpias.txt` sin comentarios, sin líneas vacías, sin repetidos y en orden alfabético.
+
+> 🧩 **Ejemplo resuelto:** quitar repetidos y ordenar: `sorted(set(["b", "a", "b"]))` → `['a', 'b']`.
+
+**Ahora tú, con huecos:**
+```python
+from pathlib import Path
+from cargar_urls import cargar_urls
+
+urls = sorted(____(cargar_urls(Path("urls.txt"))))
+Path("urls-limpias.txt").write_text("\n".join(____) + "\n", encoding="utf-8")
+```
+
+<details>
+<summary>Pista</summary>
+
+`cargar_urls` ya quita comentarios y vacías (pieza 4). Lo que falta: quitar repetidos (la colección de la clase 41 que no los admite) y unir con saltos de línea.
+</details>
 
 ## Cierre
 
 En `notas/fase-4/clase-43.md`:
 
-1. ¿Por qué se abre un archivo con `with`? ¿Qué pasaría si el programa falla a mitad sin `with`?
-2. ¿Qué diferencia hay entre los modos `"w"` y `"a"`? ¿A qué operadores de Bash equivalen?
-3. ¿Por qué `Path(__file__).resolve().parent` hace que un script funcione desde cron?
-4. **Repaso (clase 42, sin mirar):** ¿qué devuelve una función que no tiene `return`?
+1. ¿Por qué se abre un archivo con `with`? ¿Qué pasaría si el programa falla a mitad sin `with`? *(2 líneas. Empieza así: «Porque `with` cierra el archivo al salir del bloque, también si… Sin él, un fallo a mitad podría dejar…»)*
+2. ¿Qué diferencia hay entre los modos `"w"` y `"a"`? ¿A qué operadores de Bash equivalen? *(2 líneas. Empieza así: «`"w"` vacía el archivo y… como `>`; `"a"`…»)*
+3. ¿Por qué `Path(__file__).resolve().parent` hace que un script funcione desde cron? *(2 líneas. Empieza así: «Porque calcula la carpeta del script a partir de…, en lugar de depender de… y cron ejecuta desde…»)*
+4. **Repaso (clase 42, sin mirar):** ¿qué devuelve una función que no tiene `return`? *(1 línea. Empieza así: «Devuelve…»)*
+
+Después, escríbeme `examíname clase-43`.
 
 ## Autocorrección
 
@@ -287,6 +470,8 @@ archivos = [p for p in carpeta.rglob("*") if p.is_file()]
 for p in sorted(archivos, key=lambda p: p.stat().st_size, reverse=True)[:5]:
     print(f"{p.stat().st_size / 1024:10.1f} KB  {p}")
 ```
+
+**Reto 2:** `"w"` y `"5"`: `102 líneas escritas en errores-5xx.txt`.
 
 **Reto 3 (la parte central):**
 ```python

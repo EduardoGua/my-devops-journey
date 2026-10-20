@@ -2,6 +2,21 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** A. Python desde cero
 
+> 💡 **La idea de hoy:** decidir (`if`) y repetir (`for`, `while`) en Python es la misma lógica que en Bash (clases 17 y 18), con menos símbolos: no hay `[[ ]]`, ni `fi`, ni `done`. Lo que está **dentro** de un `if` o de un bucle lo marca la **sangría**: cuatro espacios. Y Python decide qué es "verdadero" con una regla sencilla: lo vacío y el cero son falsos; todo lo demás, verdadero.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - `if`, `elif`, `else` y `case` en Bash (clase 17).
+> - `for`, `while`, `break` y `continue` en Bash, y saltar líneas vacías y comentarios (clase 18).
+> - Los tipos, `bool()` y las f-strings (clase 39).
+> - La sangría es sintaxis en Python (clase 39, Rómpelo 3).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **bloque**: las líneas sangradas que van detrás de los dos puntos `:`.
+> - **falso** (*falsy*): un valor que en un `if` cuenta como falso: `0`, `""`, `None`, `[]`…
+> - **`in`**: «¿está dentro?», para listas y para texto.
+> - **`range`**: una serie de números para recorrer con `for`.
+> - **backoff**: esperar cada vez más entre reintentos (1, 2, 4, 8…).
+
 ## Objetivo
 
 - Tomar decisiones con `if`, `elif` y `else`, y combinar condiciones con `and`, `or` y `not`.
@@ -13,9 +28,19 @@
 
 Es la misma lógica de las clases 17 y 18 con una sintaxis más limpia: sin `[[ ]]`, sin `fi` ni `done` y sin comillas defensivas. Todo programa de operaciones decide (¿está caído?, ¿supera el umbral?) y repite (cada servidor, cada URL, cada reintento). En Python lo escribirás más rápido y con menos errores.
 
-## Teoría
+## Cómo va esta clase
 
-### `if`, `elif`, `else`
+Cinco piezas. En cada una lees **una** idea (en la 2, dos que van juntas) y la pruebas enseguida con un script pequeño; no pases a la siguiente sin haber ejecutado la anterior.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 35 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-40 && cd ~/my-devops-journey/labs/clase-40
+```
+
+## Las piezas
+
+### Pieza 1 — `if`, `elif` y `else`
 
 ```python
 codigo = 503
@@ -30,6 +55,7 @@ print(estado)
 
 - Los dos puntos `:` abren el bloque, y la **sangría de 4 espacios** marca qué está dentro. No hay `fi`: el bloque termina cuando la sangría vuelve atrás.
 - `200 <= codigo < 400` es una comparación encadenada, poco habitual en otros lenguajes y muy legible.
+- Y un `if` cabe en una sola línea cuando solo eliges entre dos valores: `estado = "UP" if arriba else "DOWN"`.
 
 | Bash | Python |
 |------|--------|
@@ -38,55 +64,7 @@ print(estado)
 | `&& \|\| !` | `and or not` |
 | `[[ $s == web-* ]]` | `s.startswith("web-")` |
 
-### Lo que es "falso"
-
-`False`, `None`, `0`, `0.0`, `""` (texto vacío) y las colecciones vacías (`[]`, `{}`) son falsos. Todo lo demás es verdadero. Por eso es idiomático escribir `if nombre:` en lugar de `if nombre != "":`.
-
-### `in`: ¿está dentro?
-
-```python
-if codigo in (500, 502, 503, 504):
-    print("error del servidor o del proxy")
-if "error" in mensaje:
-    print("el mensaje habla de un error")
-```
-
-### Un `if` en una línea
-
-```python
-estado = "UP" if arriba else "DOWN"
-```
-
-### `for`: recorrer
-
-```python
-for sitio in ["example.com", "wikipedia.org", "github.com"]:
-    print(f"revisando {sitio}")
-
-for i in range(1, 4):          # 1, 2, 3: el final no se incluye
-    print(f"intento {i}")
-```
-
-`range(n)` va de 0 a n−1; `range(inicio, fin)` incluye el inicio y no el fin; `range(inicio, fin, paso)` salta de `paso` en `paso`.
-
-### `while`: mientras se cumpla
-
-```python
-intento = 1
-while intento <= 3:
-    print(f"intento {intento}")
-    intento += 1               # lo mismo que intento = intento + 1
-```
-
-`break` sale del bucle y `continue` pasa a la siguiente vuelta, igual que en Bash.
-
-## Práctica guiada
-
-```bash
-mkdir -p ~/my-devops-journey/labs/clase-40 && cd ~/my-devops-journey/labs/clase-40
-```
-
-### 1. Clasificar códigos HTTP
+**Pruébalo: clasifica códigos HTTP como lo hará Vigía.**
 
 ```bash
 cat > clasificar.py <<'EOF'
@@ -106,11 +84,34 @@ EOF
 python3 clasificar.py
 ```
 
-🔮 **Predice** qué saldrá para el `0`. ¿Importa el orden de las ramas? Prueba a poner la rama `else` en otro sitio y verás que no se puede: `else` siempre va la última.
+🔮 **Predice** qué saldrá para el `0`.
 
-### 2. Lo que es falso
+👀 **Qué deberías ver:** `200 → UP`, `301 → UP`, `404 → DOWN (error del cliente)`, `500` y `503 → DOWN (error del servidor)` y `  0 → DOWN (sin respuesta)`. ¿Importa el orden de las ramas? Prueba a poner la rama `else` en otro sitio y verás que no se puede: `else` siempre va la última.
 
-🔮 **Predice** antes de ejecutar:
+✋ **Sin mirar:** ¿cómo se escriben en Python el `-ge` y el `&&` de Bash?
+
+<details>
+<summary>Comprueba</summary>
+
+`>=` y `and`.
+</details>
+
+**En resumen:** `if condición:` y un bloque sangrado; `elif` para más casos y `else` al final.
+
+### Pieza 2 — Lo que es "falso", e `in`
+
+`False`, `None`, `0`, `0.0`, `""` (texto vacío) y las colecciones vacías (`[]`, `{}`) son falsos. Todo lo demás es verdadero. Por eso es idiomático escribir `if nombre:` en lugar de `if nombre != "":`.
+
+Y `in` pregunta si algo **está dentro**, de una lista o de un texto:
+
+```python
+if codigo in (500, 502, 503, 504):
+    print("error del servidor o del proxy")
+if "error" in mensaje:
+    print("el mensaje habla de un error")
+```
+
+**Pruébalo.** 🔮 **Predice** antes de ejecutar:
 
 ```bash
 cat > falsos.py <<'EOF'
@@ -121,11 +122,36 @@ for valor in [0, 1, "", "0", None, [], [0], 0.0]:
         print(f"{valor!r:>6} es falso")
 EOF
 python3 falsos.py
+python3 -c 'print(503 in (500, 502, 503, 504), "error" in "connection error", "ok" in "error")'
 ```
+
+👀 **Qué deberías ver:** falsos: `0`, `''`, `None`, `[]` y `0.0`; verdaderos: `1`, `'0'` y `[0]` (una lista con algo dentro). Y en la última línea, `True True False`.
 
 `!r` muestra el valor "tal cual", con comillas si es texto, para distinguir `""` de `"0"`.
 
-### 3. Contar con un bucle
+✋ **Sin mirar:** ¿cómo compruebas, en una sola condición, si `codigo` es 500, 502, 503 o 504?
+
+<details>
+<summary>Comprueba</summary>
+
+`if codigo in (500, 502, 503, 504):`.
+</details>
+
+**En resumen:** lo vacío, el cero y `None` son falsos; `in` pregunta si algo está dentro.
+
+### Pieza 3 — `for`: recorrer
+
+```python
+for sitio in ["example.com", "wikipedia.org", "github.com"]:
+    print(f"revisando {sitio}")
+
+for i in range(1, 4):          # 1, 2, 3: el final no se incluye
+    print(f"intento {i}")
+```
+
+`range(n)` va de 0 a n−1; `range(inicio, fin)` incluye el inicio y no el fin; `range(inicio, fin, paso)` salta de `paso` en `paso`.
+
+**Pruébalo: cuenta los UP y los DOWN.**
 
 ```bash
 cat > contar.py <<'EOF'
@@ -143,9 +169,34 @@ EOF
 python3 contar.py
 ```
 
-Compáralo con el bucle de Bash de la clase 18: no hacen falta `$(( ))`, la división da decimales y el formato del porcentaje es una sola expresión.
+👀 **Qué deberías ver:** `UP: 5  DOWN: 3  disponibilidad: 62.5 %`.
 
-### 4. Reintentos con `while` y `break`
+Compáralo con el bucle de Bash de la clase 18: no hacen falta `$(( ))`, la división da decimales y el formato del porcentaje es una sola expresión. (`arriba += 1` es lo mismo que `arriba = arriba + 1`.)
+
+✋ **Sin mirar:** ¿qué números recorre `range(1, 4)`?
+
+<details>
+<summary>Comprueba</summary>
+
+`1`, `2` y `3`: el final no se incluye.
+</details>
+
+**En resumen:** `for x in lista:` recorre una lista; `for i in range(a, b):` cuenta de `a` a `b − 1`.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+
+### Pieza 4 — `while`, y cortar con `break`
+
+```python
+intento = 1
+while intento <= 3:
+    print(f"intento {intento}")
+    intento += 1
+```
+
+`while` repite mientras la condición sea verdadera. `break` sale del bucle, igual que en Bash. Y un `while` puede llevar un `else`, que se ejecuta solo si el bucle terminó **sin** `break`: "si agotaste los intentos".
+
+**Pruébalo: reintentos.**
 
 ```bash
 cat > reintentos.py <<'EOF'
@@ -169,11 +220,27 @@ python3 reintentos.py
 python3 reintentos.py
 ```
 
-`import` trae módulos de la biblioteca estándar (los verás en la clase 45): `random` para simular el azar y `time` para esperar. El `else` de un `while` se ejecuta solo si el bucle terminó **sin** `break`. Es poco común, pero aquí encaja: "si agotaste los intentos".
+`import` trae módulos de la biblioteca estándar (los verás en la clase 45): `random` para simular el azar y `time` para esperar.
 
 🔮 **Predice:** ejecútalo varias veces. ¿Por qué no sale siempre lo mismo?
 
-### 5. `continue` para saltar
+👀 **Qué deberías ver:** unas veces `responde en el intento N` tras algunos intentos fallidos, y otras, los 5 intentos seguidos de `no respondió nunca`: `random.random()` da un número distinto cada vez.
+
+✋ **Sin mirar:** ¿cuándo se ejecuta el `else` de un `while`?
+
+<details>
+<summary>Comprueba</summary>
+
+Cuando el bucle termina sin pasar por un `break`: aquí, cuando se agotan los intentos.
+</details>
+
+**En resumen:** `while condición:` repite; `break` sale, y el `else` del `while` solo corre si no hubo `break`.
+
+### Pieza 5 — `continue`: saltar una vuelta
+
+`continue` pasa a la siguiente vuelta sin ejecutar el resto del bloque, igual que en Bash. Es la forma de saltar lo que no interesa.
+
+**Pruébalo: la regla de la clase 18, "salta vacías y comentarios", traducida.**
 
 ```bash
 cat > saltar.py <<'EOF'
@@ -186,7 +253,33 @@ EOF
 python3 saltar.py
 ```
 
-Es la regla de la clase 18 ("salta vacías y comentarios"), traducida.
+👀 **Qué deberías ver:** solo `vigilaré https://example.com` y `vigilaré https://github.com`.
+
+✋ **Sin mirar:** ¿qué diferencia hay entre `break` y `continue`?
+
+<details>
+<summary>Comprueba</summary>
+
+`break` sale del bucle entero; `continue` solo salta el resto de esa vuelta y sigue con la siguiente.
+</details>
+
+**En resumen:** `continue` salta a la siguiente vuelta; `if not linea or linea.startswith("#")` es el filtro de vacías y comentarios.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué es |
+|----------|--------|
+| `if c >= 500:` · `elif …:` · `else:` | decidir, con el bloque sangrado 4 espacios |
+| `200 <= c < 400` | comparación encadenada |
+| `and` · `or` · `not` | y · o · no |
+| `x in (500, 502)` · `"err" in texto` | ¿está dentro? |
+| `s.startswith("web-")` | ¿empieza por…? |
+| `a if condición else b` | un `if` en una línea |
+| `for x in lista:` · `for i in range(1, 4):` | recorrer · contar (sin incluir el final) |
+| `while condición:` · `break` · `continue` | repetir · salir · saltar la vuelta |
+| `x += 1` | `x = x + 1` |
+
+Falsos: `False`, `None`, `0`, `0.0`, `""`, `[]`, `{}`. Todo lo demás es verdadero.
 
 ## Rómpelo
 
@@ -222,19 +315,112 @@ python3 -c 'print("10" > 9)'
 
 ## Reto
 
-1. `semaforo.py`: recorre la lista de usos de disco `[45, 81, 92, 60, 99]` e imprime `OK` (menos de 80), `AVISO` (80 a 89) o `CRÍTICO` (90 o más) para cada uno, con el número alineado.
-2. Recorre `range(0, 101, 25)` e imprime cada valor. ¿Por qué aparece el 100 y no el 125?
-3. `espera.py`: con un `while`, imprime las esperas de un *backoff* exponencial (1, 2, 4, 8, 16 segundos) sin esperar de verdad, y al final el total de segundos que se habría esperado.
-4. Con los `codigos` de la práctica 3, imprime la posición del primer código caído y detén el bucle en ese momento. Pista: un contador y `break`.
+En `labs/clase-40/`. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** `semaforo.py`: recorre la lista de usos de disco `[45, 81, 92, 60, 99]` e imprime `OK` (menos de 80), `AVISO` (80 a 89) o `CRÍTICO` (90 o más) para cada uno, con el número alineado.
+
+> 🧩 **Ejemplo resuelto:** dos niveles, con un umbral.
+> ```python
+> for uso in [45, 92]:
+>     nivel = "CRÍTICO" if uso >= 90 else "OK"
+>     print(f"{uso:>3} % {nivel}")
+> ```
+
+**Ahora tú, con huecos:**
+```python
+for uso in [45, 81, 92, 60, 99]:
+    if uso >= ____:
+        nivel = "CRÍTICO"
+    elif uso >= ____:
+        nivel = "AVISO"
+    else:
+        nivel = "OK"
+    print(f"{uso:>3} % {nivel}")
+```
+
+<details>
+<summary>Pista</summary>
+
+El orden de las ramas importa: pregunta primero por el umbral **más alto**. Si preguntaras primero por 80, un 92 se quedaría en «AVISO».
+</details>
+
+**2.** Recorre `range(0, 101, 25)` e imprime cada valor. ¿Por qué aparece el 100 y no el 125?
+
+> 🧩 **Ejemplo resuelto:** `for i in range(0, 10, 5): print(i)` → `0` y `5`; el 10 no sale porque `range` no incluye el final.
+
+**Ahora tú, con huecos:** `for i in range(0, 101, ____): print(i)` → `____`
+
+<details>
+<summary>Pista</summary>
+
+De 25 en 25 desde 0. El final es 101: ¿qué números son menores que 101?
+</details>
+
+**3.** `espera.py`: con un `while`, imprime las esperas de un *backoff* exponencial (1, 2, 4, 8, 16 segundos) sin esperar de verdad, y al final el total de segundos que se habría esperado.
+
+> 🧩 **Ejemplo resuelto:** esperas que crecen de 1 en 1, hasta 3.
+> ```python
+> espera = 1
+> while espera <= 3:
+>     print(f"esperaría {espera} s")
+>     espera += 1
+> ```
+
+**Ahora tú, con huecos:**
+```python
+espera = 1
+total = 0
+while espera <= ____:
+    print(f"esperaría {espera} s")
+    total += ____
+    espera *= ____
+print(f"total: {total} s")
+```
+
+<details>
+<summary>Pista</summary>
+
+En un *backoff* exponencial, cada espera es el **doble** de la anterior. `*=` multiplica, como `+=` suma.
+</details>
+
+**4.** Con los `codigos` de la pieza 3, imprime la posición del primer código caído y detén el bucle en ese momento.
+
+> 🧩 **Ejemplo resuelto:** la posición del primer `200`.
+> ```python
+> posicion = 0
+> for codigo in codigos:
+>     if codigo == 200:
+>         print(f"primer 200 en la posición {posicion}")
+>         break
+>     posicion += 1
+> ```
+
+**Ahora tú, con huecos:**
+```python
+posicion = 0
+for codigo in codigos:
+    if not 200 <= codigo < ____:
+        print(f"primer caído en la posición {posicion}: {codigo}")
+        ____
+    posicion += 1
+```
+
+<details>
+<summary>Pista</summary>
+
+«Caído» es «no está entre 200 y 399». Y para detener el bucle, la palabra de la pieza 4.
+</details>
 
 ## Cierre
 
 En `notas/fase-4/clase-40.md`:
 
-1. ¿Cómo sabe Python dónde termina un bloque `if` o un bucle, si no hay `fi` ni `done`?
-2. Nombra cuatro valores que Python considera falsos. ¿Por qué `bool("0")` es `True`?
-3. Traduce a Python: `if [[ $uso -ge 80 && $uso -lt 90 ]]; then echo aviso; fi`.
-4. **Repaso (clase 39, sin mirar):** ¿qué imprime `f"{0.261431 * 1000:.0f} ms"`?
+1. ¿Cómo sabe Python dónde termina un bloque `if` o un bucle, si no hay `fi` ni `done`? *(2 líneas. Empieza así: «Por la sangría: todo lo que va sangrado después de los dos puntos… y el bloque termina en…»)*
+2. Nombra cuatro valores que Python considera falsos. ¿Por qué `bool("0")` es `True`? *(2 líneas. Empieza así: «`False`, `None`,… `"0"` es verdadero porque…»)*
+3. Traduce a Python: `if [[ $uso -ge 80 && $uso -lt 90 ]]; then echo aviso; fi`. *(2 líneas de código. Empieza así: `if 80 <= uso …`)*
+4. **Repaso (clase 39, sin mirar):** ¿qué imprime `f"{0.261431 * 1000:.0f} ms"`? *(1 línea. Empieza así: «Imprime…»)*
+
+Después, escríbeme `examíname clase-40`.
 
 ## Autocorrección
 
@@ -275,9 +461,9 @@ while espera <= 16:
     espera *= 2
 print(f"total: {total} s")        # 31 s
 ```
-Reto 2: `range` no incluye el final (101), y saltando de 25 en 25 desde 0 el siguiente a 100 sería 125, que ya se pasa.
+Reto 2: `25`; salen `0 25 50 75 100`. `range` no incluye el final (101), y saltando de 25 en 25 desde 0 el siguiente a 100 sería 125, que ya se pasa.
 
-Reto 4:
+Reto 4: `400` y `break`.
 ```python
 posicion = 0
 for codigo in codigos:
@@ -286,7 +472,7 @@ for codigo in codigos:
         break
     posicion += 1
 ```
-(En la clase 41 verás `enumerate`, que da la posición sin contador manual.)
+(Sale `primer caído en la posición 2: 503`. En la clase 41 verás `enumerate`, que da la posición sin contador manual.)
 </details>
 
 ## Inglés
