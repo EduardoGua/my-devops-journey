@@ -2,6 +2,23 @@
 
 **Dónde:** GitHub + tu Ubuntu (AWS CLI) · **Tiempo:** 90 min · **Bloque:** B. Entrega y despliegue continuos
 
+> 💡 **La idea de hoy:** esto es **entrega continua**: cada cambio que llega a `main` y pasa las pruebas queda **construido, etiquetado con su commit y publicado** en ECR, sin que nadie construya nada en su portátil. El pipeline entra en AWS con OIDC, su rol solo puede subir a **un** repositorio, y la versión va dentro de la imagen: de una imagen que corre, al código exacto, en un paso.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - ECR con etiquetas inmutables, escaneo y ciclo de vida (clase 75).
+> - `ARG` y `ENV` para meter la versión en la imagen (clase 58, reto 2); la caché de capas (clase 58).
+> - El rol `lab-github`, su variable `AWS_ROLE_ARN` y OIDC (clase 86).
+> - `needs:`, `if:` y `outputs` (clase 82); el mínimo privilegio, las *inline* y Access Analyzer (clase 69).
+> - Los scripts que se pueden repetir sin romper nada, como `crear-vpc.sh` (clase 71).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **trazabilidad**: poder ir de una imagen que corre al commit, al PR y a las pruebas que la produjeron.
+> - **job idempotente**: el que, repetido, da el mismo resultado sin fallar ni duplicar nada.
+> - **BuildKit**: el constructor moderno de Docker, con caché y varias arquitecturas.
+> - **caché `type=gha`**: las capas de la imagen, guardadas en la caché de GitHub Actions.
+> - **etiquetas OCI**: metadatos estándar dentro de la imagen, como el commit y la URL del repositorio.
+> - **artefacto**: lo que produce el pipeline; aquí, la imagen.
+
 ## Objetivo
 
 - Añadir al pipeline un job que, al llegar un cambio a `main`, **construye la imagen y la publica en ECR**, entrando con OIDC.
@@ -19,45 +36,32 @@ La etiqueta con el SHA del commit da **trazabilidad**: ante cualquier imagen que
 
 > 💰 **Céntimos al mes.** ECR cobra 0,10 USD por GB y mes. La imagen comprimida de `saludo` pesa unos 60 MB, y la política de ciclo de vida guardará como mucho 10.
 
-## Teoría
+## Cómo va esta clase
 
-### Qué etiqueta lleva cada imagen
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber hecho la anterior. Las tres primeras preparan AWS y la imagen; las dos últimas, el job y su comprobación.
 
-| Etiqueta | Para qué |
-|----------|----------|
-| **el SHA del commit** (`lab-actions:3f9c2…`) | cada imagen que produce el pipeline: única, inmutable y trazable |
-| la versión (`saludo:1.2.0`) | las *releases* que anuncias, por ejemplo al crear una etiqueta `v1.2.0` en Git (Reto 1) |
-| `latest` | nunca para desplegar (clase 64). Con etiquetas inmutables, además, no se podría mover |
-
-Con el repositorio en **IMMUTABLE** (clase 75), cada SHA solo se puede subir una vez. Eso tiene una consecuencia: si repites el job de un commit ya publicado, el `push` falla (Rómpelo 1). Un job de publicación tiene que ser **idempotente**: si la imagen ya existe, no hace nada.
-
-### Las piezas del job
-
-| Paso | Qué hace |
-|------|----------|
-| `aws-actions/configure-aws-credentials` | OIDC → credenciales temporales del rol (clase 86) |
-| `aws-actions/amazon-ecr-login` | `docker login` contra tu registro de ECR. Su salida `registry` es `<cuenta>.dkr.ecr.us-east-1.amazonaws.com`, y oculta la contraseña en el log |
-| `docker/setup-buildx-action` | prepara **BuildKit**, el constructor moderno de Docker, con caché y varias arquitecturas |
-| `docker/build-push-action` | construye y sube. Con `cache-from` y `cache-to` `type=gha`, guarda las capas en la caché de GitHub Actions: la siguiente construcción solo rehace lo que cambió (clase 58) |
-
-Las **etiquetas OCI** (`org.opencontainers.image.revision`, `…source`) son metadatos estándar dentro de la imagen: el commit y la URL del repositorio. Cualquier herramienta puede leerlos con `docker inspect`.
-
-### Permisos para subir, y nada más
-
-Para subir a ECR, el rol necesita:
-- `ecr:GetAuthorizationToken`: obtener el token de `docker login`. No se puede limitar a un repositorio y va sobre `*`;
-- las acciones de subida, solo sobre **el ARN de ese repositorio**: `BatchCheckLayerAvailability`, `InitiateLayerUpload`, `UploadLayerPart`, `CompleteLayerUpload` y `PutImage`;
-- `BatchGetImage` y `DescribeImages`, para consultar lo que ya hay.
-
-No puede borrar imágenes, ni tocar otros repositorios, ni crear repositorios nuevos.
-
-## Práctica guiada
-
-### 1. El repositorio de ECR (10 min)
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 35 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
 
 ```bash
 mkdir -p ~/my-devops-journey/labs/clase-87 && cd ~/my-devops-journey/labs/clase-87
 CUENTA=$(aws sts get-caller-identity --query Account --output text)
+```
+
+## Las piezas
+
+### Pieza 1 — Qué etiqueta lleva cada imagen, y su repositorio
+
+| Etiqueta | Para qué |
+|----------|----------|
+| **el SHA del commit** (`lab-actions:3f9c2…`) | cada imagen que produce el pipeline: única, inmutable y trazable |
+| la versión (`saludo:1.2.0`) | las *releases* que anuncias, por ejemplo al crear una etiqueta `v1.2.0` en Git (reto 1) |
+| `latest` | nunca para desplegar (clase 64). Con etiquetas inmutables, además, no se podría mover |
+
+Con el repositorio en **IMMUTABLE** (clase 75), cada SHA solo se puede subir una vez. Eso tiene una consecuencia: si repites el job de un commit ya publicado, el `push` falla (Rómpelo 1). Un job de publicación tiene que ser **idempotente**: si la imagen ya existe, no hace nada.
+
+**Pruébalo:**
+
+```bash
 aws ecr create-repository --repository-name lab-actions --image-tag-mutability IMMUTABLE \
   --image-scanning-configuration scanOnPush=true --tags Key=Proyecto,Value=lab \
   --query repository.repositoryUri --output text
@@ -66,12 +70,32 @@ cat > ciclo-ecr.json <<'EOF'
   "selection": {"tagStatus": "any", "countType": "imageCountMoreThan", "countNumber": 10},
   "action": {"type": "expire"}}]}
 EOF
-aws ecr put-lifecycle-policy --repository-name lab-actions --lifecycle-policy-text file://ciclo-ecr.json
+aws ecr put-lifecycle-policy --repository-name lab-actions --lifecycle-policy-text file://ciclo-ecr.json \
+  --query repositoryName --output text
 ```
 
-Con una imagen por commit, sin la política de ciclo de vida el repositorio crecería sin fin.
+👀 **Qué deberías ver:** la URI `<cuenta>.dkr.ecr.us-east-1.amazonaws.com/lab-actions` y `lab-actions`. Con una imagen por commit, sin la política de ciclo de vida el repositorio crecería sin fin.
 
-### 2. Permiso para subir (10 min)
+✋ **Sin mirar:** ¿por qué la etiqueta de cada imagen del pipeline es el SHA del commit?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque identifica una versión única del código y lleva directo al commit, su PR y sus pruebas: trazabilidad.
+</details>
+
+**En resumen:** una imagen por commit, etiquetada con su SHA, en un repositorio inmutable con ciclo de vida.
+
+### Pieza 2 — Permisos para subir, y nada más
+
+Para subir a ECR, el rol necesita:
+- `ecr:GetAuthorizationToken`: obtener el token de `docker login`. No se puede limitar a un repositorio y va sobre `*`;
+- las acciones de subida, solo sobre **el ARN de ese repositorio**: `BatchCheckLayerAvailability`, `InitiateLayerUpload`, `UploadLayerPart`, `CompleteLayerUpload` y `PutImage`;
+- `BatchGetImage` y `DescribeImages`, para consultar lo que ya hay.
+
+No puede borrar imágenes, ni tocar otros repositorios, ni crear repositorios nuevos. Va como política *inline* (clase 69), porque solo tiene sentido para este rol.
+
+**Pruébalo:**
 
 ```bash
 cat > subir-a-ecr.json <<EOF
@@ -96,31 +120,67 @@ cat > subir-a-ecr.json <<EOF
 EOF
 aws iam put-role-policy --role-name lab-github --policy-name subir-a-ecr --policy-document file://subir-a-ecr.json
 aws accessanalyzer validate-policy --policy-type IDENTITY_POLICY --policy-document file://subir-a-ecr.json --query findings
+aws iam list-role-policies --role-name lab-github --query PolicyNames --output text
 ```
 
-Una política *inline* (clase 69), porque solo tiene sentido para este rol.
+👀 **Qué deberías ver:** `[]` de Access Analyzer y `subir-a-ecr` como única política *inline* del rol.
 
-### 3. La versión dentro de la imagen (10 min)
+✋ **Sin mirar:** ¿por qué `ecr:GetAuthorizationToken` va sobre `"Resource": "*"`?
 
-En `lab-actions`, rama `publicar`. En el `Dockerfile`, justo después de `COPY app.py .`:
+<details>
+<summary>Comprueba</summary>
+
+Porque el token de `docker login` es del registro entero, no de un repositorio: esa acción no admite otro recurso.
+</details>
+
+**En resumen:** el token sobre `*`; subir y consultar, solo sobre el ARN de `lab-actions`.
+
+### Pieza 3 — La versión dentro de la imagen
+
+Es el reto 2 de la clase 58: el argumento de construcción `APP_VERSION` se convierte en variable de entorno, y `/info` la muestra. Una versión no es un secreto: `ARG` sirve para esto. En el pipeline, el valor será el SHA del commit.
+
+**Pruébalo.** En `lab-actions`, rama `publicar`. En el `Dockerfile`, justo después de `COPY app.py .`:
 
 ```dockerfile
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION
 ```
 
-Es el Reto 2 de la clase 58: el argumento de construcción se convierte en variable de entorno, y `/info` la muestra. Pruébalo:
-
 ```bash
+cd ~/lab-actions && git switch main && git pull && git switch -c publicar
 docker build -q --build-arg APP_VERSION=prueba-local -t saludo:v .
-docker run -d --name sv -p 8010:8000 saludo:v && sleep 2 && curl -s localhost:8010/info && docker rm -f sv
+docker run -d --name sv -p 8010:8000 saludo:v && sleep 2 && curl -s localhost:8010/info; echo
+docker rm -f sv
 ```
 
-Una versión no es un secreto: `ARG` sirve para esto.
+👀 **Qué deberías ver:** `{"equipo":"…","entorno":"desarrollo","version":"prueba-local"}`.
 
-### 4. El job `publicar` (20 min)
+✋ **Sin mirar:** ¿por qué aquí sí vale `ARG`, si en la clase 59 viste que deja el valor en `docker history`?
 
-Añade al final de `.github/workflows/ci.yml`, al mismo nivel que `imagen`:
+<details>
+<summary>Comprueba</summary>
+
+Porque una versión no es un secreto: que quede visible en la imagen es justo lo que quieres.
+</details>
+
+**En resumen:** `--build-arg APP_VERSION=…` → `ENV` → `/info`: la imagen dice qué versión es.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, lo primero: `cd ~/lab-actions && git switch publicar` y las dos líneas de variables de "Cómo va esta clase".
+
+### Pieza 4 — El job `publicar`
+
+| Paso | Qué hace |
+|------|----------|
+| `aws-actions/configure-aws-credentials` | OIDC → credenciales temporales del rol (clase 86) |
+| `aws-actions/amazon-ecr-login` | `docker login` contra tu registro de ECR. Su salida `registry` es `<cuenta>.dkr.ecr.us-east-1.amazonaws.com`, y oculta la contraseña en el log |
+| `docker/setup-buildx-action` | prepara **BuildKit**, el constructor moderno de Docker, con caché y varias arquitecturas |
+| `docker/build-push-action` | construye y sube. Con `cache-from` y `cache-to` `type=gha`, guarda las capas en la caché de GitHub Actions: la siguiente construcción solo rehace lo que cambió (clase 58) |
+
+Las **etiquetas OCI** (`org.opencontainers.image.revision`, `…source`) son metadatos estándar dentro de la imagen: el commit y la URL del repositorio. Cualquier herramienta puede leerlos con `docker inspect`.
+
+🔮 **Predice:** ¿qué pasará con `publicar` en el PR, y qué en `main`?
+
+**Pruébalo.** Añade al final de `.github/workflows/ci.yml`, al mismo nivel que `imagen`:
 
 ```yaml
   publicar:
@@ -164,11 +224,25 @@ gh pr merge --squash --delete-branch
 sleep 10 && gh run watch
 ```
 
-🔮 **Predice:**
-- **En el PR:** `publicar` sale como *skipped*.
-- **En `main`:** corre después de los otros tres y sube `lab-actions:<SHA del commit de main>`.
+👀 **Qué deberías ver:** en el PR, `publicar` como *skipped* (gris) junto a las otras tres en verde. En `main`, `publicar` corre después de las otras tres y su último step termina con la imagen subida, `lab-actions:<SHA del commit de main>`.
 
-### 5. Comprobar lo publicado (10 min)
+✋ **Sin mirar:** ¿qué impide que un PR sin revisar publique una imagen en ECR?
+
+<details>
+<summary>Comprueba</summary>
+
+El `if:` del job (solo en los `push` a `main`) y, si alguien lo cambiara, la política de confianza del rol, que exige `refs/heads/main` (Rómpelo 3).
+</details>
+
+**En resumen:** `publicar` solo en `main`, después de las tres comprobaciones, con OIDC y caché `gha`.
+
+### Pieza 5 — Comprobar lo publicado
+
+De una imagen que corre se llega al código por tres caminos que deben coincidir: su etiqueta en ECR, la `version` de `/info` y la etiqueta OCI `revision`.
+
+🔮 **Predice:** ¿qué `version` devolverá `/info`?
+
+**Pruébalo:**
 
 ```bash
 git switch main && git pull
@@ -183,7 +257,31 @@ docker inspect --format '{{index .Config.Labels "org.opencontainers.image.revisi
 docker rm -f publicada && docker logout "$REGISTRO"
 ```
 
-🔮 **Predice:** ¿qué `version` devuelve `/info`? El SHA del commit, el mismo que la etiqueta y que la etiqueta OCI. De una imagen corriendo, al código exacto, en un paso.
+👀 **Qué deberías ver:** en la tabla, una imagen con el SHA completo de `main` como etiqueta; `/info` con `"version": "<ese SHA>"`; y la etiqueta OCI con el mismo SHA. De una imagen corriendo, al código exacto, en un paso.
+
+✋ **Sin mirar:** una imagen de `lab-actions` falla en producción. ¿Cómo sabes qué código lleva?
+
+<details>
+<summary>Comprueba</summary>
+
+Por su etiqueta (el SHA), por `/info` o por la etiqueta OCI `revision`: los tres dicen el commit, y en GitHub ese commit lleva a su PR y sus pruebas.
+</details>
+
+**En resumen:** etiqueta, `/info` y `revision`: el mismo SHA, de la imagen al commit.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `aws ecr create-repository … --image-tag-mutability IMMUTABLE` · `put-lifecycle-policy` | repositorio inmutable con ciclo de vida |
+| `aws iam put-role-policy --role-name lab-github --policy-name subir-a-ecr …` | el permiso justo para subir |
+| `ARG APP_VERSION=dev` + `ENV APP_VERSION=$APP_VERSION` | la versión dentro de la imagen |
+| `if: github.event_name == 'push' && github.ref == 'refs/heads/main'` | publicar solo desde `main` |
+| `needs: [lint, test, imagen]` | publicar solo si todo pasó |
+| `aws-actions/amazon-ecr-login@<SHA>` → `steps.ecr.outputs.registry` | el registro |
+| `docker/build-push-action@<SHA>` con `tags`, `build-args`, `cache-from/to: type=gha`, `labels` | construir y subir |
+| `aws ecr describe-images --image-ids imageTag=…` | ¿existe ya esa versión? |
+| `docker inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'` | el commit de una imagen |
 
 ## Rómpelo
 
@@ -218,11 +316,67 @@ Devuélvelo. Leer qué acción exacta falta y añadir **solo esa** es cómo se l
 
 ## Reto
 
-1. **Una release con su versión.** Añade un workflow que se dispare con `push: tags: ["v*"]` y suba también la etiqueta `lab-actions:1.2.0` cuando crees en Git la etiqueta `v1.2.0`.
-   - Pista: `${GITHUB_REF_NAME#v}`.
-   - ¿Qué tendrías que cambiar en la política de confianza del rol? El `ref` de ese token es `refs/tags/v1.2.0`.
-2. Mira el log de `build-push-action` en dos ejecuciones seguidas: ¿cuántas capas salen como `CACHED` la segunda vez?
-3. ¿Qué devuelve `aws ecr describe-image-scan-findings` para la última imagen? ¿Fallarías el pipeline si hubiera hallazgos `CRITICAL`? ¿Cómo lo harías?
+Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** **Una release con su versión.** Un workflow nuevo, `release.yml`, que al crear en Git la etiqueta `v1.2.0` sube también `lab-actions:1.2.0`. ¿Qué tendrías que cambiar en la política de confianza del rol?
+
+> 🧩 **Ejemplo resuelto:** el job `publicar` de la pieza 4, que etiqueta con `${{ github.sha }}`.
+
+**Ahora tú, con huecos** (copia el job `publicar` en `release.yml`, sin el `if:` ni el `needs:`, y cambia esto):
+```yaml
+on:
+  push:
+    tags: ["____"]
+# … antes de build-push-action:
+      - id: version
+        run: echo "valor=${GITHUB_REF_NAME#____}" >> "$GITHUB_OUTPUT"
+# … en build-push-action:
+          tags: ${{ steps.ecr.outputs.registry }}/lab-actions:${{ steps.version.outputs.____ }}
+```
+Completa: «En la política de confianza, la condición `ref` tendría que admitir también ____».
+
+<details>
+<summary>Pista</summary>
+
+`${VAR#v}` quita la `v` del principio (clase 16). El token de una etiqueta trae `ref` = `refs/tags/v1.2.0`: con `StringLike` en lugar de `StringEquals` puedes admitir `refs/tags/v*`.
+</details>
+
+**2.** Mira el log de `build-push-action` en dos ejecuciones seguidas de `main`. ¿Cuántas capas salen como `CACHED` la segunda vez?
+
+> 🧩 **Ejemplo resuelto:** en la pieza 3 de la clase 58, al cambiar solo `app.py`, los pasos hasta el `pip install` salían `CACHED`.
+
+**Ahora tú, con huecos:**
+```bash
+gh run list --workflow ci.yml --branch main --limit 2
+gh run view <id> --log | grep -c "____"
+```
+Completa: «La primera vez, ____ capas `CACHED`; la segunda, ____».
+
+<details>
+<summary>Pista</summary>
+
+Busca la palabra `CACHED` en el log del job `publicar`. Con `cache-from: type=gha`, la segunda construcción reutiliza las capas guardadas por la primera.
+</details>
+
+**3.** Haz que el pipeline falle si el escaneo de ECR encuentra vulnerabilidades `CRITICAL`.
+
+> 🧩 **Ejemplo resuelto:** la pieza 3 de la clase 75: `aws ecr describe-image-scan-findings … --query 'imageScanFindings.findingSeverityCounts'`.
+
+**Ahora tú, con huecos** (un step al final de `publicar`):
+```yaml
+      - name: Sin vulnerabilidades críticas
+        run: |
+          aws ecr wait image-scan-complete --repository-name lab-actions --image-id "imageTag=$GITHUB_SHA"
+          CRITICAS=$(aws ecr describe-image-scan-findings --repository-name lab-actions --image-id "imageTag=$GITHUB_SHA" \
+            --query 'imageScanFindings.findingSeverityCounts.____' --output text)
+          [ "$CRITICAS" = "None" ] || { echo "::error::$CRITICAS vulnerabilidades críticas"; exit ____; }
+```
+
+<details>
+<summary>Pista</summary>
+
+Las severidades van en mayúsculas. Si no hay ninguna crítica, la consulta devuelve `None`. El rol necesitará además `ecr:DescribeImageScanFindings` sobre el repositorio: añádelo a `subir-a-ecr.json`.
+</details>
 
 ## Destruir al terminar
 
@@ -232,10 +386,12 @@ Nada que cobre por hora. Deja el repositorio `lab-actions` de ECR y la política
 
 En `notas/fase-7/clase-87.md`:
 
-1. ¿Por qué la imagen se etiqueta con el SHA del commit y no con `latest`?
-2. ¿Qué significa que el job de publicación es idempotente, y por qué un repositorio inmutable te obliga a hacerlo así?
-3. Lista los permisos del rol para subir a ECR y por qué `GetAuthorizationToken` va sobre `*`.
-4. **Repaso (clase 86, sin mirar):** ¿qué cuatro condiciones tiene tu política de confianza y qué deja fuera cada una?
+1. ¿Por qué la imagen se etiqueta con el SHA del commit y no con `latest`? *(2 líneas. Empieza así: «Porque el SHA identifica una versión única del código:… `latest` se mueve y…»)*
+2. ¿Qué significa que el job de publicación es idempotente, y por qué un repositorio inmutable te obliga a hacerlo así? *(2 líneas. Empieza así: «Que repetirlo produce el mismo resultado sin fallar:… Con etiquetas inmutables, un segundo push…»)*
+3. Lista los permisos del rol para subir a ECR y por qué `GetAuthorizationToken` va sobre `*`. *(3 líneas. Empieza así: «`GetAuthorizationToken`, sobre `*`, porque… Las acciones de subida:… Y para consultar:…»)*
+4. **Repaso (clase 86, sin mirar):** ¿qué cuatro condiciones tiene tu política de confianza y qué deja fuera cada una? *(4 líneas, una por condición. Empieza así: «`aud` = `sts.amazonaws.com`: deja fuera…»)*
+
+Después, escríbeme `examíname clase-87`.
 
 ## Autocorrección
 
@@ -258,6 +414,12 @@ Todas, menos la primera, solo sobre el ARN de `lab-actions`.
 - **`repository_owner_id`:** deja fuera repositorios de otros dueños.
 - **`repository_id`:** deja fuera tus otros repositorios y cualquier *fork*.
 - **`ref` = `refs/heads/main`:** deja fuera las demás ramas, los PR y las etiquetas.
+
+**Reto 1:** `tags: ["v*"]`, `${GITHUB_REF_NAME#v}` y `steps.version.outputs.valor`. En la política de confianza, la condición `ref` tendría que admitir también **`refs/tags/v*`** (con `StringLike`), o el job de la etiqueta no conseguiría el rol.
+
+**Reto 2:** `grep -c "CACHED"`. La primera vez, ninguna o casi ninguna (la caché estaba vacía); la segunda, casi todas, salvo la del `COPY app.py` si cambió.
+
+**Reto 3:** `findingSeverityCounts.CRITICAL` y `exit 1`, más el permiso `ecr:DescribeImageScanFindings` en el rol.
 </details>
 
 ## Inglés

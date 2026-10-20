@@ -2,6 +2,18 @@
 
 **Tiempo:** 3 h el examen + 2 o 3 sesiones para el CV, LinkedIn y tus historias · **Bloque:** C. Proyecto y hito · **Aprobado: ≥ 80 %**
 
+> 💡 **La idea de hoy:** has llegado al ★ hito de la Ruta: Linux, Git, redes, Python, Docker, AWS con el CLF y un pipeline real, en un proyecto público que puedes enseñar. Hoy demuestras, sin apuntes, que lo sabes (el examen de las fases 4 a 7) y preparas lo necesario para **empezar a postular**: un CV de una página con el proyecto primero, LinkedIn y GitHub al día, y tres historias STAR en puntos.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Todo lo de las fases 4 a 7: Python, Docker, AWS y CI/CD, y Vigía v1 a v4.
+> - Tus averías e incidentes: el runbook del P1 (clase 36), las averías de la clase 63, el límite de saltos de la clase 79 y los jobs rojos de la fase 7.
+> - La tabla de *Empleo* de `PLAN.md` y tu certificación CLF (clase 81).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **historia STAR**: una respuesta de entrevista en cuatro partes: Situación, Tarea, Acción y Resultado.
+> - ***Open to work***: la marca de LinkedIn que dice a los reclutadores que buscas trabajo.
+> - **README de perfil**: un repositorio con tu mismo nombre de usuario, cuyo README aparece en tu perfil de GitHub.
+
 ## Objetivo
 
 - Demostrar, sin apuntes ni IA, lo que sabes de Python, Docker, AWS y CI/CD: el **examen de las fases 4 a 7**.
@@ -247,7 +259,8 @@ Reglas:
 
 **LinkedIn:**
 - **Titular:** "Junior Cloud & DevOps · AWS Certified Cloud Practitioner · Linux, Docker, AWS, CI/CD".
-- **Acerca de:** tres frases sobre lo que haces y un enlace a Vigía.
+- **Acerca de:** tres frases sobre lo que haces y un enlace a Vigía. Un modelo, para adaptar:
+  > *Junior cloud & DevOps engineer from Colombia. I built and run Vigía, an uptime monitor on AWS with Docker, a GitHub Actions pipeline with OIDC and least-privilege IAM: github.com/<tu usuario>/vigia. AWS Certified Cloud Practitioner, now learning Terraform and Kubernetes.*
 - **Destacados:** el repositorio de Vigía y la insignia del CLF.
 - ***Open to work*:** marca "solo visible para reclutadores" si no quieres que lo vea tu empresa actual.
 
@@ -258,7 +271,7 @@ Reglas:
 
 ### 4. Tres historias STAR (1 h)
 
-**STAR** = Situación, Tarea, Acción, Resultado. Escríbelas en `notas/empleo/historias.md`, en inglés y en español, de unos 2 minutos cada una:
+**STAR** = Situación, Tarea, Acción, Resultado. Escríbelas **en puntos**, no en párrafos, en `notas/empleo/historias.md`: los puntos te guían cuando la cuentas en voz alta, en unos 2 minutos.
 
 | Historia | De dónde sale |
 |----------|---------------|
@@ -267,6 +280,44 @@ Reglas:
 | una decisión de seguridad o de costos | OIDC en lugar de llaves, Session Manager en lugar de SSH, destruir al terminar |
 
 Que la **acción** sea lo más largo (qué comprobaste, en qué orden y por qué) y que el **resultado** tenga un dato.
+
+**Un modelo, ya escrito** (lo escribió Claude, con la historia de la clase 79):
+
+```markdown
+## El informe que no llegaba a S3 (algo que fallaba en la nube)
+- **Situación:** Vigía v3 en una EC2. Los logs llegaban a CloudWatch, pero el informe diario fallaba con `NoCredentialsError`.
+- **Tarea:** averiguar por qué el contenedor no conseguía las credenciales del rol de la instancia.
+- **Acción:**
+  - comprobé que el rol tenía `s3:PutObject` en `reports/*`: sí;
+  - dentro del contenedor, pedí el token de IMDSv2 con `curl`: *timeout*; desde la instancia, sí respondía;
+  - leí cómo funciona IMDSv2: la respuesta sale con un límite de saltos de 1, y el puente de Docker es un salto más;
+  - subí el límite a 2 con `modify-instance-metadata-options` y recreé la instancia con ese valor.
+- **Resultado:** el informe se sube cada mañana; lo resolví en unos 40 minutos y lo documenté en el README.
+```
+
+Y en inglés, para contarla en voz alta (la parte E del examen):
+
+```markdown
+- **Situation:** Vigía v3 ran on EC2. Logs reached CloudWatch, but the daily report failed with NoCredentialsError.
+- **Task:** find out why the container could not get the instance role's credentials.
+- **Action:** I checked the role's S3 permission; I requested the IMDSv2 token from inside the container and it timed out,
+  while it worked from the host; I learned that the hop limit of 1 stops the response at the Docker bridge;
+  I raised it to 2 and recreated the instance.
+- **Result:** the report uploads every morning; it took me about 40 minutes, and I documented it in the README.
+```
+
+**Ahora tú, con huecos** (una plantilla por historia; en español, y en inglés al menos la primera):
+
+```markdown
+## ____ (título corto)
+- **Situación:** ____
+- **Tarea:** ____
+- **Acción:**
+  - comprobé ____: ____;
+  - después, ____;
+  - la causa era ____, así que ____.
+- **Resultado:** ____ (con un dato: minutos, número, coste).
+```
 
 ### 5. El ritmo (cada semana, a partir de hoy)
 
@@ -281,9 +332,9 @@ Que la **acción** sea lo más largo (qué comprobaste, en qué orden y por qué
 
 En `notas/fase-7/clase-91.md`:
 
-1. Tu nota del examen, por partes, y las dos clases que más vas a repasar.
-2. Las tres primeras ofertas a las que vas a postular, con el motivo.
-3. Qué te falta para sentirte listo para una entrevista técnica, y cuándo vas a pedirme el primer simulacro.
+1. Tu nota del examen, por partes, y las dos clases que más vas a repasar. *(2 líneas. Empieza así: «A: __/__, B: __/__, C: __/__, D: __/__, E: __/__. Repasaré las clases __ y __, porque…»)*
+2. Las tres primeras ofertas a las que vas a postular, con el motivo. *(3 líneas, una por oferta. Empieza así: «Empresa · puesto · porque piden… y yo tengo…»)*
+3. Qué te falta para sentirte listo para una entrevista técnica, y cuándo vas a pedirme el primer simulacro. *(1–2 líneas. Empieza así: «Me falta… El primer simulacro, el día…»)*
 
 ## Al terminar la fase 7
 

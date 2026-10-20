@@ -2,6 +2,21 @@
 
 **Dónde:** GitHub + tu Ubuntu · **Tiempo:** 90 min · **Bloque:** A. Integración continua
 
+> 💡 **La idea de hoy:** la **integración continua** da a cada PR su veredicto en minutos: el lint, las pruebas y la imagen construida y arrancada, cada uno en su **job**, en paralelo, con una casilla con nombre en la página del PR. Hoy la montas para la API pequeña de la clase 58, con **caché** de dependencias, cancelación de las ejecuciones que sobran y una **prueba de humo** que reutilizarás al desplegar.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Los workflows, los jobs en paralelo, las actions fijadas, `if: failure()`, actionlint y `gh run` (clase 82).
+> - `app.py` (clase 58) y el Dockerfile sin root (clase 59).
+> - `pytest`, `TestClient` y `monkeypatch` (clases 52 y 53); `ruff` (clase 46).
+> - `shellcheck` y las comillas en Bash (clase 19); los PR con `gh` (clase 24).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **lint**: la revisión automática de errores y estilo, sin ejecutar el código.
+> - **prueba de humo** (*smoke test*): la comprobación más simple de que algo vive, como "¿responde `/health`?".
+> - **casilla de estado** (*status check*): cada job, con su nombre y su color, en la página del PR.
+> - **caché de dependencias**: los paquetes descargados, guardados entre ejecuciones.
+> - **`concurrency`**: agrupar ejecuciones para cancelar la vieja cuando llega una nueva.
+
 ## Objetivo
 
 - Montar la **integración continua** de una aplicación: lint, pruebas y construcción de la imagen en cada pull request y en cada `push` a `main`.
@@ -19,9 +34,15 @@ Aquí lo montas sobre una aplicación pequeña, **saludo** (la API de la clase 5
 
 > 💰 **0 USD.** Repositorio público, runners estándar.
 
-## Teoría
+## Cómo va esta clase
 
-### Qué comprobar, y en qué orden
+Cuatro piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber hecho la anterior. Todo pasa en tu repositorio `lab-actions` de la clase 82.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 y 2** (unos 50 min, con el PR en verde y unido); el segundo, las **piezas 3 y 4**, el Rómpelo, el reto y el cierre.
+
+## Las piezas
+
+### Pieza 1 — Qué comprobar, en qué orden, y la prueba de humo
 
 | Comprobación | Herramienta | Tarda | Encuentra |
 |--------------|-------------|-------|-----------|
@@ -29,19 +50,11 @@ Aquí lo montas sobre una aplicación pequeña, **saludo** (la API de la clase 5
 | **pruebas** | `pytest` (clase 52) | segundos o minutos | código que no hace lo que debe |
 | **imagen** | `docker build` + arrancarla + una prueba de humo | minutos | un Dockerfile roto, una dependencia que falta, una app que no arranca |
 
-En jobs **separados** corren en paralelo y, si uno falla, sabes **cuál** sin abrir nada. En la página del PR verás tres casillas con nombre: `lint`, `test`, `imagen`.
+Una **prueba de humo** es la comprobación más simple de que algo vive: "¿responde `/health`?". No prueba que todo funcione; prueba que no está muerto. La escribirás una vez como script y la usarás aquí, al desplegar (clase 88) y para decidir si hay que volver atrás (clase 89).
 
-Una **prueba de humo** (*smoke test*) es la comprobación más simple de que algo vive: "¿responde `/health`?". No prueba que todo funcione; prueba que no está muerto. La escribirás una vez como script y la usarás aquí, al desplegar (clase 88) y para decidir si hay que volver atrás (clase 89).
+Antes de automatizar nada, comprueba que todo funciona **a mano**. Un pipeline no arregla lo que no funciona en tu máquina.
 
-### Más rápido y más limpio
-
-- **Caché:** `actions/setup-python` con `cache: pip` guarda los paquetes descargados entre ejecuciones. La clave es el *hash* de `requirements-dev.txt`: si no cambias las dependencias, no se vuelven a descargar.
-- **`concurrency`:** si subes otro commit al mismo PR mientras el pipeline corre, el resultado del anterior ya no le importa a nadie. Con `cancel-in-progress: true`, GitHub cancela la ejecución vieja.
-- **`if: failure()`:** un step que solo corre si algo falló. Úsalo para volcar `docker logs`: el runner se destruye al terminar, y si no guardas los logs, se pierden.
-
-## Práctica guiada
-
-### 1. La aplicación en `lab-actions` (15 min)
+**Pruébalo.** La aplicación en `lab-actions`:
 
 ```bash
 cd ~/lab-actions && git switch main && git pull
@@ -54,7 +67,7 @@ printf '.git/\n.github/\n.venv/\n__pycache__/\ntests/\n' > .dockerignore
 printf '.venv/\n__pycache__/\n.pytest_cache/\n.ruff_cache/\n' > .gitignore
 ```
 
-Si no conservas el `app.py` de la clase 58, está en el paso 1 de esa clase. `pythonpath = .` hace que `pytest` encuentre `app.py` desde `tests/`.
+Si no conservas el `app.py` de la clase 58, está en su pieza 1 (y quita las líneas de comentario que le añadiste en sus pruebas de caché). `pythonpath = .` hace que `pytest` encuentre `app.py` desde `tests/`.
 
 Las pruebas, en `tests/test_app.py`:
 
@@ -109,7 +122,7 @@ echo "FALLO: $URL no responde" >&2
 exit 1
 ```
 
-Antes de automatizar nada, comprueba que todo funciona **a mano**. Un pipeline no arregla lo que no funciona en tu máquina:
+Ahora, todo a mano:
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -q -r requirements-dev.txt
@@ -120,9 +133,23 @@ bash scripts/humo.sh http://127.0.0.1:8000
 docker rm -f saludo
 ```
 
-### 2. El workflow de CI (20 min)
+👀 **Qué deberías ver:** `2 passed`, `All checks passed!` y `OK: http://127.0.0.1:8000 responde`. Si algo falla aquí, arréglalo antes de seguir: el pipeline fallaría igual.
 
-Borra el `hola.yml` de la clase 82 (ya cumplió) y crea `.github/workflows/ci.yml`:
+✋ **Sin mirar:** ¿qué demuestra una prueba de humo, y qué no?
+
+<details>
+<summary>Comprueba</summary>
+
+Que la aplicación está viva (responde `/health`). No demuestra que todo funcione bien: para eso están las pruebas.
+</details>
+
+**En resumen:** de lo más rápido a lo más lento: lint, pruebas, imagen con prueba de humo; y antes de automatizar, todo a mano.
+
+### Pieza 2 — El workflow de CI: tres jobs en paralelo
+
+En jobs **separados**, las comprobaciones corren en paralelo y, si una falla, sabes **cuál** sin abrir nada: en la página del PR verás tres casillas con nombre, `lint`, `test` e `imagen`. Y un step con **`if: failure()`** (clase 82) que vuelque `docker logs` guarda la causa antes de que el runner se destruya.
+
+**Pruébalo.** Borra el `hola.yml` de la clase 82 (ya cumplió) y crea `.github/workflows/ci.yml`:
 
 ```yaml
 name: ci
@@ -181,6 +208,7 @@ Fíjate en tres cosas:
 - La prueba de humo es **tu** script: el pipeline ejecuta lo mismo que ejecutarías tú.
 
 ```bash
+git rm -q .github/workflows/hola.yml
 docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12
 git switch -c ci
 git add -A && git commit -m "CI: lint, pruebas e imagen en cada PR" && git push -u origin ci
@@ -188,31 +216,85 @@ gh pr create --fill
 gh pr checks --watch
 ```
 
-🔮 **Predice:** ¿cuál de los tres jobs terminará primero? `lint`, en segundos. `imagen` será el último: construir y arrancar un contenedor tarda más. En la página del PR, las tres casillas se pondrán verdes una a una.
+🔮 **Predice:** ¿cuál de los tres jobs terminará primero, y cuál el último?
 
-Une el PR (`gh pr merge --squash --delete-branch`) y mira cómo el `push` a `main` lanza el pipeline otra vez.
+👀 **Qué deberías ver:** actionlint sin salida; en `gh pr checks`, las tres casillas, que se ponen en verde una a una: primero `lint`, en segundos; `imagen` la última, porque construir y arrancar un contenedor tarda más. En la página del PR, lo mismo. Une el PR (`gh pr merge --squash --delete-branch`) y mira cómo el `push` a `main` lanza el pipeline otra vez (`gh run list --limit 2`).
 
-### 3. La caché, en números (10 min)
+✋ **Sin mirar:** ¿para qué sirve el step con `if: failure()` del job `imagen`?
 
-Abre la ejecución del job `test` del primer PR y la de `main`, y compara el step de `setup-python`:
+<details>
+<summary>Comprueba</summary>
+
+Para volcar `docker logs` solo cuando algo falla, antes de que el runner se destruya y los logs se pierdan.
+</details>
+
+**En resumen:** `lint`, `test` e `imagen` en jobs separados y en paralelo, en cada PR y en cada `push` a `main`.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, lo primero: `cd ~/lab-actions && git switch main && git pull`.
+
+### Pieza 3 — La caché de dependencias
+
+`actions/setup-python` con `cache: pip` guarda los paquetes descargados entre ejecuciones. La clave es el *hash* de `requirements-dev.txt`: si no cambias las dependencias, no se vuelven a descargar.
+
+**Pruébalo.** Compara el step de `setup-python` del job `test` en la ejecución del PR y en la de `main`:
 
 ```bash
 gh run list --workflow ci.yml --limit 3
 gh run view <id> --log | grep -iE "cache (restored|saved)|Cache hit"
 ```
 
-La primera vez, la caché se **guarda**; la segunda, se **restaura**, y `pip install` ya no descarga nada. Con dos paquetes no se nota mucho; con las dependencias de Vigía (FastAPI, psycopg, boto3), sí.
+👀 **Qué deberías ver:** en la primera ejecución, la caché se **guarda** (`Cache saved`); en la segunda, se **restaura** (`Cache restored`), y `pip install` ya no descarga nada. Con dos paquetes no se nota mucho; con las dependencias de Vigía (FastAPI, psycopg, boto3), sí.
 
-### 4. Cancelar lo que sobra (10 min)
+✋ **Sin mirar:** ¿cuándo deja de servir la caché de `setup-python`?
+
+<details>
+<summary>Comprueba</summary>
+
+Cuando cambias `requirements-dev.txt` (la clave cambia y se crea otra caché), o cuando GitHub la borra por no usarla.
+</details>
+
+**En resumen:** `cache: pip` + `cache-dependency-path`: la segunda ejecución restaura en lugar de descargar.
+
+### Pieza 4 — Cancelar lo que sobra: `concurrency`
+
+Si subes otro commit al mismo PR mientras el pipeline corre, el resultado del anterior ya no le importa a nadie. Con `concurrency` y `cancel-in-progress: true`, GitHub cancela la ejecución vieja. El `group: ci-${{ github.ref }}` agrupa por rama: cada rama tiene su propia cola.
+
+🔮 **Predice:** ¿qué pasará con la ejecución del commit "uno"?
+
+**Pruébalo:**
 
 ```bash
 git switch -c prisa
 echo "# primera" >> README.md && git commit -qam "uno" && git push -u origin prisa && gh pr create --fill
 echo "# segunda" >> README.md && git commit -qam "dos" && git push
 sleep 10 && gh run list --branch prisa --limit 4
+gh pr close prisa --delete-branch
 ```
 
-🔮 **Predice:** ¿qué pasa con la ejecución del commit "uno"? Aparece como **cancelada**: `concurrency` con `cancel-in-progress` la paró en cuanto llegó "dos". Cierra el PR sin unir: `gh pr close prisa --delete-branch`.
+👀 **Qué deberías ver:** la ejecución de "uno" como **cancelada** (`X` y *cancelled*) y la de "dos" en marcha o en verde: `concurrency` paró la vieja en cuanto llegó la nueva. Después, el PR cerrado sin unir.
+
+✋ **Sin mirar:** ¿por qué el grupo de `concurrency` incluye `github.ref`?
+
+<details>
+<summary>Comprueba</summary>
+
+Para que cada rama tenga su propio grupo: un commit nuevo en un PR cancela la ejecución vieja de ese PR, no las de otras ramas.
+</details>
+
+**En resumen:** `concurrency` con `cancel-in-progress` deja correr solo la última ejecución de cada rama.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `on: pull_request` + `push: branches: [main]` | CI en cada PR y en `main` |
+| `concurrency: {group: ci-${{ github.ref }}, cancel-in-progress: true}` | cancelar la ejecución vieja de la rama |
+| `actions/setup-python@<SHA> # v7.0.0` con `python-version`, `cache: pip`, `cache-dependency-path` | Python con caché |
+| `pip install ruff==0.17.0` · `ruff check .` · `shellcheck scripts/*.sh` | lint |
+| `pytest -v` | pruebas |
+| `docker build` · `docker run -d` · `bash scripts/humo.sh URL` | la imagen y su prueba de humo |
+| `if: failure()` + `docker logs` | guardar la causa del fallo |
+| `gh pr create --fill` · `gh pr checks --watch` · `gh pr merge --squash --delete-branch` | el PR desde la terminal |
 
 ## Rómpelo
 
@@ -228,9 +310,61 @@ Cierra el PR sin unir: `gh pr close roto --delete-branch`.
 
 ## Reto
 
-1. Añade un step que publique en el resumen de la ejecución (`$GITHUB_STEP_SUMMARY`) cuántas pruebas pasaron. Pista: `pytest --junit-xml=informe.xml` y un poco de `grep`, o el resumen de `pytest -q` con `tail -1`.
-2. Haz que `test` corra con Python 3.13 y 3.14 con una matriz (clase 82). ¿Cuántas casillas aparecen ahora en el PR, y cómo se llaman?
-3. ¿Por qué `imagen` no lleva `needs: [lint, test]`? Piensa qué ganarías y qué perderías si lo llevara.
+En `~/lab-actions`, en una rama y un PR. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** Publica en el resumen de la ejecución cuántas pruebas corrieron y cuántas fallaron.
+
+> 🧩 **Ejemplo resuelto:** el step de `hola.yml` (clase 82): `run: echo "### Hola desde el runner de $GITHUB_REPOSITORY" >> "$GITHUB_STEP_SUMMARY"`.
+
+**Ahora tú, con huecos** (en el job `test`, sustituye `- run: pytest -v`):
+```yaml
+      - run: pytest -v --junit-xml=____
+      - if: ____()
+        run: echo "Pruebas: $(grep -oE '(tests|failures)="[0-9]+"' informe.xml | head -2 | tr '\n' ' ')" >> "$____"
+```
+
+<details>
+<summary>Pista</summary>
+
+`--junit-xml` escribe un informe con los totales en la primera etiqueta (`failures="0" tests="2"`). `if: always()` corre el step aunque `pytest` falle: justo cuando más te interesa el resumen.
+</details>
+
+**2.** Haz que `test` corra con Python 3.13 y 3.14. ¿Cuántas casillas aparecen en el PR, y cómo se llaman?
+
+> 🧩 **Ejemplo resuelto:** la matriz del reto 2 de la clase 82: `strategy: matrix: os: [...]` y `runs-on: ${{ matrix.os }}`.
+
+**Ahora tú, con huecos:**
+```yaml
+  test:
+    strategy:
+      matrix:
+        python: ["____", "3.14"]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.____ }}
+```
+Completa: «Aparecen ____ casillas de `test`, llamadas ____».
+
+<details>
+<summary>Pista</summary>
+
+Las versiones van entre comillas: sin ellas, YAML leería `3.10` como el número `3.1`. GitHub pone el valor de la matriz entre paréntesis en el nombre de cada casilla.
+</details>
+
+**3.** ¿Por qué `imagen` no lleva `needs: [lint, test]`? Piensa qué ganarías y qué perderías si lo llevara.
+
+> 🧩 **Ejemplo resuelto:** en la pieza 5 de la clase 82, `usa-la-fecha` llevaba `needs: fecha` porque **necesitaba** su dato; `saludo` y `fecha` no se necesitaban y corrían a la vez.
+
+**Ahora tú, con huecos:** «Con `needs`, la imagen solo se construiría si…, y ganaría ____. Perdería ____, porque los jobs correrían en ____, y en un PR con una prueba rota no sabría si…».
+
+<details>
+<summary>Pista</summary>
+
+En un repositorio público, los minutos de runner son gratis. ¿Qué vale más entonces: ahorrar minutos o tener antes y completo el veredicto?
+</details>
 
 ## Destruir al terminar
 
@@ -240,10 +374,12 @@ Nada que destruir. Si te queda algún contenedor de prueba en tu Ubuntu: `docker
 
 En `notas/fase-7/clase-83.md`:
 
-1. ¿Por qué lint, pruebas e imagen van en jobs separados y no en uno solo?
-2. ¿Qué hace la caché de `setup-python` y cuándo deja de servir?
-3. ¿Qué encontró el job `imagen` que no encontraban ni `ruff` ni `pytest`?
-4. **Repaso (clase 82, sin mirar):** ¿cómo pasa un dato de un job a otro?
+1. ¿Por qué lint, pruebas e imagen van en jobs separados y no en uno solo? *(2 líneas. Empieza así: «Porque corren en paralelo, así que el pipeline tarda… Si uno falla, la casilla dice…»)*
+2. ¿Qué hace la caché de `setup-python` y cuándo deja de servir? *(2 líneas. Empieza así: «Guarda los paquetes que descarga pip, con una clave calculada a partir de… Deja de servir cuando…»)*
+3. ¿Qué encontró el job `imagen` que no encontraban ni `ruff` ni `pytest`? *(1–2 líneas. Empieza así: «Que la aplicación empaquetada no arrancaba bien:…»)*
+4. **Repaso (clase 82, sin mirar):** ¿cómo pasa un dato de un job a otro? *(1–2 líneas. Empieza así: «Un step escribe `clave=valor` en…»)*
+
+Después, escríbeme `examíname clase-83`.
 
 ## Autocorrección
 
@@ -257,6 +393,10 @@ En `notas/fase-7/clase-83.md`:
 **3.** Que la aplicación empaquetada no funcionaba: un `CMD` con el puerto equivocado. El código y sus pruebas estaban bien, pero lo que se entrega es la imagen, y solo construirla y arrancarla lo demuestra. Lo mismo pasa con un archivo que falta en el `COPY` o una dependencia que no está en `requirements.txt`.
 
 **4.** Un step escribe `clave=valor` en `$GITHUB_OUTPUT`, el job lo declara en `outputs:`, y el job siguiente, con `needs:`, lo lee como `needs.<job>.outputs.<clave>`. Para archivos, artefactos.
+
+**Reto 1:** `--junit-xml=informe.xml`, `if: always()` y `$GITHUB_STEP_SUMMARY`. El resumen dice `Pruebas: failures="0" tests="2"`.
+
+**Reto 2:** `"3.13"` y `${{ matrix.python }}`. Aparecen **dos** casillas de `test`: `test (3.13)` y `test (3.14)`, más `lint` e `imagen`.
 
 **Reto 3:** con `needs`, la imagen solo se construiría si el lint y las pruebas pasan, lo que ahorra minutos de runner en los PR rotos. A cambio, el pipeline tardaría más (en serie, no en paralelo), y un PR con una prueba rota no te diría si además la imagen está bien. En un repositorio público los minutos son gratis, así que gana el paralelo.
 </details>

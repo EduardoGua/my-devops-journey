@@ -2,6 +2,22 @@
 
 **Dónde:** GitHub + tu Ubuntu · **Tiempo:** 75 min · **Bloque:** A. Integración continua
 
+> 💡 **La idea de hoy:** un pipeline que avisa pero no impide es una sugerencia. Un **ruleset** en `main` convierte las comprobaciones en **obligatorias**: nada entra sin PR, nada se une en rojo y nadie, ni siquiera tú, se lo salta. Y cuando un job falla, se lee con método: el primer error, el código de salida y qué es distinto entre el runner y tu máquina.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - La CI de `lab-actions` con sus casillas `lint`, `test` e `imagen` (clase 83).
+> - `git push --force`, `git reset --hard` y los PR (clase 24); `git revert` (clase 22).
+> - `gh api` y `jq` (clases 24 y 47); los códigos de salida (clase 04).
+> - Que el runner está en UTC (clase 82, reto 3).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **ruleset**: un conjunto de reglas sobre ramas o etiquetas de un repositorio.
+> - **comprobación obligatoria** (*required status check*): una casilla que tiene que estar en verde para unir un PR.
+> - **lista de excepciones** (*bypass list*): quién puede saltarse las reglas.
+> - **`--log-failed`**: el log solo de los steps que fallaron.
+> - **anotación**: un aviso que un step pega a una línea concreta del código.
+> - **prueba inestable** (*flaky test*): la que a veces pasa y a veces falla sin cambiar nada.
+
 ## Objetivo
 
 - Proteger `main` con un **ruleset**:
@@ -25,9 +41,15 @@ Y leer un job fallido es una habilidad diaria: la mitad del trabajo con pipeline
 
 > 💰 **0 USD.** Los rulesets son gratis en los repositorios públicos.
 
-## Teoría
+## Cómo va esta clase
 
-### Rulesets
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida en `lab-actions`; no pases a la siguiente sin haber hecho la anterior.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 y 2** (unos 35 min, con `main` protegida y el PR rojo bloqueado); el segundo, las **piezas 3 a 5**, el Rómpelo, el reto y el cierre.
+
+## Las piezas
+
+### Pieza 1 — Un ruleset para `main`
 
 Un **ruleset** es un conjunto de reglas sobre ramas o etiquetas. Las más usadas para `main`:
 
@@ -42,7 +64,76 @@ Un **ruleset** es un conjunto de reglas sobre ramas o etiquetas. Las más usadas
 - **La lista de excepciones** (*bypass list*): quién puede saltarse las reglas. Para que el criterio de salida sea verdad, **déjala vacía**: ni siquiera el dueño del repositorio debe poder colarse.
 - **La protección clásica de ramas** (*Branch protection rules*) hace casi lo mismo y la verás en repositorios antiguos. Los rulesets son su sustituto: se pueden apilar, exportar como JSON y aplicar a varias ramas.
 
-### Cómo se lee un job fallido
+**Pruébalo.** En `lab-actions`: **Settings → Rules → Rulesets → New ruleset → New branch ruleset**.
+
+1. Nombre: `proteger-main`. *Enforcement status*: **Active**.
+2. *Target branches* → *Add target* → **Include default branch**.
+3. Marca:
+   - *Restrict deletions*;
+   - *Block force pushes*;
+   - *Require a pull request before merging*, con 0 aprobaciones;
+   - *Require status checks to pass*. Pulsa *Add checks* y añade `lint`, `test` e `imagen`. Aparecen en la lista porque ya corrieron alguna vez.
+4. *Bypass list*: **vacía**. Crea el ruleset.
+
+Lo mismo se puede leer como código, con la API. Así queda escrito y se puede aplicar a otro repositorio (reto 1, y la clase 90):
+
+```bash
+cd ~/lab-actions
+gh api "repos/{owner}/{repo}/rulesets" --jq '.[] | {id, name, enforcement}'
+gh api "repos/{owner}/{repo}/rulesets/<id>" > proteger-main.json
+jq '.rules[].type' proteger-main.json
+```
+
+`gh` sustituye `{owner}` y `{repo}` por los del repositorio en el que estás.
+
+👀 **Qué deberías ver:** `{"enforcement": "active", "id": …, "name": "proteger-main"}` y, en las reglas, `"deletion"`, `"non_fast_forward"`, `"pull_request"` y `"required_status_checks"`: las cuatro que marcaste.
+
+✋ **Sin mirar:** ¿por qué dejas vacía la lista de excepciones, aunque el repositorio sea tuyo?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque quien esté en ella puede unir un PR rojo o hacer `push` directo; si te incluyes "por si acaso", la garantía de que `main` siempre pasó las pruebas deja de existir.
+</details>
+
+**En resumen:** PR obligatorio, comprobaciones obligatorias, sin `force push` ni borrado, y nadie en la lista de excepciones.
+
+### Pieza 2 — Intentar saltárselo
+
+Con el ruleset activo, las dos formas de colarse en `main` (el `push` directo y unir un PR rojo) están cerradas. Compruébalo: un criterio de salida no se da por bueno hasta que lo ves fallar.
+
+🔮 **Predice:** ¿qué responde GitHub a un `push` directo? ¿Y `gh pr merge` con una prueba en rojo?
+
+**Pruébalo:**
+
+```bash
+git switch main && git pull
+echo "# directo" >> README.md && git commit -qam "Un push directo"
+git push
+git reset --hard origin/main
+git switch -c prueba-rota
+sed -i 's/"ok"}/"OK"}/' tests/test_app.py
+git commit -qam "Rompo una prueba a propósito" && git push -u origin prueba-rota
+gh pr create --fill
+gh pr checks --watch
+gh pr merge --squash
+```
+
+👀 **Qué deberías ver:** el `push` rechazado (*Repository rule violations found… Changes must be made through a pull request*), y `git reset --hard` deshace tu commit local (clase 24). Después, en el PR, `test` en rojo, y `gh pr merge` se niega: la regla exige `test` en verde. En la web, el botón de *Merge* está bloqueado y dice qué comprobación falta. Ese es el primer criterio de salida de la fase. Deja el PR abierto: lo arreglas en la pieza 3.
+
+✋ **Sin mirar:** ¿qué garantiza un ruleset con comprobaciones obligatorias sobre el contenido de `main`?
+
+<details>
+<summary>Comprueba</summary>
+
+Que todo lo que hay en `main` pasó por un PR con `lint`, `test` e `imagen` en verde.
+</details>
+
+**En resumen:** ni `push` directo ni PR rojo: el ruleset lo impide, también a ti.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, lo primero: `cd ~/lab-actions && git switch prueba-rota`.
+
+### Pieza 3 — Cómo se lee un job fallido
 
 1. **El primer error, no el último.** Un fallo provoca otros; los de abajo suelen ser consecuencia del de arriba.
 2. **El código de salida:** `Process completed with exit code 1` solo dice que **un** comando terminó mal. El mensaje útil está justo encima.
@@ -54,7 +145,35 @@ Un **ruleset** es un conjunto de reglas sobre ramas o etiquetas. Las más usadas
    - Sus versiones de las herramientas pueden ser distintas de las tuyas.
 4. **Reprodúcelo en tu máquina** con los mismos pasos que el workflow. Si allí funciona, la diferencia del punto 3 es la pista.
 
-Herramientas de `gh` para esto:
+**Pruébalo:**
+
+```bash
+gh run list --branch prueba-rota --limit 1
+gh run view <id> --log-failed | head -40
+```
+
+Busca en el log: el step que falló, la línea `assert` con los dos valores (el esperado y el obtenido) y el resumen final de `pytest`. Arréglalo, sube el commit y une el PR:
+
+```bash
+git revert --no-edit HEAD && git push
+gh pr checks --watch && gh pr merge --squash --delete-branch
+```
+
+👀 **Qué deberías ver:** solo el log del job `test`, con `E       AssertionError: assert {'status': 'ok'} == {'status': 'OK'}`, el resumen `1 failed, 1 passed` y, al final, `Process completed with exit code 1`. Tras el `revert`, las tres casillas en verde y el PR unido.
+
+✋ **Sin mirar:** una prueba falla en el runner y pasa en tu portátil. ¿Qué buscas primero?
+
+<details>
+<summary>Comprueba</summary>
+
+El primer error del log, y después qué es distinto entre los dos entornos: lo que no instala el workflow, la zona horaria (UTC), las versiones, las mayúsculas, la red.
+</details>
+
+**En resumen:** primer error → mensaje encima del código de salida → diferencias con tu máquina → reproducirlo.
+
+### Pieza 4 — Repetir y depurar
+
+Un job puede fallar sin que tu código tenga la culpa: una descarga que se cortó, un servicio externo caído. Entonces no hace falta repetir todo.
 
 | Orden | Qué hace |
 |-------|----------|
@@ -63,98 +182,70 @@ Herramientas de `gh` para esto:
 | `gh run rerun <id> --failed` | repetir solo los jobs que fallaron |
 | `gh run rerun <id> --debug` | repetir con los logs de depuración del runner y de cada step |
 
-## Práctica guiada
-
-### 1. El ruleset (15 min)
-
-En `lab-actions`: **Settings → Rules → Rulesets → New ruleset → New branch ruleset**.
-
-1. Nombre: `proteger-main`. *Enforcement status*: **Active**.
-2. *Target branches* → *Add target* → **Include default branch**.
-3. Marca:
-   - *Restrict deletions*;
-   - *Block force pushes*;
-   - *Require a pull request before merging*, con 0 aprobaciones;
-   - *Require status checks to pass*. Pulsa *Add checks* y añade `lint`, `test` e `imagen`. Aparecen en la lista porque ya corrieron alguna vez.
-4. *Bypass list*: **vacía**. Crea el ruleset.
-
-Lo mismo se puede hacer como código, con la API. Así queda escrito y se puede aplicar a otro repositorio:
-
-```bash
-gh api "repos/{owner}/{repo}/rulesets" --jq '.[] | {id, name, enforcement}'
-gh api "repos/{owner}/{repo}/rulesets/<id>" > proteger-main.json
-cat proteger-main.json | jq '.rules[].type'
-```
-
-`gh` sustituye `{owner}` y `{repo}` por los del repositorio en el que estás. Guarda el JSON en tus notas: en la clase 90 lo aplicarás a Vigía con `gh api --method POST "repos/{owner}/{repo}/rulesets" --input proteger-main.json`, después de quitarle los campos que solo existen en uno ya creado (`id`, `source`, `created_at`…).
-
-### 2. Intentar saltárselo (10 min)
-
-```bash
-cd ~/lab-actions && git switch main && git pull
-echo "# directo" >> README.md && git commit -qam "Un push directo"
-git push
-```
-
-🔮 **Predice:** ¿qué responde GitHub? Rechaza el `push`: *Repository rule violations found… Changes must be made through a pull request*. Deshaz tu commit local: `git reset --hard origin/main` (clase 24).
-
-### 3. Un PR rojo no entra (15 min)
-
-```bash
-git switch -c prueba-rota
-sed -i 's/"ok"}/"OK"}/' tests/test_app.py
-git commit -qam "Rompo una prueba a propósito" && git push -u origin prueba-rota
-gh pr create --fill
-gh pr checks --watch
-gh pr merge --squash
-```
-
-🔮 **Predice:** ¿qué dice `gh pr merge`? Que no se puede unir: la regla exige `test` en verde. En la web, el botón de *Merge* está bloqueado y dice qué comprobación falta. Ese es el primer criterio de salida de la fase.
-
-### 4. Leer el fallo y arreglarlo (15 min)
-
-```bash
-gh run list --branch prueba-rota --limit 1
-gh run view <id> --log-failed | head -40
-```
-
-Busca en el log:
-1. el step que falló;
-2. la línea `assert` con los dos valores, el esperado y el obtenido;
-3. el resumen final de `pytest`.
-
-Arréglalo, sube el commit y mira cómo el PR pasa a verde y se puede unir:
-
-```bash
-git revert --no-edit HEAD && git push
-gh pr checks --watch && gh pr merge --squash --delete-branch
-```
-
-### 5. Repetir y depurar (10 min)
-
-Un job puede fallar sin que tu código tenga la culpa: una descarga que se cortó, un servicio externo caído. Entonces no hace falta repetir todo:
+**Pruébalo:**
 
 ```bash
 gh run list --limit 3
-gh run rerun <id> --failed
 gh run rerun <id> --debug
+gh run watch
+gh run view <id> --log | grep -m5 '##\[debug\]'
 ```
 
-Con `--debug`, el log incluye líneas `##[debug]` con lo que hace por dentro cada action. Es mucho ruido: úsalo solo cuando el log normal no basta.
+👀 **Qué deberías ver:** la ejecución repetida y, en su log, líneas `##[debug]` con lo que hace por dentro cada action (variables, rutas, comandos). Es mucho ruido: úsalo solo cuando el log normal no basta. `--failed` hace lo mismo, pero solo con los jobs que fallaron.
 
-### 6. Anotaciones (10 min)
+✋ **Sin mirar:** una descarga se cortó y falló solo el job `imagen`. ¿Qué orden repite solo ese job?
 
-Un step puede marcar errores en líneas concretas del código con un **comando de workflow**. Añade a `lint`, en una rama nueva:
+<details>
+<summary>Comprueba</summary>
+
+`gh run rerun <id> --failed`.
+</details>
+
+**En resumen:** `--failed` para repetir lo que falló; `--debug` cuando el log normal no basta.
+
+### Pieza 5 — Anotaciones
+
+Un step puede marcar errores en líneas concretas del código con un **comando de workflow**: una línea con un formato especial (`::warning file=…,line=…::mensaje`) que GitHub entiende. `ruff` y otras herramientas pueden emitir sus errores así.
+
+**Pruébalo.** En una rama nueva, añade al job `lint` de `ci.yml`:
 
 ```yaml
       - run: echo "::warning file=app.py,line=1::Ejemplo de anotación desde el pipeline"
 ```
 
-Abre el PR y mira la pestaña *Files changed*: el aviso aparece pegado a la línea 1 de `app.py`. `ruff` y otras herramientas pueden emitir sus errores así. Quita la línea y cierra el PR.
+```bash
+git switch main && git pull && git switch -c anotacion
+git commit -qam "Una anotación de ejemplo" && git push -u origin anotacion && gh pr create --fill
+```
+
+👀 **Qué deberías ver:** en la pestaña *Files changed* del PR, el aviso pegado a la línea 1 de `app.py`, y también en el resumen de la ejecución. Cierra el PR sin unir: `gh pr close anotacion --delete-branch`.
+
+✋ **Sin mirar:** ¿cómo hace un step para que un aviso aparezca junto a una línea concreta del código en el PR?
+
+<details>
+<summary>Comprueba</summary>
+
+Imprimiendo un comando de workflow: `::warning file=archivo,line=N::mensaje` (o `::error`).
+</details>
+
+**En resumen:** `::warning` y `::error` con `file` y `line` pegan avisos al código del PR.
+
+## Tu chuleta de la clase
+
+| Escribes o abres | Qué hace |
+|------------------|----------|
+| **Settings → Rules → Rulesets → New branch ruleset** | crear un ruleset |
+| *Require a pull request* · *Require status checks* · *Block force pushes* · *Restrict deletions* | las cuatro reglas de `main` |
+| `gh api "repos/{owner}/{repo}/rulesets"` · `…/rulesets/<id>` | leer los rulesets como JSON |
+| `gh api --method POST "repos/{owner}/{repo}/rulesets" --input archivo.json` | crear uno desde JSON |
+| `gh pr checks [--watch]` · `gh pr merge --squash` | estado y unión del PR |
+| `gh run view <id> --log-failed` | el log de lo que falló |
+| `gh run rerun <id> --failed` · `--debug` | repetir lo fallido · con depuración |
+| `echo "::warning file=…,line=…::…"` | una anotación en el PR |
 
 ## Rómpelo: diagnostica estos fallos
 
-Cinco extractos reales de logs de jobs fallidos. Para cada uno, escribe en tus notas la causa y el arreglo **antes** de mirar la autocorrección.
+Cinco extractos reales de logs de jobs fallidos. Para cada uno, escribe en tus notas **una línea**: «Causa: ____ → Arreglo: ____», **antes** de mirar la autocorrección.
 
 **A.**
 ```
@@ -194,9 +285,52 @@ ERROR:    Error loading ASGI app. Could not import module "app".
 
 ## Reto
 
-1. Exporta tu ruleset a JSON y aplícalo con `gh api --method POST` a otro repositorio tuyo de prueba (créalo y bórralo después). Es protección de ramas como código.
-2. Activa en el ruleset *Require branches to be up to date before merging* (`strict_required_status_checks_policy`). ¿Qué te obliga a hacer cuando dos PR tocan `main` uno detrás de otro? ¿Por qué lo usan los equipos grandes?
-3. Busca en la documentación de GitHub qué es una ***merge queue*** y qué problema de la regla anterior resuelve.
+Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** Aplica tu ruleset, desde el JSON, a otro repositorio de prueba (y bórralo después). Es protección de ramas como código.
+
+> 🧩 **Ejemplo resuelto:** la pieza 1 guardó tu ruleset con `gh api "repos/{owner}/{repo}/rulesets/<id>" > proteger-main.json`.
+
+**Ahora tú, con huecos:**
+```bash
+gh repo create lab-reglas --public --add-readme
+jq 'del(.id, .node_id, .source, .source_type, .created_at, .updated_at, ._links, .current_user_can_bypass)' \
+  proteger-main.json > nuevo.json
+gh api --method ____ "repos/TU_USUARIO/lab-reglas/rulesets" --input ____
+gh api "repos/TU_USUARIO/lab-reglas/rulesets" --jq '.[].name'
+gh auth refresh -s delete_repo && gh repo delete TU_USUARIO/lab-reglas --yes
+```
+Completa: «El último `gh api` responde ____».
+
+<details>
+<summary>Pista</summary>
+
+Crear es `POST`, con el JSON limpio como entrada. Los campos que borra `jq` solo existen en un ruleset ya creado, y la API los rechaza al crear uno nuevo. Borrar un repositorio necesita un permiso extra de `gh`: por eso el `refresh`.
+</details>
+
+**2.** Activa en el ruleset *Require branches to be up to date before merging*. ¿Qué te obliga a hacer cuando dos PR tocan `main` uno detrás de otro, y por qué lo usan los equipos grandes?
+
+> 🧩 **Ejemplo resuelto:** sin esa opción, un PR que pasó las pruebas contra el `main` de ayer se puede unir aunque hoy `main` haya cambiado.
+
+**Ahora tú, con huecos:** «Me obliga a ____ mi rama con `main` antes de unir, y las pruebas vuelven a correr. Lo usan los equipos grandes porque dos PR que pasan por separado pueden ____ al juntarse».
+
+<details>
+<summary>Pista</summary>
+
+En la página del PR aparecerá un botón *Update branch*. Piensa en dos cambios que tocan funciones distintas que se llaman entre sí.
+</details>
+
+**3.** Busca en la documentación de GitHub qué es una ***merge queue*** y qué problema de la regla anterior resuelve.
+
+> 🧩 **Ejemplo resuelto:** el problema del reto 2: con muchos PR al día, cada uno tiene que actualizarse y volver a pasar las pruebas cada vez que otro entra antes.
+
+**Ahora tú, con huecos:** «Una *merge queue* ____ los PR aprobados y prueba cada uno junto con ____. Resuelve que, con la regla del reto 2, cada PR tenga que…».
+
+<details>
+<summary>Pista</summary>
+
+Busca *Managing a merge queue* en `docs.github.com`. Lee solo la introducción.
+</details>
 
 ## Destruir al terminar
 
@@ -206,10 +340,12 @@ Nada que destruir. El ruleset de `lab-actions` puede quedarse.
 
 En `notas/fase-7/clase-84.md`:
 
-1. ¿Qué cuatro reglas pusiste en `main` y qué impide cada una?
-2. ¿Por qué la lista de excepciones debe quedar vacía para que el criterio de salida sea verdad?
-3. Una prueba pasa en tu portátil y falla en el runner. Nombra tres diferencias entre los dos entornos que podrían explicarlo.
-4. **Repaso (clase 83, sin mirar):** ¿para qué sirve `concurrency` con `cancel-in-progress`?
+1. ¿Qué cuatro reglas pusiste en `main` y qué impide cada una? *(4 líneas, una por regla. Empieza así: «Require a pull request: nada de push directo.»)*
+2. ¿Por qué la lista de excepciones debe quedar vacía para que el criterio de salida sea verdad? *(1–2 líneas. Empieza así: «Porque quien esté en la lista puede…»)*
+3. Una prueba pasa en tu portátil y falla en el runner. Nombra tres diferencias entre los dos entornos que podrían explicarlo. *(3 líneas, una por diferencia. Empieza así: «El runner está limpio: le falta lo que no instala el workflow.»)*
+4. **Repaso (clase 83, sin mirar):** ¿para qué sirve `concurrency` con `cancel-in-progress`? *(1–2 líneas. Empieza así: «Para que, al subir un commit nuevo a la misma rama,…»)*
+
+Después, escríbeme `examíname clase-84`.
 
 ## Autocorrección
 
@@ -234,6 +370,12 @@ En `notas/fase-7/clase-84.md`:
    - otra **red**, sin acceso a tus servicios locales;
    - no tiene **tus variables de entorno** ni tus archivos fuera del repositorio.
 4. Para que, al subir un commit nuevo a la misma rama o PR, GitHub cancele la ejecución anterior, que ya no sirve: ahorras minutos y ves antes el resultado que importa.
+
+**Reto 1:** `--method POST` y `--input nuevo.json`; el último `gh api` responde `proteger-main`.
+
+**Reto 2:** te obliga a **actualizar** tu rama con `main` (botón *Update branch* o `git merge main`) antes de unir, y las pruebas vuelven a correr con el código combinado. Lo usan los equipos grandes porque dos PR que pasan por separado pueden **romperse** al juntarse.
+
+**Reto 3:** una *merge queue* **pone en cola** los PR aprobados y prueba cada uno junto con **los que tiene delante en la cola**, antes de unirlos en orden. Resuelve que, con la regla del reto 2, cada PR tenga que actualizarse y repetir sus pruebas a mano cada vez que otro entra antes.
 </details>
 
 ## Inglés

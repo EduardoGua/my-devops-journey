@@ -2,6 +2,21 @@
 
 **Dónde:** tu Ubuntu + GitHub + AWS · **Tiempo:** 2 bloques largos (unas 5–6 h) · **Bloque:** C. Proyecto y hito · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** todo lo que montaste en `lab-actions`, ahora en Vigía y sin chuleta: cada PR pasa el lint, las pruebas y un arranque del stack completo; `main` no admite nada en rojo; al unir, la imagen se construye, se publica en ECR con OIDC y se despliega en la EC2 por Session Manager; y si la versión nueva no responde, vuelve sola a la anterior. Ninguna llave de AWS en ningún sitio.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Los jobs `lint`, `test` e `imagen`, la caché y la prueba de humo (clase 83); el ruleset de `main` (clase 84).
+> - Los permisos por job, las variables y el entorno `production` (clase 85).
+> - OIDC con `repository_id`, `repository_owner_id` y `ref` (clase 86).
+> - El job `publicar` idempotente (clase 87); el despliegue por Run Command (clase 88).
+> - El script con vuelta atrás y el workflow reutilizable con `workflow_dispatch` (clase 89).
+> - Vigía v3 en la EC2, con su `.env` en `/opt/vigia` y su Compose (clases 78 y 79).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **insignia del pipeline** (*status badge*): la imagen del README que dice si el último pipeline está en verde.
+> - **el camino de un cambio**: todo lo que pasa desde que abres un PR hasta que el cambio responde en producción.
+> - **actualizar solo unos servicios**: `docker compose up -d api checker`, sin tocar `db` ni sus datos.
+
 ## Objetivo
 
 Que Vigía tenga un camino automático y seguro desde el commit hasta producción:
@@ -199,6 +214,19 @@ How a change reaches production:
 Rolling back: `gh workflow run <file>.yml -f etiqueta=<previous commit SHA>`
 ````
 
+Y para *What broke and how I found it*, una línea por campo:
+
+```markdown
+## What broke and how I found it (v4)
+
+- **Symptom:** ____
+- **What I checked:** ____
+- **Cause:** ____
+- **Fix:** ____
+```
+
+Un ejemplo, ya relleno (de la clase 86): *Symptom:* the publish job failed with `Not authorized to perform sts:AssumeRoleWithWebIdentity`. *What I checked:* the token claims printed by the workflow, and the role's trust policy. *Cause:* the trust policy used the old `sub` format, without the numeric IDs. *Fix:* condition on `repository_id`, `repository_owner_id` and `ref` instead of `sub`.
+
 Etiqueta y release:
 
 ```bash
@@ -216,10 +244,12 @@ Termina la instancia de Vigía, como en la clase 78. El rol `vigia-github`, el p
 
 En `notas/fase-7/clase-90.md`:
 
-1. Cuenta, en orden, todo lo que pasa desde que abres un PR hasta que el cambio responde en la EC2.
-2. ¿Qué tres cosas impiden que alguien despliegue en tu EC2 con tu pipeline sin pasar por un PR revisado y en verde?
-3. ¿Qué pasa con los datos de PostgreSQL cuando el pipeline despliega una versión nueva? ¿Y si vuelve atrás?
-4. **Repaso (clase 89, sin mirar):** ¿por qué el script termina en rojo aunque la vuelta atrás funcione?
+1. Cuenta, en orden, todo lo que pasa desde que abres un PR hasta que el cambio responde en la EC2. *(5 líneas, una por paso. Empieza así: «1. El PR dispara `lint`, `test` e `imagen` en paralelo, y el ruleset…»)*
+2. ¿Qué tres cosas impiden que alguien despliegue en tu EC2 con tu pipeline sin pasar por un PR revisado y en verde? *(3 líneas, una por protección. Empieza así: «El ruleset de `main`:…»)*
+3. ¿Qué pasa con los datos de PostgreSQL cuando el pipeline despliega una versión nueva? ¿Y si vuelve atrás? *(2 líneas. Empieza así: «Nada: la base de datos corre en su propio contenedor con su volumen, y el despliegue solo sustituye…»)*
+4. **Repaso (clase 89, sin mirar):** ¿por qué el script termina en rojo aunque la vuelta atrás funcione? *(1–2 líneas. Empieza así: «Porque la versión nueva no está en producción:…»)*
+
+Después, escríbeme `examíname clase-90`.
 
 ## Autocorrección
 
