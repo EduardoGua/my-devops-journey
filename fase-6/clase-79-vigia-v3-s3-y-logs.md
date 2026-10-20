@@ -2,6 +2,21 @@
 
 **Dónde:** tu Ubuntu + AWS + GitHub · **Tiempo:** 2 bloques largos (unas 5–6 h) · **Bloque:** C. Proyecto · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** Vigía v3 se termina hoy. Un subcomando nuevo, `report`, calcula la disponibilidad de cada sitio y la sube a **S3** cada mañana con un timer de systemd; los logs de la API y del chequeo van a **CloudWatch**, con retención; y el rol recibe solo esos dos permisos más. Por el camino descubrirás por qué un contenedor puede no ver el rol de su instancia. Cierras con la guía para **destruirlo todo** y la etiqueta `v3`.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - La EC2 de Vigía, su rol `vigia-ec2`, cloud-init y `compose.aws.yaml` (clase 78).
+> - El bucket con bloqueo, versionado, "solo HTTPS" y ciclo de vida (clase 74); `s3:PutObject` en `reports/*` (clase 74, reto 3).
+> - Los grupos de logs con retención y el driver `awslogs` (clase 76); las políticas *inline* (clase 69).
+> - IMDSv2 y su token (clase 72); los timers de systemd y cron (clases 12 y 20).
+> - `pytest` y los servidores falsos (clase 52): hoy, con **moto**.
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **moto**: una biblioteca que imita los servicios de AWS dentro de tus pruebas, sin tocar AWS.
+> - **límite de saltos** (*hop limit*): cuántos saltos de red puede cruzar la respuesta del IMDS; con 1 no llega a los contenedores.
+> - ***timer* de systemd**: una unidad que lanza un servicio a una hora, como una línea de cron.
+> - **guía de destrucción** (*teardown*): los pasos, en orden, para no dejar nada en la cuenta.
+
 ## Objetivo
 
 Terminar Vigía v3:
@@ -268,6 +283,77 @@ README en inglés, secciones nuevas:
 ## Limitations
 ````
 
+### Modelo para adaptar (lo escribió Claude)
+
+Cópialo en tu README y rellena los huecos (`____`). En *Destroy*, cada comentario se convierte en los comandos reales que usaste.
+
+````markdown
+## Daily report
+
+`python -m vigia report --bucket <bucket>` computes the availability of each site over the last 24 hours
+and uploads it to `s3://<bucket>/reports/YYYY-MM-DD.json` (UTC date):
+
+```json
+____ (paste one real report here)
+```
+
+On the instance, a systemd timer (`vigia-report.timer`) runs it every day at 06:00 UTC.
+
+## Logs
+
+The API and the checker send their output to CloudWatch with Docker's `awslogs` driver:
+
+| Log group | Retention |
+|-----------|-----------|
+| `/vigia/api` | 7 days |
+| `/vigia/checker` | 7 days |
+
+```bash
+aws logs tail /vigia/checker --since 1h
+```
+
+## Costs
+| Resource | While running | Left running for a month |
+|----------|---------------|--------------------------|
+| t3.small + public IPv4 | ~$0.026/h | ~$19.50 |
+| ECR image, S3 reports, logs (7 days) | — | a few cents |
+
+## Destroy
+
+**Pause** (after every session): terminate the instance, the only thing billed by the hour.
+```bash
+____
+```
+
+**Full teardown** (when you are done with AWS), in this order:
+```bash
+# 1. the instance
+# 2. the security group vigia-web
+# 3. the role: remove it from the instance profile, delete the profile, detach its policies, delete it
+# 4. the ECR repository (--force)
+# 5. the bucket: every version first, then the bucket
+# 6. the two log groups
+# 7. the lab VPC: bash borrar-vpc.sh
+# 8. check that nothing is left with the tag Proyecto=vigia
+```
+
+## What broke and how I found it (v3)
+
+- **Symptom:** ____
+- **What I checked:** ____
+- **Cause:** ____
+- **Fix:** ____
+
+## Limitations
+
+- One instance: if it goes down, everything goes down (production would use an ALB, an Auto Scaling group and RDS).
+- PostgreSQL keeps its data on the instance's disk, so terminating the instance loses the history.
+- Nobody builds, tests or deploys it automatically yet (v4 adds CI/CD).
+- The infrastructure is created by hand with the CLI (v5 moves it to Terraform).
+````
+
+Un ejemplo de *What broke*, ya relleno (de la clase 78): *Symptom:* after recreating the instance, `/status` was empty. *What I checked:* `docker volume ls` on the new instance. *Cause:* PostgreSQL's volume lived on the old instance's disk, which was deleted with it. *Fix:* nothing for v3; it is listed in *Limitations* (RDS in production).
+
 **La guía de destrucción** es parte del entregable. Escríbela con los comandos reales, en dos niveles:
 - **Pausa**, al final de cada sesión: terminar la instancia. Lo demás cuesta céntimos al mes.
 - **Destrucción completa**, cuando termines con AWS. En este orden:
@@ -300,10 +386,12 @@ Si vas a estar semanas sin tocar AWS, aplica tu propia guía de **destrucción c
 
 En `notas/fase-6/clase-79.md`:
 
-1. Con el límite de saltos en 1, ¿por qué los logs de los contenedores llegaban a CloudWatch, pero el informe no podía subir a S3?
-2. ¿Qué permisos tiene el rol al final? Justifica cada uno.
-3. ¿Qué haces al terminar cada sesión? ¿Y si quieres dejar la cuenta a cero?
-4. **Repaso (clase 78, sin mirar):** ¿por qué se genera la contraseña de PostgreSQL dentro de la instancia?
+1. Con el límite de saltos en 1, ¿por qué los logs de los contenedores llegaban a CloudWatch, pero el informe no podía subir a S3? *(2–3 líneas. Empieza así: «Porque cada uno pide credenciales desde un sitio distinto: los logs los envía el demonio de Docker, que… El informe lo sube boto3 dentro del contenedor, y…»)*
+2. ¿Qué permisos tiene el rol al final? Justifica cada uno. *(4 líneas, una por permiso. Empieza así: «`AmazonSSMManagedInstanceCore`: para Session Manager, porque no hay SSH.»)*
+3. ¿Qué haces al terminar cada sesión? ¿Y si quieres dejar la cuenta a cero? *(2 líneas. Empieza así: «Al terminar cada sesión, la pausa: terminar la instancia, porque… Para dejar la cuenta a cero,…»)*
+4. **Repaso (clase 78, sin mirar):** ¿por qué se genera la contraseña de PostgreSQL dentro de la instancia? *(1–2 líneas. Empieza así: «Porque el user-data lo puede leer…»)*
+
+Después, escríbeme `examíname clase-79`.
 
 ## Autocorrección
 

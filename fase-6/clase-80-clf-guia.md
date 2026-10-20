@@ -2,6 +2,20 @@
 
 **Dónde:** navegador (la guía oficial y AWS Skill Builder) + Anki · **Tiempo:** 2 bloques en clase y unas 15–20 h de estudio durante 2 o 3 semanas · **Bloque:** D. Certificación
 
+> 💡 **La idea de hoy:** el CLF-C02 pregunta **qué** servicio o concepto encaja, no **cómo** se configura. Ya hiciste más práctica de la que pide; lo que falta es **amplitud**: reconocer un centenar de servicios por su nombre y su propósito, y no confundir los que se parecen. Hoy conviertes la guía oficial del examen en tu lista de control, cubres los huecos con tarjetas de Anki y haces tu primera medición.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Todo lo de las clases 67 a 79: la cuenta, la factura, IAM, la VPC, EC2, S3, ECR, CloudWatch, RDS, los balanceadores y Lambda.
+> - Los seis pilares del Well-Architected Framework (clase 68, reto 3).
+> - Tu mazo de Anki y la libreta de errores de los repasos.
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **guía del examen** (*exam guide*): el documento oficial con los dominios y las tareas que se evalúan.
+> - **dominio**: cada una de las cuatro partes del examen, con su peso.
+> - **tarea** (*task statement*): cada cosa concreta que la guía dice que debes saber.
+> - **puntuación escalada**: la nota de 100 a 1000; se aprueba con 700.
+> - **preguntas que no puntúan**: 15 de las 65, que AWS está probando; no sabes cuáles son.
+
 ## Objetivo
 
 - Conocer el examen **AWS Certified Cloud Practitioner (CLF-C02)**: formato, puntuación, dominios y lo que no entra.
@@ -23,7 +37,11 @@ Ya hiciste más práctica de la que pide el examen. Lo que falta es **amplitud**
 
 > 💰 **0 USD en AWS:** hoy no creas nada en tu cuenta. El examen cuesta **100 USD** y se paga al reservarlo (clase 81).
 
-## Teoría: el examen
+## Los pasos
+
+### 1. El examen y su guía oficial (40 min)
+
+Primero, lo esencial del examen:
 
 | | CLF-C02 |
 |---|---|
@@ -49,11 +67,7 @@ Los cuatro dominios, y lo que pesan en las 50 preguntas que cuentan:
 
 **Lo que no entra**, según la propia guía: programar, diseñar arquitecturas, resolver averías, implementar y hacer pruebas de carga. El examen pregunta **qué** servicio o concepto encaja, no **cómo** se configura. Tus horas de terminal te dan ventaja para entender las preguntas, pero la amplitud hay que estudiarla.
 
-## Práctica guiada
-
-### 1. Lee la guía oficial (25 min)
-
-Abre la [guía del examen CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html) (está en inglés; los nombres de los servicios no se traducen en el examen). Lee la introducción y los cuatro dominios, y echa un vistazo a las listas de servicios dentro y fuera del examen (*In-scope* y *Out-of-scope*).
+Ahora, la guía. Abre la [guía del examen CLF-C02](https://docs.aws.amazon.com/aws-certification/latest/cloud-practitioner-02/cloud-practitioner-02.html) (está en inglés; los nombres de los servicios no se traducen en el examen). Lee la introducción y los cuatro dominios, y echa un vistazo a las listas de servicios dentro y fuera del examen (*In-scope* y *Out-of-scope*).
 
 ### 2. Tu lista de control (60 min)
 
@@ -260,9 +274,60 @@ El examen pone juntos servicios que se parecen. Responde sin mirar y comprueba e
 
 ## Reto
 
-1. Escribe **10 preguntas tuyas** al estilo del examen, con cuatro opciones, sobre lo que hiciste con Vigía. Por ejemplo: "Vigía debe guardar sus informes 7 años por normativa y casi nunca se leerán. ¿Qué clase de S3 es la más barata?". Intercámbialas con alguien que también estudie, o guárdalas para repasar en la clase 81.
-2. Lee la página del **Well-Architected Framework** y escribe, para cada pilar, una cosa que Vigía v3 ya hace bien y otra que no.
-3. Elige tres servicios de la lista del paso 3 que no conocías y busca un caso real de uso de cada uno en el blog de AWS.
+Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** Escribe **3 preguntas tuyas** al estilo del examen sobre lo que hiciste con Vigía. Guárdalas para repasar en la clase 81.
+
+> 🧩 **Ejemplo resuelto:**
+> *Vigía debe guardar sus informes 7 años por normativa, y casi nunca se leerán. ¿Qué clase de S3 es la más barata?*
+> A) S3 Standard · B) S3 Standard-IA · C) S3 Glacier Deep Archive · D) S3 One Zone-IA
+> **Correcta: C**, porque es la más barata para datos que casi no se leen y pueden tardar horas en recuperarse.
+
+**Ahora tú, con huecos** (tres veces):
+```markdown
+Situación: Vigía ____. ¿Qué ____?
+A) ____ · B) ____ · C) ____ · D) ____
+Correcta: ____, porque ____.
+```
+
+<details>
+<summary>Pista</summary>
+
+Saca cada situación de una clase distinta: la contraseña de PostgreSQL (Secrets Manager o generarla dentro), los permisos de la EC2 (un rol), quién borró algo (CloudTrail)… Las opciones malas, que sean servicios que se parecen (los del Rómpelo).
+</details>
+
+**2.** Para cada pilar del **Well-Architected Framework**, una cosa que Vigía v3 ya hace bien y otra que no.
+
+> 🧩 **Ejemplo resuelto:** **Seguridad:** bien, sin llaves guardadas en el servidor (rol IAM) y el 80 abierto solo a mi IP; mal, la API no tiene autenticación.
+
+**Ahora tú, con huecos:**
+
+| Pilar | Lo que Vigía v3 hace bien | Lo que no |
+|-------|---------------------------|-----------|
+| Excelencia operativa | ____ | ____ |
+| Seguridad | sin llaves (rol IAM), 80 solo a mi IP | la API no tiene autenticación |
+| Fiabilidad | ____ | una sola instancia, en una sola zona |
+| Eficiencia del rendimiento | ____ | ____ |
+| Optimización de costos | ____ | ____ |
+| Sostenibilidad | ____ | ____ |
+
+<details>
+<summary>Pista</summary>
+
+Piensa en lo que ya tiene (cloud-init, logs con retención, destruir al terminar, una t3.small) y en lo que le falta (despliegue automático, varias zonas, base de datos gestionada).
+</details>
+
+**3.** Elige tres servicios del paso 3 que no conocías y busca un caso real de uso de cada uno en el blog de AWS.
+
+> 🧩 **Ejemplo resuelto:** «**Athena:** una empresa analiza con SQL los logs que guarda en S3, sin montar ninguna base de datos.»
+
+**Ahora tú, con huecos:** «**____:** ____.» (tres líneas, una por servicio).
+
+<details>
+<summary>Pista</summary>
+
+Busca `aws.amazon.com/blogs` más el nombre del servicio y lee solo el primer párrafo de un artículo: ahí suele estar el caso.
+</details>
 
 ## Destruir al terminar
 
@@ -277,10 +342,12 @@ aws ec2 describe-instances --filters Name=instance-state-name,Values=running \
 
 En `notas/fase-6/clase-80.md`:
 
-1. ¿Cuántas preguntas tiene el examen, cuántas puntúan y qué nota necesitas? ¿Conviene dejar preguntas en blanco?
-2. ¿Qué dominio pesa más? ¿Y cuál es tu peor dominio según tu lista de control y tu primera medición?
-3. Explica en una frase cada una: *rehost*, *replatform* y *refactor*.
-4. **Repaso (clase 79, sin mirar):** ¿por qué hay que subir el límite de saltos de IMDS a 2 cuando el código que llama a AWS corre en un contenedor?
+1. ¿Cuántas preguntas tiene el examen, cuántas puntúan y qué nota necesitas? ¿Conviene dejar preguntas en blanco? *(2 líneas. Empieza así: «65 preguntas, de las que puntúan…; necesito… No conviene dejar ninguna en blanco porque…»)*
+2. ¿Qué dominio pesa más? ¿Y cuál es tu peor dominio según tu lista de control y tu primera medición? *(1–2 líneas. Empieza así: «El que más pesa es el 3, tecnología y servicios, con el 34 %. Mi peor dominio es…»)*
+3. Explica en una frase cada una: *rehost*, *replatform* y *refactor*. *(3 líneas, una por estrategia. Empieza así: «Rehost: mover tal cual a EC2.»)*
+4. **Repaso (clase 79, sin mirar):** ¿por qué hay que subir el límite de saltos de IMDS a 2 cuando el código que llama a AWS corre en un contenedor? *(2 líneas. Empieza así: «Porque la petición del contenedor al IMDS cruza el puente de Docker, un salto más, y…»)*
+
+Después, escríbeme `examíname clase-80`.
 
 ## Autocorrección
 
@@ -303,6 +370,10 @@ En `notas/fase-6/clase-80.md`:
 | 10 | Fargate | |
 | 11 | Pricing Calculator, después Cost Explorer | |
 | 12 | Trusted Advisor | Security Hub reúne hallazgos de seguridad |
+
+**Reto 1:** respuesta personal; revisa que cada pregunta tenga una sola opción claramente mejor y que las otras tres sean servicios reales que se parecen.
+
+**Reto 2** (una versión posible): excelencia operativa, bien con cloud-init y la instancia recreable, mal sin despliegue automático; fiabilidad, bien con `restart: unless-stopped`; eficiencia, bien con una t3.small ajustada a la carga, mal sin escalar; costos, bien destruyendo al terminar y con retención en los logs, mal pagando una IPv4 pública; sostenibilidad, bien con una instancia pequeña y apagada cuando no se usa, mal sin Graviton.
 
 **Cierre:**
 1. 65 preguntas, de las que puntúan 50; necesitas 700 de 1000. No hay penalización por fallar, así que nunca dejes ninguna en blanco: responde todas, aunque sea descartando.

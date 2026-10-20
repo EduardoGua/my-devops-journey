@@ -2,6 +2,21 @@
 
 **Dónde:** tu Ubuntu + AWS + GitHub · **Tiempo:** 2 bloques largos (unas 5–6 h) · **Bloque:** C. Proyecto · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** Vigía v2 llega a AWS tal como está: la misma imagen, ahora en ECR, y el mismo Compose, en una EC2 que se monta sola en el primer arranque con cloud-init. Sin una sola llave guardada (los permisos los da un **rol**), sin SSH (entras con Session Manager) y con el puerto 80 abierto solo a tu IP. Al terminar, destruyes la instancia y la recreas idéntica con un comando.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Tu Vigía v2: `compose.yaml`, el `.env` y la imagen `2.0.0` (clases 65 y 66).
+> - cloud-init con `write_files` y los marcadores `__…__` que se sustituyen con `sed` (clase 37).
+> - La `lab-vpc` y `crear-vpc.sh` (clase 71); el rol, el perfil de instancia, IMDSv2 y Session Manager (clase 72).
+> - El SG abierto solo a tu IP y *timeout* frente a *refused* (clase 73).
+> - ECR, las etiquetas inmutables y el *credential helper* con `credHelpers` (clase 75).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - ***override* de Compose**: un segundo archivo que cambia partes del primero sin tocarlo (`-f compose.yaml -f compose.aws.yaml`).
+> - **ECR Public**: el registro público de AWS, con copias de las imágenes oficiales de Docker Hub.
+> - **marcador**: un texto como `__IMAGE__` que se sustituye por el valor real antes de usar el archivo.
+> - **infraestructura desechable**: recrear un servidor desde su receta en lugar de repararlo a mano.
+
 ## Objetivo
 
 Llevar Vigía v2 tal como está (API, chequeo y PostgreSQL en Compose) a una EC2:
@@ -163,7 +178,7 @@ Recuerda: *timeout* = algo descarta; *refused* = no escucha nadie (clase 73).
 
 ## Rómpelo: antes de dar la clase por terminada
 
-1. **Ganado, no mascota.**
+1. **Recrear en lugar de reparar.**
    - Termina la instancia y lánzala de nuevo con el **mismo** comando.
    - Cronometra desde `run-instances` hasta que `/health` responde. ¿Cuánto tarda?
    - ¿Qué pasó con el historial de `/status`?
@@ -206,6 +221,62 @@ Prerequisites: AWS CLI v2 signed in with `aws login`, Docker, and a VPC with a p
 (each step with its exact commands)
 ````
 
+### Modelo para adaptar (lo escribió Claude)
+
+Cópialo en tu README y rellena los huecos (`____`); cambia los marcadores por los que use tu `deploy/cloud-init.yaml`. `VPC`, `SUBNET` y `AMI` se obtienen como en las clases 71 y 72.
+
+````markdown
+## Deploy to AWS
+
+Vigía runs on a single EC2 instance with Docker Compose. The instance has an IAM role
+(no access keys), IMDSv2 enforced, no SSH: admin access is through SSM Session Manager.
+
+Prerequisites: AWS CLI v2 signed in with `aws login`, Docker, and a VPC with a public subnet.
+
+### 1. Push the image to ECR
+```bash
+REGISTRY=____.dkr.ecr.us-east-1.amazonaws.com
+aws ecr create-repository --repository-name vigia --image-tag-mutability IMMUTABLE \
+  --image-scanning-configuration scanOnPush=true
+aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRY"
+docker tag ____/vigia:2.0.0 "$REGISTRY/vigia:2.0.0" && docker push "$REGISTRY/vigia:2.0.0"
+```
+
+### 2. Create the IAM role and instance profile
+```bash
+aws iam create-role --role-name vigia-ec2 --assume-role-policy-document file://deploy/confianza-ec2.json
+aws iam attach-role-policy --role-name vigia-ec2 --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+aws iam attach-role-policy --role-name vigia-ec2 --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly
+aws iam create-instance-profile --instance-profile-name vigia-ec2
+aws iam add-role-to-instance-profile --instance-profile-name vigia-ec2 --role-name vigia-ec2
+```
+
+### 3. Create the security group (port 80 from your IP only)
+```bash
+SG=$(aws ec2 create-security-group --group-name vigia-web --vpc-id "$VPC" \
+  --description "Vigia: HTTP from my IP" --query GroupId --output text)
+aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 80 \
+  --cidr "$(curl -s https://checkip.amazonaws.com)/32"
+```
+
+### 4. Render the cloud-init file and launch the instance
+```bash
+sed -e "s|__IMAGE__|$REGISTRY/vigia:2.0.0|" -e "s|__REPO__|https://github.com/____/vigia.git|" \
+  deploy/cloud-init.yaml > /tmp/user-data.yaml
+grep -c '__' /tmp/user-data.yaml        # must print 0
+aws ec2 run-instances --image-id "$AMI" --instance-type t3.small --subnet-id "$SUBNET" \
+  --security-group-ids "$SG" --iam-instance-profile Name=vigia-ec2 \
+  --metadata-options HttpTokens=required,HttpPutResponseHopLimit=1 \
+  --user-data file:///tmp/user-data.yaml \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=vigia},{Key=Proyecto,Value=vigia}]'
+```
+
+### 5. Verify
+```bash
+curl http://<public-ip>/health
+```
+````
+
 ## Destruir al terminar
 
 Al final de **cada** sesión, termina la instancia:
@@ -227,10 +298,12 @@ Lo demás no cobra por hora (o casi nada) y lo usarás en la clase 79, así que 
 
 En `notas/fase-6/clase-78.md`:
 
-1. ¿Por qué la contraseña de PostgreSQL se genera dentro de la instancia y no viaja en el *user-data*?
-2. Explica cómo descarga la EC2 su imagen de ECR sin `docker login` y sin llaves.
-3. Si terminas la instancia y la lanzas otra vez, ¿qué se conserva y qué se pierde? ¿Por qué eso es una ventaja y también un límite?
-4. **Repaso (clase 77, sin mirar):** ¿qué diferencia hay entre Multi-AZ y una réplica de lectura?
+1. ¿Por qué la contraseña de PostgreSQL se genera dentro de la instancia y no viaja en el *user-data*? *(2 líneas. Empieza así: «Porque el user-data lo puede leer cualquiera con permiso para… Generada dentro con `openssl rand`, la contraseña…»)*
+2. Explica cómo descarga la EC2 su imagen de ECR sin `docker login` y sin llaves. *(2 líneas. Empieza así: «Docker pide las credenciales al credential helper configurado en `/root/.docker/config.json`, y el helper…»)*
+3. Si terminas la instancia y la lanzas otra vez, ¿qué se conserva y qué se pierde? ¿Por qué eso es una ventaja y también un límite? *(2–3 líneas. Empieza así: «Se conserva todo lo que está en el repo y en AWS (…); se pierde… Es una ventaja porque… y un límite porque…»)*
+4. **Repaso (clase 77, sin mirar):** ¿qué diferencia hay entre Multi-AZ y una réplica de lectura? *(1–2 líneas. Empieza así: «Multi-AZ es una copia en espera, síncrona, en otra zona…; una réplica de lectura…»)*
+
+Después, escríbeme `examíname clase-78`.
 
 ## Autocorrección
 
@@ -258,7 +331,7 @@ En `notas/fase-6/clase-78.md`:
 | bootstrap script | script de arranque (del primer arranque) |
 | override file | archivo que sobrescribe una configuración base |
 | immutable infrastructure | infraestructura inmutable (se recrea, no se parchea) |
-| cattle, not pets | ganado, no mascotas |
+| cattle, not pets | infraestructura desechable: se recrea, no se repara |
 | deployment runbook | guía de despliegue |
 
 🎙️ *"Version 3 runs on EC2 with an IAM role and no stored credentials. The instance bootstraps itself with cloud-init, generates its own database password, pulls the image from ECR through the credential helper, and I manage it with Session Manager instead of SSH."*
