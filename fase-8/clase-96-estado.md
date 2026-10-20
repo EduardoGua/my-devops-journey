@@ -2,6 +2,23 @@
 
 **Dónde:** tu Ubuntu + AWS · **Tiempo:** 90 min · **Bloque:** A. Terraform desde cero
 
+> 💡 **La idea de hoy:** el estado es la memoria de Terraform: qué recurso real corresponde a cada bloque, con todos sus atributos, secretos incluidos. Por eso no puede vivir en tu portátil ni en Git: va a un **bucket de S3** con versionado, privado y con **bloqueo**, para que dos `apply` nunca escriban a la vez.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - El estado local y lo que pasa si se pierde (clase 92, Rómpelo 2).
+> - El versionado, el bloqueo del acceso público y las versiones de un objeto en S3 (clase 74).
+> - `jq` para leer JSON (clase 47); `pkill` para matar un proceso por nombre (clase 11).
+> - `prevent_destroy` y `force_destroy` (clases 92 y 95); la configuración de la clase 94, con su VPC y sus tres subredes.
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **backend**: dónde guarda Terraform el estado (`local` por defecto, `s3` hoy).
+> - **`key`**: la ruta del estado dentro del bucket; cada configuración tiene la suya.
+> - **bloqueo** (*state lock*): la marca que impide que dos procesos usen el mismo estado a la vez.
+> - **`use_lockfile`**: el bloqueo nativo de S3, con un objeto `.tflock`.
+> - **escritura condicional**: "crea este objeto solo si no existe".
+> - **configuración parcial**: dejar valores del backend fuera del código y pasarlos con `-backend-config`.
+> - **recurso huérfano**: un recurso real que ya no está en ningún estado.
+
 ## Objetivo
 
 - Entender qué guarda el estado, por qué es crítico y por qué no puede vivir en tu portátil ni en Git.
@@ -24,9 +41,24 @@ Hasta hace poco, el bloqueo en AWS necesitaba una tabla de DynamoDB. Hoy está *
 
 > 💰 **0 USD.** Un bucket con unos KB y dos o tres VPC vacías durante la clase.
 
-## Teoría
+## Cómo va esta clase
 
-### Qué hay en el estado
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber hecho la anterior. Todas usan la configuración de la clase 94.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 y 2** (unos 35 min); el segundo, las **piezas 3 a 5**, el Rómpelo, el reto y el cierre. Puedes dejarlo todo creado entre los dos días: ni la VPC ni el bucket cuestan nada.
+
+La pieza 4 necesita **dos terminales** abiertas en la misma carpeta.
+
+```bash
+cd ~/my-devops-journey/labs/clase-94 && terraform apply
+ls -la terraform.tfstate
+```
+
+Si destruiste la clase 94, el `apply` la vuelve a crear con estado **local**: la VPC y sus tres subredes.
+
+## Las piezas
+
+### Pieza 1 — Qué hay en el estado
 
 `terraform.tfstate` es un JSON con:
 - **la versión de Terraform**, un **`serial`** (cuántas veces ha cambiado) y un **`lineage`** (la identidad de ese estado);
@@ -40,30 +72,35 @@ De ahí salen sus tres reglas:
 | en un sitio compartido, con bloqueo | si dos procesos escriben a la vez, el estado se corrompe |
 | con historial | si se estropea o se pierde, tiene que poder recuperarse |
 
-Un bucket de S3 con versionado y con el acceso público bloqueado (clase 74) cumple las tres.
+Para leerlo, nunca abras el JSON a mano: usa los comandos de `terraform state`.
 
-### El backend S3
+**Pruébalo** (en `labs/clase-94`):
 
-```hcl
-terraform {
-  backend "s3" {
-    bucket       = "lab-tfstate-123456789012"
-    key          = "labs/clase-94/terraform.tfstate"   # la "ruta" de este estado en el bucket
-    region       = "us-east-1"
-    use_lockfile = true                                # bloqueo nativo de S3
-    encrypt      = true                                # cifrado en el bucket
-  }
-}
+```bash
+terraform state list
+terraform state show 'aws_subnet.esta["publica-a"]'
+terraform state pull | jq '{version, terraform_version, serial, lineage, recursos: (.resources | length)}'
 ```
 
-- **Un bucket, muchos estados.** Cada configuración usa su propio `key`. Es como Vigía y los laboratorios convivirán.
-- **El bloque `backend` no admite variables:** se evalúa antes que todo lo demás. Lo que cambie entre cuentas, como el nombre del bucket, se pasa al inicializar: `terraform init -backend-config="bucket=…"`. Es la **configuración parcial** que usará Vigía.
-- **Cómo bloquea:** con `use_lockfile`, Terraform escribe junto al estado un objeto `terraform.tfstate.tflock` con una **escritura condicional** ("créalo solo si no existe"). Si otro proceso ya lo tiene, la escritura falla y Terraform se niega a seguir. Al terminar, lo borra.
-- **Permisos:** quien use el backend necesita `s3:ListBucket` en el bucket, `s3:GetObject` y `s3:PutObject` en el estado, y además `s3:DeleteObject` en el `.tflock`.
+Las comillas simples alrededor de la dirección hacen falta: `[` y `"` significan algo para Bash.
 
-### El huevo y la gallina
+🔮 **Predice:** ¿cuántos recursos tiene el estado, y cuántos atributos guarda de una subred: los que escribiste o más?
 
-El bucket del estado es un recurso de AWS, y te gustaría crearlo con Terraform… ¿pero dónde guardas el estado del bucket del estado?
+👀 **Qué deberías ver:** cuatro direcciones (`aws_vpc.lab` y las tres `aws_subnet.esta[…]`). La subred muestra muchos más atributos de los que escribiste: `arn`, `id`, `owner_id`, `availability_zone_id`… Y el JSON resumido, con tu `serial` y un `lineage` largo, del tipo `"a1b2c3d4-…"`.
+
+✋ **Sin mirar:** ¿por qué no se sube el estado a Git?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque puede contener secretos en texto claro, y porque cada clon tendría su propia copia: dos personas aplicando con estados distintos se pisan.
+</details>
+
+**En resumen:** el estado guarda todos los atributos reales, secretos incluidos; va fuera de Git, compartido, con bloqueo y con historial.
+
+### Pieza 2 — El huevo y la gallina: el bucket del estado
+
+Un bucket de S3 con versionado y con el acceso público bloqueado (clase 74) cumple las tres reglas. Pero el bucket del estado es un recurso de AWS, y te gustaría crearlo con Terraform… ¿dónde guardas el estado del bucket del estado?
 
 La práctica habitual:
 1. una configuración **pequeña y aparte** crea el bucket con estado **local**;
@@ -72,22 +109,7 @@ La práctica habitual:
 
 Ese bucket lleva `prevent_destroy` (clase 95): borrarlo sería borrar la memoria de toda tu infraestructura.
 
-### Los comandos de `terraform state`
-
-| Orden | Qué hace |
-|-------|----------|
-| `terraform state list` | las direcciones de todo lo que gestiona |
-| `terraform state show <dirección>` | los atributos de un recurso |
-| `terraform state pull` | el estado entero, en JSON |
-| `terraform state mv <de> <a>` | cambiar la dirección de un recurso sin destruirlo. Hoy se prefiere un bloque `moved` (clase 98) |
-| `terraform state rm <dirección>` | olvidar un recurso **sin** borrarlo de AWS. Hoy se prefiere un bloque `removed` (clase 99) |
-| `terraform force-unlock <ID>` | quitar un bloqueo que se quedó colgado. Solo si estás seguro de que nadie está aplicando |
-
-**Workspaces:** `terraform workspace` permite varios estados para una misma carpeta (por ejemplo, `dev` y `prod`). En este curso usarás lo más claro y lo más común en AWS: un `key` distinto por entorno.
-
-## Práctica guiada
-
-### 1. El bucket del estado (15 min)
+**Pruébalo:**
 
 ```bash
 mkdir -p ~/my-devops-journey/labs/clase-96/estado && cd ~/my-devops-journey/labs/clase-96/estado
@@ -141,24 +163,48 @@ output "bucket" {
 }
 ```
 
+- **`data "aws_caller_identity"`:** tu número de cuenta, para que el nombre del bucket sea único sin escribirlo a mano.
+- **`force_destroy`:** deja que `destroy` vacíe el bucket al final de la clase. En Vigía (clase 97) será al revés: `prevent_destroy`.
+
 ```bash
 terraform init && terraform apply
 BUCKET=$(terraform output -raw bucket)
 aws s3api get-bucket-versioning --bucket "$BUCKET"
 ```
 
-`force_destroy` deja que `destroy` vacíe el bucket al final de la clase. En Vigía (clase 97) será al revés: `prevent_destroy`.
+👀 **Qué deberías ver:** `Apply complete! Resources: 3 added`; `$BUCKET` vale `lab-tfstate-` y tu número de cuenta; y el versionado, `"Status": "Enabled"`. El estado de **esta** configuración está en local, en `labs/clase-96/estado/terraform.tfstate`.
 
-### 2. Llevar un estado local a S3 (15 min)
+✋ **Sin mirar:** ¿por qué la configuración que crea el bucket del estado usa estado local?
 
-Usa la configuración de la clase 94: vuelve a crearla con estado local.
+<details>
+<summary>Comprueba</summary>
 
-```bash
-cd ~/my-devops-journey/labs/clase-94 && terraform apply
-ls -la terraform.tfstate
+Porque su estado no puede estar en un bucket que todavía no existe. Se aplica una vez con estado local, y ese archivo se guarda en sitio seguro (o se migra después al propio bucket).
+</details>
+
+**En resumen:** el bucket del estado se crea aparte, con estado local, versionado y sin acceso público.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, antes de la pieza 3, vuelve a calcular el nombre: `BUCKET=$(terraform -chdir=$HOME/my-devops-journey/labs/clase-96/estado output -raw bucket)`.
+
+### Pieza 3 — El backend S3: llevar un estado local al bucket
+
+```hcl
+terraform {
+  backend "s3" {
+    bucket       = "lab-tfstate-123456789012"
+    key          = "labs/clase-94/terraform.tfstate"   # la "ruta" de este estado en el bucket
+    region       = "us-east-1"
+    use_lockfile = true                                # bloqueo nativo de S3
+    encrypt      = true                                # cifrado en el bucket
+  }
+}
 ```
 
-Crea `backend.tf` en esa carpeta (cambia el número de cuenta por el tuyo):
+- **Un bucket, muchos estados.** Cada configuración usa su propio `key`. Es como Vigía y los laboratorios convivirán.
+- **El bloque `backend` no admite variables:** se evalúa antes que todo lo demás. Lo que cambie entre cuentas, como el nombre del bucket, se pasa al inicializar: `terraform init -backend-config="bucket=…"`. Es la **configuración parcial** que usará Vigía (Rómpelo 1).
+- **Permisos:** quien use el backend necesita `s3:ListBucket` en el bucket, `s3:GetObject` y `s3:PutObject` en el estado, y además `s3:DeleteObject` en el `.tflock` (pieza 4).
+
+**Pruébalo.** Crea `backend.tf` en `labs/clase-94` (cambia el número de cuenta por el tuyo):
 
 ```hcl
 terraform {
@@ -172,11 +218,14 @@ terraform {
 }
 ```
 
+🔮 **Predice:** al cambiar de backend, ¿qué te preguntará `terraform init`?
+
 ```bash
+cd ~/my-devops-journey/labs/clase-94
 terraform init -migrate-state
 ```
 
-🔮 **Predice:** ¿qué te pregunta? Si quieres **copiar** el estado existente al backend nuevo. Contesta `yes`. Comprueba:
+Te pregunta si quieres **copiar** el estado existente al backend nuevo. Contesta `yes`. Comprueba:
 
 ```bash
 aws s3 ls "s3://$BUCKET" --recursive
@@ -184,18 +233,35 @@ terraform state list
 terraform plan
 ```
 
-El estado está en S3 y el plan dice `No changes`: Terraform sigue sabiendo qué es suyo. Borra la copia local, que ya no se usa y solo puede confundir:
+👀 **Qué deberías ver:** en el bucket, `labs/clase-94/terraform.tfstate`; las mismas cuatro direcciones de la pieza 1; y `No changes`: Terraform sigue sabiendo qué es suyo.
+
+Borra la copia local, que ya no se usa y solo puede confundir:
 
 ```bash
 rm -f terraform.tfstate terraform.tfstate.backup
 terraform plan
 ```
 
-Sigue funcionando: ahora lee de S3.
+Sigue diciendo `No changes`: ahora lee de S3.
 
-### 3. El bloqueo, con dos terminales (20 min)
+✋ **Sin mirar:** ¿por qué no puedes escribir `bucket = var.bucket_estado` en el backend?
 
-En la **terminal 1**, empieza un cambio y **no contestes** a la pregunta:
+<details>
+<summary>Comprueba</summary>
+
+Porque el backend se lee antes que las variables. Lo que cambia se pasa al inicializar, con `terraform init -backend-config="bucket=…"`.
+</details>
+
+**En resumen:** un bucket guarda muchos estados, uno por `key`; `init -migrate-state` copia el estado local al backend.
+
+### Pieza 4 — El bloqueo, con dos terminales
+
+Con `use_lockfile`, Terraform escribe junto al estado un objeto `terraform.tfstate.tflock` con una **escritura condicional** ("créalo solo si no existe"):
+- si otro proceso ya lo tiene, la escritura falla y Terraform se niega a seguir;
+- al terminar, el dueño lo borra;
+- si el proceso muere, el `.tflock` se queda. Se quita con `terraform force-unlock <ID>`, **solo** si sabes que nadie está aplicando.
+
+**Pruébalo.** En la **terminal 1**, empieza un cambio y **no contestes** a la pregunta:
 
 ```bash
 cd ~/my-devops-journey/labs/clase-94
@@ -210,7 +276,9 @@ aws s3 ls "s3://lab-tfstate-$(aws sts get-caller-identity --query Account --outp
 terraform plan
 ```
 
-🔮 **Predice:**
+🔮 **Predice:** ¿qué verás en el bucket, y qué hará el `plan` de la terminal 2?
+
+👀 **Qué deberías ver:**
 - **El bucket:** junto al estado, aparece `terraform.tfstate.tflock`.
 - **El `plan` de la terminal 2:** falla con `Error acquiring the state lock`. El motivo es `PreconditionFailed`: la escritura condicional no pudo crear el `.tflock` porque ya existe.
 - **Lock Info:** el ID del bloqueo, quién lo tiene, desde qué máquina, qué operación y desde cuándo.
@@ -231,28 +299,62 @@ terraform force-unlock <ID>
 terraform plan
 ```
 
-`force-unlock` solo se usa si **sabes** que nadie está aplicando. Si lo usas con un `apply` de verdad a medias, dos procesos escribirán el mismo estado.
+`force-unlock` te pide confirmación; contesta `yes`. Si lo usas con un `apply` de verdad a medias, dos procesos escribirán el mismo estado.
 
-### 4. Los comandos del estado (10 min)
+✋ **Sin mirar:** ¿por qué se quedó el `.tflock` después del `pkill -9`?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque el que lo borra es el propio proceso al terminar, y `-9` lo mató sin dejarle hacer nada. Nadie más sabe que ya no hay nadie aplicando.
+</details>
+
+**En resumen:** el `.tflock` impide dos operaciones a la vez; si se queda colgado, `force-unlock`, y solo si estás seguro.
+
+### Pieza 5 — Mover, olvidar y volver atrás
+
+| Orden | Qué hace |
+|-------|----------|
+| `terraform state mv <de> <a>` | cambiar la dirección de un recurso sin destruirlo. Hoy se prefiere un bloque `moved` (clase 98) |
+| `terraform state rm <dirección>` | olvidar un recurso **sin** borrarlo de AWS. Hoy se prefiere un bloque `removed` (clase 99) |
+| `terraform state push <archivo>` | subir un estado entero; solo para recuperar uno |
+
+Y como el bucket tiene versionado, cada `apply` deja una versión del estado. Si uno se corrompiera, descargarías la anterior con `aws s3api get-object --version-id …` (clase 74) y la restaurarías con `terraform state push`. Nunca lo hagas con prisa: primero entiende qué cambió entre las dos.
+
+**Workspaces:** `terraform workspace` permite varios estados para una misma carpeta (por ejemplo, `dev` y `prod`). En este curso usarás lo más claro y lo más común en AWS: un `key` distinto por entorno.
+
+**Pruébalo.** Aplica un cambio y mira las versiones del estado:
 
 ```bash
-terraform state list
-terraform state show 'aws_subnet.esta["publica-a"]'
-terraform state pull | jq '{version, terraform_version, serial, lineage, recursos: (.resources | length)}'
-```
-
-Las comillas simples alrededor de la dirección hacen falta: `[` y `"` significan algo para Bash.
-
-### 5. Volver atrás con las versiones (10 min)
-
-Aplica un cambio (`terraform apply -var 'etiquetas={Nota="v2"}'`) y mira las versiones del estado:
-
-```bash
+terraform apply -var 'etiquetas={Nota="v2"}'
 aws s3api list-object-versions --bucket "lab-tfstate-$(aws sts get-caller-identity --query Account --output text)" \
   --prefix labs/clase-94/terraform.tfstate --query 'Versions[].[VersionId,LastModified,Size]' --output table
 ```
 
-Cada `apply` dejó una versión. Si un estado se corrompiera, descargarías la anterior con `aws s3api get-object --version-id …` (clase 74) y la restaurarías con `terraform state push`. Nunca lo hagas con prisa: primero entiende qué cambió entre las dos.
+👀 **Qué deberías ver:** una tabla con varias filas, una por cada vez que el estado cambió (la migración y cada `apply`), con su `VersionId` y su hora. El `--prefix` también encuentra versiones del `.tflock` si las hay: fíjate en el tamaño, el estado pesa varios KB.
+
+✋ **Sin mirar:** quieres que Terraform deje de gestionar un recurso, pero sin borrarlo de AWS. ¿Qué usas?
+
+<details>
+<summary>Comprueba</summary>
+
+`terraform state rm <dirección>` o, mejor, un bloque `removed` (clase 99): Terraform lo olvida y el recurso sigue en AWS.
+</details>
+
+**En resumen:** `state mv` y `state rm` cambian el estado sin tocar AWS; el versionado del bucket permite volver atrás.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `backend "s3" { bucket, key, region, use_lockfile = true, encrypt = true }` | el estado en S3, con bloqueo y cifrado |
+| `terraform init -migrate-state` | copiar el estado al backend nuevo |
+| `terraform init -reconfigure -backend-config="bucket=…"` | configuración parcial del backend |
+| `terraform state list` · `state show '<dir>'` · `state pull` | leer el estado |
+| `terraform state mv` · `state rm` · `state push` | cambiar el estado sin tocar AWS |
+| `terraform force-unlock <ID>` | quitar un bloqueo colgado |
+| `aws s3api list-object-versions --prefix <key>` | las versiones del estado |
+| `data "aws_caller_identity" "yo" {}` | tu número de cuenta |
 
 ## Rómpelo
 
@@ -276,9 +378,59 @@ Cuenta los atributos de cada recurso: muchos más de los que escribiste. Si algu
 
 ## Reto
 
-1. Escribe la política de IAM **mínima** para que un rol pueda usar el backend de la clase 94 (y solo ese `key`), según los permisos de la teoría. La usarás en la clase 100 para el rol del pipeline.
-2. Migra el estado del bucket del estado (`labs/clase-96/estado`) a su propio bucket, con otro `key`. ¿Qué problema aparece si algún día quieres destruir ese bucket con Terraform?
-3. Lee en la documentación del backend S3 qué hace el argumento `workspace_key_prefix`, y cómo se combina con `terraform workspace new dev`.
+Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** Escribe la política de IAM **mínima** para que un rol pueda usar el backend de la clase 94 (y solo ese `key`), con los permisos de la pieza 3. La usarás en la clase 100 para el rol del pipeline.
+
+> 🧩 **Ejemplo resuelto:** en la clase 69, la política para leer los informes daba un permiso sobre el bucket y otro sobre un prefijo:
+> ```json
+> {"Effect": "Allow", "Action": "s3:ListBucket", "Resource": "arn:aws:s3:::<bucket>"},
+> {"Effect": "Allow", "Action": "s3:GetObject", "Resource": "arn:aws:s3:::<bucket>/reports/*"}
+> ```
+
+**Ahora tú, con huecos:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {"Effect": "Allow", "Action": "____", "Resource": "arn:aws:s3:::lab-tfstate-<cuenta>"},
+    {"Effect": "Allow", "Action": ["s3:GetObject", "____"],
+     "Resource": "arn:aws:s3:::lab-tfstate-<cuenta>/labs/clase-94/____"},
+    {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "____"],
+     "Resource": "arn:aws:s3:::lab-tfstate-<cuenta>/labs/clase-94/____"}
+  ]
+}
+```
+
+<details>
+<summary>Pista</summary>
+
+`ListBucket` se da sobre el **bucket** (sin `/…`); los demás, sobre los **objetos**. El `.tflock` se crea y se borra en cada operación, así que necesita un permiso más que el estado.
+</details>
+
+**2.** Migra el estado del bucket del estado (`labs/clase-96/estado`) a su propio bucket, con otro `key`. ¿Qué problema aparece si algún día quieres destruir ese bucket con Terraform?
+
+> 🧩 **Ejemplo resuelto:** la pieza 3: `backend.tf` con `key = "labs/clase-94/terraform.tfstate"` y `terraform init -migrate-state`.
+
+**Ahora tú, con huecos:** `backend.tf` en `labs/clase-96/estado` con `key = "____/terraform.tfstate"` y `terraform init ____`. Completa: «Si quiero destruirlo, el problema es que su estado vive…, así que primero tendría que…».
+
+<details>
+<summary>Pista</summary>
+
+Piensa dónde guarda Terraform el estado mientras ejecuta `destroy`, y qué es lo último que borra.
+</details>
+
+**3.** Averigua en la documentación del backend S3 qué hace el argumento `workspace_key_prefix`, y cómo se combina con `terraform workspace new dev`.
+
+> 🧩 **Ejemplo resuelto:** el `key` de la pieza 3 decide la ruta del estado: `labs/clase-94/terraform.tfstate`.
+
+**Ahora tú, con huecos:** busca `workspace_key_prefix` en la página del backend `s3` (developer.hashicorp.com, *Backend Configuration*). Completa: «Su valor por defecto es `____`. Con `terraform workspace new dev`, el estado de ese workspace se guarda en `____/____/labs/clase-94/terraform.tfstate`».
+
+<details>
+<summary>Pista</summary>
+
+Puedes comprobarlo de verdad: `terraform workspace new dev`, `terraform plan`… y `aws s3 ls "s3://$BUCKET" --recursive`. Vuelve con `terraform workspace select default` y borra el otro con `terraform workspace delete dev`.
+</details>
 
 ## Destruir al terminar
 
@@ -296,10 +448,12 @@ Si lo haces al revés, la configuración de la clase 94 se queda sin estado y su
 
 En `notas/fase-8/clase-96.md`:
 
-1. ¿Qué guarda el estado y por qué tiene que estar en un sitio compartido, con bloqueo y con historial?
-2. ¿Cómo funciona el bloqueo con `use_lockfile`, y qué pasó en tu terminal 2?
-3. ¿Qué es el problema del huevo y la gallina del bucket del estado, y cómo lo resolviste?
-4. **Repaso (clase 95, sin mirar):** ¿para qué sirve `prevent_destroy`, y dónde lo pondrás en Vigía?
+1. ¿Qué guarda el estado y por qué tiene que estar en un sitio compartido, con bloqueo y con historial? *(3 líneas. Empieza así: «Qué recurso real corresponde a cada bloque, con todos sus atributos… Compartido, para que…»)*
+2. ¿Cómo funciona el bloqueo con `use_lockfile`, y qué pasó en tu terminal 2? *(2–3 líneas. Empieza así: «Al empezar, Terraform intenta crear un `.tflock` con una escritura condicional…»)*
+3. ¿Qué es el problema del huevo y la gallina del bucket del estado, y cómo lo resolviste? *(2 líneas. Empieza así: «El estado del bucket del estado no puede estar en él antes de que exista, así que…»)*
+4. **Repaso (clase 95, sin mirar):** ¿para qué sirve `prevent_destroy`, y dónde lo pondrás en Vigía? *(1–2 líneas. Empieza así: «Hace fallar cualquier plan que…»)*
+
+Después, escríbeme `examíname clase-96`.
 
 ## Autocorrección
 
@@ -332,7 +486,9 @@ En `notas/fase-8/clase-96.md`:
 }
 ```
 
-**Reto 2:** su estado vive dentro de él. Destruirlo con Terraform significaría borrar el bucket que contiene el estado que está usando para borrarlo. Primero tendrías que migrar ese estado a local (`terraform init -migrate-state` sin backend).
+**Reto 2:** por ejemplo, `key = "labs/estado/terraform.tfstate"` y `terraform init -migrate-state`. Su estado vive dentro de él: destruirlo con Terraform significaría borrar el bucket que contiene el estado que está usando para borrarlo. Primero tendrías que volver a traer ese estado a local (quitar el `backend.tf` y `terraform init -migrate-state`).
+
+**Reto 3:** el valor por defecto es `env:`. El workspace `default` usa el `key` tal cual; cualquier otro guarda su estado en `<workspace_key_prefix>/<workspace>/<key>`: con `terraform workspace new dev`, en `env:/dev/labs/clase-94/terraform.tfstate`. Así una misma carpeta tiene un estado por workspace dentro del mismo bucket.
 </details>
 
 ## Inglés

@@ -2,6 +2,22 @@
 
 **Dónde:** tu Ubuntu + AWS · **Tiempo:** 90 min · **Bloque:** B. Vigía en código
 
+> 💡 **La idea de hoy:** un **módulo** es una carpeta de Terraform que se usa como una pieza: recibe valores por sus variables y devuelve sus outputs; lo de dentro no se ve. Para meter en un módulo recursos que **ya existen** sin destruirlos, se usan bloques **`moved`**: le dicen a Terraform que un recurso solo ha cambiado de dirección.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - La red de la clase 71: VPC, subred pública y privada, IGW y tablas de rutas; el NAT Gateway y lo que cuesta (clases 71 y 72).
+> - Variables con `default`, outputs, `cidrsubnet` y `for_each` (clases 93 y 94).
+> - Las direcciones del estado y `terraform state mv` (clase 96).
+> - Tu `infra/` de Vigía, en Terraform desde la clase 97.
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **módulo raíz**: la carpeta en la que ejecutas `terraform`.
+> - **módulo hijo**: una carpeta que el raíz llama con un bloque `module`.
+> - **`source`**: de dónde sale un módulo (una carpeta, el Registry, un repositorio de Git).
+> - **refactorizar**: reordenar el código sin cambiar lo que hace.
+> - **bloque `moved`**: `from` (la dirección vieja) y `to` (la nueva) de un mismo recurso.
+> - **`coalesce()`**: devuelve el primer valor que no sea nulo.
+
 ## Objetivo
 
 - Entender qué es un **módulo**: una carpeta de Terraform con entradas (variables) y salidas (outputs) que se reutiliza como una pieza.
@@ -24,75 +40,23 @@ Y una situación muy común: alguien quiere ordenar el código sin tocar lo que 
 
 > 💰 **0 USD.** Redes vacías, y un módulo del Registry que solo planificas.
 
-## Teoría
+## Cómo va esta clase
 
-### Un módulo por dentro
+Cinco piezas y, al final, lo mismo en Vigía. En cada pieza lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber hecho la anterior. Todas usan la misma red.
 
-Cualquier carpeta con archivos `.tf` es un módulo. La que ejecutas es el **módulo raíz**, y las que llama con bloques `module` son **módulos hijos**:
-
-```
-infra/
-├── main.tf                      ← módulo raíz: module "red" { source = "./modules/red" … }
-└── modules/red/
-    ├── variables.tf             ← sus entradas: nombre, cidr, zona
-    ├── main.tf                  ← sus recursos: la VPC, las subredes, el IGW, las rutas
-    └── outputs.tf               ← sus salidas: vpc_id, subred_publica_id, subred_privada_id
-```
-
-```hcl
-module "red" {
-  source = "./modules/red"
-  nombre = "vigia"               # las variables del módulo son sus argumentos
-}
-
-resource "aws_security_group" "web" {
-  vpc_id = module.red.vpc_id     # sus outputs, lo único que se ve desde fuera
-}
-```
-
-- **Un módulo es una caja cerrada.** Desde fuera solo se ven sus outputs. Sus recursos tienen direcciones como `module.red.aws_vpc.esta`.
-- **Lo que recibe, lo recibe por variables.** No ve las variables ni los recursos de quien lo llama.
-- **Tiene sus propios `required_providers`** si los necesita; usa el provider que le pasa el módulo raíz.
-
-### De dónde salen los módulos
-
-| `source` | Ejemplo | Versión |
-|----------|---------|---------|
-| una carpeta local | `"./modules/red"` | la del propio repositorio |
-| el Registry público | `"terraform-aws-modules/vpc/aws"` | con `version = "~> 6.0"` |
-| un repositorio de Git | `"git::https://github.com/tu-usuario/modulos.git//red?ref=v1.2.0"` | la etiqueta del `ref` |
-
-Los módulos del Registry ahorran mucho trabajo y están muy probados, pero:
-- **son grandes:** el de VPC crea 17 recursos con lo mínimo (paso 4);
-- **tienen decenas de opciones** que hay que entender;
-- **siguen siendo código de terceros:** se fija su versión, igual que un provider o una action.
-
-Para aprender, y para lo que es tuyo de verdad, un módulo propio y pequeño.
-
-### Refactorizar sin destruir: `moved`
-
-Si mueves `resource "aws_vpc" "vigia"` dentro de un módulo, su dirección pasa de `aws_vpc.vigia` a `module.red.aws_vpc.esta`. Terraform no sabe que es el mismo recurso: ve uno que desaparece del código (y lo **destruye**) y otro nuevo (y lo **crea**).
-
-Un bloque `moved` se lo dice:
-
-```hcl
-moved {
-  from = aws_vpc.vigia
-  to   = module.red.aws_vpc.esta
-}
-```
-
-En el plan aparece `has moved to`, y el recurso sigue siendo el mismo, con sus ID. Antes se hacía con `terraform state mv`, a mano y sin dejar rastro en el código. El bloque `moved` queda en el PR, se revisa y lo aplica también el resto del equipo.
-
-## Práctica guiada
+Si la haces en dos mañanas: el primer día, las **piezas 1 y 2** (unos 35 min); el segundo, las **piezas 3 a 5**, Vigía, el Rómpelo, el reto y el cierre. Puedes dejar la red creada entre los dos días: no cuesta nada.
 
 ```bash
 mkdir -p ~/my-devops-journey/labs/clase-98/modules/red && cd ~/my-devops-journey/labs/clase-98
 ```
 
-### 1. El "antes": una red sin módulo (10 min)
+## Las piezas
 
-`versions.tf`:
+### Pieza 1 — El "antes": una red sin módulo
+
+Para ver qué resuelve un módulo, primero la red tal como la escribiría cualquiera la primera vez: cada recurso con su nombre fijo. Funciona, pero para una segunda red tendrías que copiarlo todo y cambiar cada nombre a mano.
+
+**Pruébalo.** `versions.tf`:
 
 ```hcl
 terraform {
@@ -113,7 +77,7 @@ provider "aws" {
 }
 ```
 
-Y `main.tf`, la red de la clase 71 en Terraform, tal como la escribiría cualquiera la primera vez:
+Y `main.tf`, la red de la clase 71 en Terraform:
 
 ```hcl
 data "aws_availability_zones" "disponibles" {
@@ -177,11 +141,50 @@ output "subred_publica" {
 
 ```bash
 terraform init && terraform apply
+terraform state list
 ```
 
-### 2. El módulo `red` (25 min)
+👀 **Qué deberías ver:** `Apply complete! Resources: 8 added` y, en el estado, el `data` y las 8 direcciones: `aws_vpc.vigia`, `aws_subnet.publica`, `aws_route_table_association.privada`… Apúntalas: en la pieza 4 las necesitarás.
 
-Mueve esos recursos a `modules/red/main.tf` y generalízalos. Los nombres, el rango y la zona salen de variables, y los rangos de las subredes se calculan con `cidrsubnet` (clase 94):
+✋ **Sin mirar:** ¿cuántos recursos tiene esta red, y cuáles son?
+
+<details>
+<summary>Comprueba</summary>
+
+Ocho: la VPC, las dos subredes, el IGW, las dos tablas de rutas y sus dos asociaciones. El `data` de las zonas no es un recurso: solo lee.
+</details>
+
+**En resumen:** una red sin módulo funciona, pero sus nombres y rangos están fijos en el código.
+
+### Pieza 2 — Un módulo por dentro
+
+Cualquier carpeta con archivos `.tf` es un módulo. La que ejecutas es el **módulo raíz**, y las que llama con bloques `module` son **módulos hijos**:
+
+```
+infra/
+├── main.tf                      ← módulo raíz: module "red" { source = "./modules/red" … }
+└── modules/red/
+    ├── variables.tf             ← sus entradas: nombre, cidr, zona
+    ├── main.tf                  ← sus recursos: la VPC, las subredes, el IGW, las rutas
+    └── outputs.tf               ← sus salidas: vpc_id, subred_publica_id, subred_privada_id
+```
+
+```hcl
+module "red" {
+  source = "./modules/red"
+  nombre = "vigia"               # las variables del módulo son sus argumentos
+}
+
+resource "aws_security_group" "web" {
+  vpc_id = module.red.vpc_id     # sus outputs, lo único que se ve desde fuera
+}
+```
+
+- **Un módulo es una caja cerrada.** Desde fuera solo se ven sus outputs. Sus recursos tienen direcciones como `module.red.aws_vpc.esta`.
+- **Lo que recibe, lo recibe por variables.** No ve las variables ni los recursos de quien lo llama.
+- **Tiene sus propios `required_providers`** si los necesita; usa el provider que le pasa el módulo raíz.
+
+**Pruébalo.** Mueve los recursos de la pieza 1 a `modules/red/main.tf` y generalízalos. Los nombres, el rango y la zona salen de variables, y los rangos de las subredes se calculan con `cidrsubnet` (clase 93):
 
 ```hcl
 # Módulo red: una VPC con una subred pública y otra privada en la misma zona.
@@ -284,9 +287,31 @@ output "subred_privada_id" {
 - **`default = null`:** la variable es opcional y, si no se da, no tiene valor. `coalesce` elige el primer valor que no sea nulo.
 - **El estilo de nombres dentro del módulo:** `esta`, `publica`, `privada`. Dentro de un módulo de red, `aws_vpc.esta` se lee solo; el nombre real lo pone `var.nombre`.
 
-### 3. Usar el módulo, sin y con `moved` (20 min)
+Todavía **no** toques el `main.tf` del módulo raíz: lo harás en la pieza 3.
 
-Sustituye el `main.tf` del módulo raíz por la llamada al módulo:
+```bash
+terraform fmt -recursive
+```
+
+👀 **Qué deberías ver:** `fmt` lista los archivos del módulo que ha reordenado, o nada. Con `-recursive` también entra en `modules/`.
+
+✋ **Sin mirar:** desde el módulo raíz, ¿puedes leer `module.red.aws_vpc.esta.cidr_block`?
+
+<details>
+<summary>Comprueba</summary>
+
+No: desde fuera solo se ven los outputs del módulo. Para leer el rango, el módulo tendría que publicarlo en `outputs.tf`.
+</details>
+
+**En resumen:** un módulo recibe por variables y devuelve por outputs; lo de dentro queda dentro.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. La red de la pieza 1 sigue creada, y no cuesta nada.
+
+### Pieza 3 — Usar el módulo: sin `moved`, todo se destruye
+
+Si mueves `resource "aws_vpc" "vigia"` dentro de un módulo, su dirección pasa de `aws_vpc.vigia` a `module.red.aws_vpc.esta`. Terraform no sabe que es el mismo recurso: ve uno que desaparece del código (y lo **destruye**) y otro nuevo (y lo **crea**).
+
+**Pruébalo.** Sustituye el `main.tf` del módulo raíz por la llamada al módulo:
 
 ```hcl
 module "red" {
@@ -299,14 +324,41 @@ output "subred_publica" {
 }
 ```
 
+🔮 **Predice:** ¿cuántos recursos quiere destruir, si no has cambiado nada en AWS?
+
 ```bash
 terraform init
 terraform plan | grep Plan:
 ```
 
-🔮 **Predice:** ¿cuántos recursos quiere destruir, si no has cambiado nada en AWS? **Los 8**, y crear otros 8. Para Terraform, `aws_vpc.vigia` ha desaparecido del código y `module.red.aws_vpc.esta` es nuevo. Con una base de datos o una instancia dentro, sería un desastre. **No apliques.**
+`init` hace falta cada vez que añades un módulo: lo registra en `.terraform/modules/`.
 
-Añade al final de `main.tf` un bloque `moved` por cada recurso:
+👀 **Qué deberías ver:** `Plan: 8 to add, 0 to change, 8 to destroy.` **Los 8**: para Terraform, `aws_vpc.vigia` ha desaparecido del código y `module.red.aws_vpc.esta` es nuevo. Con una base de datos o una instancia dentro, sería un desastre. **No apliques.**
+
+✋ **Sin mirar:** ¿por qué Terraform no reconoce que es el mismo recurso?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque en el estado cada recurso se identifica por su **dirección**, y la dirección cambió. Terraform no compara el contenido para adivinar que son iguales.
+</details>
+
+**En resumen:** cambiar la dirección de un recurso, para Terraform, es destruirlo y crear otro.
+
+### Pieza 4 — `moved`: refactorizar sin destruir
+
+Un bloque `moved` le dice a Terraform que un recurso solo ha cambiado de dirección:
+
+```hcl
+moved {
+  from = aws_vpc.vigia
+  to   = module.red.aws_vpc.esta
+}
+```
+
+En el plan aparece `has moved to`, y el recurso sigue siendo el mismo, con sus ID. Antes se hacía con `terraform state mv` (clase 96), a mano y sin dejar rastro en el código. El bloque `moved` queda en el PR, se revisa y lo aplica también el resto del equipo.
+
+**Pruébalo.** Añade al final de `main.tf` un bloque `moved` por cada recurso:
 
 ```hcl
 moved {
@@ -320,21 +372,46 @@ moved {
 }
 ```
 
-Sigue tú con los otros seis: el IGW, las dos tablas de rutas y sus dos asociaciones, y la subred privada.
+Sigue tú con los otros seis: el IGW, las dos tablas de rutas y sus dos asociaciones, y la subred privada. Tienes las direcciones viejas de la pieza 1.
 
 ```bash
 terraform plan
 ```
 
-Busca `has moved to` en cada recurso y la última línea: `Plan: 0 to add, 0 to change, 0 to destroy.` Aplica: no cambia nada en AWS, solo las direcciones del estado.
+👀 **Qué deberías ver:** `has moved to` en cada recurso y la última línea: `Plan: 0 to add, 0 to change, 0 to destroy.` Si sale algún `destroy`, te falta un `moved` o una dirección está mal escrita. Aplica: no cambia nada en AWS, solo las direcciones del estado.
 
 ```bash
 terraform apply && terraform state list
 ```
 
-### 4. Un módulo del Registry, solo planificado (10 min)
+Ahora todas las direcciones empiezan por `module.red.`.
 
-Crea `registro.tf`:
+✋ **Sin mirar:** ¿qué ventaja tiene un bloque `moved` frente a `terraform state mv`?
+
+<details>
+<summary>Comprueba</summary>
+
+Que está en el código: se revisa en el PR, queda en el historial de Git y lo aplica cualquiera que tenga el estado viejo. `state mv` es un cambio a mano que nadie ve.
+</details>
+
+**En resumen:** `moved` cambia la dirección en el estado sin tocar AWS, y deja rastro en el código.
+
+### Pieza 5 — Módulos del Registry
+
+| `source` | Ejemplo | Versión |
+|----------|---------|---------|
+| una carpeta local | `"./modules/red"` | la del propio repositorio |
+| el Registry público | `"terraform-aws-modules/vpc/aws"` | con `version = "~> 6.0"` |
+| un repositorio de Git | `"git::https://github.com/tu-usuario/modulos.git//red?ref=v1.2.0"` | la etiqueta del `ref` |
+
+Los módulos del Registry ahorran mucho trabajo y están muy probados, pero:
+- **son grandes:** el de VPC crea 17 recursos con lo mínimo;
+- **tienen decenas de opciones** que hay que entender;
+- **siguen siendo código de terceros:** se fija su versión, igual que un provider o una action.
+
+Para aprender, y para lo que es tuyo de verdad, un módulo propio y pequeño.
+
+**Pruébalo** (solo planificado). Crea `registro.tf`:
 
 ```hcl
 module "vpc_del_registro" {
@@ -349,13 +426,25 @@ module "vpc_del_registro" {
 }
 ```
 
+🔮 **Predice:** ¿cuántos recursos crea con tan poco?
+
 ```bash
 terraform init && terraform plan | grep -E "module.vpc_del_registro.*will be created|Plan:"
 ```
 
-🔮 **Predice:** ¿cuántos recursos crea con tan poco? Unos 17: VPC, subredes, rutas, asociaciones, IGW y alguna pieza más que no pediste a propósito, como la NACL y el security group por defecto. Ábrelo en el Registry (`terraform-aws-modules/vpc/aws`) y mira cuántas variables tiene: más de cien. Por ejemplo, `enable_nat_gateway = true` crearía un NAT Gateway, con su coste (clase 71).
+👀 **Qué deberías ver:** unos 17: VPC, subredes, rutas, asociaciones, IGW y alguna pieza más que no pediste a propósito, como la NACL y el security group por defecto. Ábrelo en el Registry (`terraform-aws-modules/vpc/aws`) y mira cuántas variables tiene: más de cien. Por ejemplo, `enable_nat_gateway = true` crearía un NAT Gateway, con su coste (clase 71).
 
 **No apliques**: borra `registro.tf` y haz `terraform init` otra vez.
+
+✋ **Sin mirar:** ¿por qué se fija la versión de un módulo del Registry?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque es código de terceros que cambia: sin versión fija, un `init` cualquier día podría traer otra que cree o borre recursos distintos. Como un provider o una action.
+</details>
+
+**En resumen:** del Registry, para problemas estándar y con la versión fijada; propio, para lo pequeño y lo tuyo.
 
 ## Ahora, en Vigía (20 min)
 
@@ -368,6 +457,18 @@ Haz lo mismo con la red de tu `infra/` de la clase 97, en una rama nueva:
 
 Los bloques `moved` pueden quedarse en el código: no hacen nada una vez aplicados, y sirven a quien tenga un estado viejo. Cuando estés seguro de que nadie lo tiene, puedes borrarlos en otro PR.
 
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `module "red" { source = "./modules/red"  nombre = "vigia" }` | usar un módulo, con sus variables como argumentos |
+| `module.red.vpc_id` | leer un output del módulo |
+| `moved { from = aws_vpc.vigia  to = module.red.aws_vpc.esta }` | cambiar la dirección sin destruir |
+| `terraform init` | hace falta al añadir o cambiar un módulo |
+| `terraform fmt -recursive` | formatear también los módulos |
+| `source = "terraform-aws-modules/vpc/aws"` + `version = "~> 6.0"` | un módulo del Registry, con versión fijada |
+| `variable "x" { default = null }` + `coalesce(var.x, …)` | una variable opcional |
+
 ## Rómpelo
 
 1. **Un output que el módulo no tiene.** Usa `module.red.vpc_cidr` en un output del módulo raíz. *Unsupported attribute… This object does not have an attribute named "vpc_cidr"*: desde fuera solo se ve lo que el módulo publica. Añádelo en `modules/red/outputs.tf` si lo necesitas.
@@ -376,9 +477,61 @@ Los bloques `moved` pueden quedarse en el código: no hacen nada una vez aplicad
 
 ## Reto
 
-1. Añade al módulo una variable `crear_nat` (`bool`, `false` por defecto) que, si vale `true`, cree un NAT Gateway con su IP elástica y la ruta de la subred privada (clase 72). Usa `count = var.crear_nat ? 1 : 0`. Planifícalo con `true`, sin aplicarlo.
-2. Publica tu módulo en un repositorio de Git propio con la etiqueta `v1.0.0` y úsalo desde Vigía con `source = "git::https://github.com/<tú>/terraform-modulos.git//red?ref=v1.0.0"`. ¿Qué ganas y qué pierdes frente a la carpeta local?
-3. Lee el `README` del módulo de VPC del Registry y apunta tres variables que no conocías y qué hacen.
+Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** Añade al módulo una variable `crear_nat` (`bool`, `false` por defecto) que, si vale `true`, cree un NAT Gateway con su IP elástica y la ruta de la subred privada (clase 72). Planifícalo con `true`, sin aplicarlo.
+
+> 🧩 **Ejemplo resuelto:** el reto 1 de la clase 94: `crear_privadas` (`bool`) decidía si se creaban las subredes privadas.
+
+**Ahora tú, con huecos:**
+```hcl
+variable "crear_nat" {
+  type    = ____
+  default = ____
+}
+
+resource "aws_eip" "nat" {
+  count  = var.crear_nat ? ____ : ____
+  domain = "vpc"
+}
+
+resource "aws_nat_gateway" "esta" {
+  count         = var.crear_nat ? 1 : 0
+  allocation_id = aws_eip.nat[0].id
+  subnet_id     = aws_subnet.____.id
+}
+```
+Y la ruta `0.0.0.0/0` de la tabla privada hacia `aws_nat_gateway.esta[0].id`, también con `count`.
+
+<details>
+<summary>Pista</summary>
+
+El NAT va en la subred **pública** (necesita el IGW). Con `count`, el recurso es una lista: se lee con `[0]`. La ruta, como recurso aparte: `aws_route` con `route_table_id`, `destination_cidr_block` y `nat_gateway_id`. Desde el raíz: `module "red" { … crear_nat = true }`.
+</details>
+
+**2.** Publica tu módulo en un repositorio de Git propio con la etiqueta `v1.0.0` y úsalo desde Vigía. ¿Qué ganas y qué pierdes frente a la carpeta local?
+
+> 🧩 **Ejemplo resuelto:** en la clase 84 fijabas cada action por su SHA (`actions/checkout@<sha>`): el workflow usa siempre la misma hasta que alguien la cambia a propósito.
+
+**Ahora tú, con huecos:** `source = "git::https://github.com/<tú>/terraform-modulos.git//____?ref=____"`. Completa: «Gano que… varios repositorios pueden usar ____. Pierdo que, para cambiar el módulo, tengo que…».
+
+<details>
+<summary>Pista</summary>
+
+`//red` es la carpeta dentro del repositorio; `?ref=` es la etiqueta. Para crearla: `git tag v1.0.0 && git push origin v1.0.0`. Tras cambiar el `source`, `terraform init`.
+</details>
+
+**3.** Lee el `README` del módulo de VPC del Registry y apunta tres variables que no conocías y qué hacen.
+
+> 🧩 **Ejemplo resuelto:** `enable_nat_gateway` (`bool`): crea NAT Gateways para que las subredes privadas salgan a internet. Cuesta dinero.
+
+**Ahora tú, con huecos:** «`____` (tipo `____`): …». Tres líneas así.
+
+<details>
+<summary>Pista</summary>
+
+En la página del módulo, la pestaña *Inputs*. Busca alrededor de `single_nat_gateway`, `enable_dns_hostnames` o `create_database_subnet_group`.
+</details>
 
 ## Destruir al terminar
 
@@ -392,10 +545,12 @@ En Vigía no destruyas nada: el refactor no cambió AWS.
 
 En `notas/fase-8/clase-98.md`:
 
-1. ¿Qué es un módulo, y qué ve de él quien lo usa?
-2. ¿Qué habría pasado con la red de Vigía si la hubieras movido al módulo sin bloques `moved`?
-3. ¿Cuándo usarías un módulo del Registry y cuándo uno propio?
-4. **Repaso (clase 97, sin mirar):** ¿qué buscas en un plan antes de aplicar algo que importa recursos?
+1. ¿Qué es un módulo, y qué ve de él quien lo usa? *(2 líneas. Empieza así: «Una carpeta de Terraform que se usa como una pieza. Quien lo usa solo ve…»)*
+2. ¿Qué habría pasado con la red de Vigía si la hubieras movido al módulo sin bloques `moved`? *(2 líneas. Empieza así: «Terraform habría visto los recursos viejos desaparecer…»)*
+3. ¿Cuándo usarías un módulo del Registry y cuándo uno propio? *(2 líneas, una por caso.)*
+4. **Repaso (clase 97, sin mirar):** ¿qué buscas en un plan antes de aplicar algo que importa recursos? *(1–2 líneas. Empieza así: «Que nada importado salga con…»)*
+
+Después, escríbeme `examíname clase-98`.
 
 ## Autocorrección
 
@@ -409,6 +564,26 @@ En `notas/fase-8/clase-98.md`:
 **3.** **Del Registry:** cuando el problema es estándar y el módulo es conocido, mantenido y está bien probado (una VPC multizona con NAT, un clúster de EKS), si entiendes sus opciones y fijas su versión. **Propio:** cuando es algo de tu equipo o pequeño, cuando quieres controlar cada recurso o cuando estás aprendiendo. Un módulo de cien variables para tres recursos es más complejidad que ayuda.
 
 **4.** Que nada importado salga con `-/+` o con `destroy` (eso significaría que el código no coincide con lo que existe) y que los cambios en el sitio sean los esperados, como las etiquetas de `default_tags`.
+
+**Reto 1:** `type = bool`, `default = false`, `count = var.crear_nat ? 1 : 0` y `subnet_id = aws_subnet.publica.id`. La ruta:
+
+```hcl
+resource "aws_route" "salida_privada" {
+  count                  = var.crear_nat ? 1 : 0
+  route_table_id         = aws_route_table.privada.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.esta[0].id
+}
+```
+
+Con `crear_nat = true`, el plan añade 3 recursos: la IP elástica, el NAT y la ruta.
+
+**Reto 2:** `//red?ref=v1.0.0`. Ganas que varios repositorios (Vigía, otros proyectos, otro equipo) pueden usar **la misma versión probada**, y que un cambio en el módulo no afecta a nadie hasta que sube el `ref`. Pierdes comodidad: para cambiar el módulo tienes que hacer el cambio en su repositorio, crear otra etiqueta y subir el `ref` en Vigía.
+
+**Reto 3:** por ejemplo:
+- `single_nat_gateway` (`bool`): un solo NAT para todas las zonas, en lugar de uno por zona; más barato y menos disponible.
+- `enable_dns_hostnames` (`bool`): nombres DNS para las instancias de la VPC.
+- `database_subnets` (`list(string)`): subredes aparte para bases de datos, con su grupo de subredes para RDS.
 </details>
 
 ## Inglés

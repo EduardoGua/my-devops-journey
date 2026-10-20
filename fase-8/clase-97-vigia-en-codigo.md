@@ -2,6 +2,21 @@
 
 **Dónde:** tu Ubuntu + AWS · **Tiempo:** 2 bloques (unas 4 h) · **Bloque:** B. Vigía en código
 
+> 💡 **La idea de hoy:** todo lo que creaste a mano en las fases 6 y 7 pasa a archivos de Terraform. Lo que guarda algo de valor (imágenes, informes, logs, el rol del pipeline) se **adopta** con bloques `import`, sin recrearlo; lo demás se borra y se vuelve a crear desde el código. Y antes de aplicar, se revisa el plan línea a línea.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Todo lo que hiciste a mano: la red (clase 71), el SG (73), S3 (74), ECR (75), los logs (76), la instancia de la v3 con su cloud-init (78 y 79) y el rol OIDC del pipeline (86 y 90).
+> - `borrar-vpc.sh` (clase 71) y tu guía de destrucción (clase 79).
+> - Variables con validación, `locals`, `for_each` y `jsonencode` (clase 94); `depends_on` y `user_data_replace_on_change` (clase 95).
+> - El bucket del estado, el backend parcial y el `.gitignore` del estado (clase 96).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **adoptar** o **importar**: hacer que Terraform gestione un recurso que ya existe, sin recrearlo.
+> - **bloque `import`**: `to` (la dirección en tu código) e `id` (el objeto real en AWS).
+> - **plan guardado**: `terraform plan -out=archivo`; `terraform apply archivo` aplica exactamente eso.
+> - **plan obsoleto** (*stale plan*): un plan guardado que ya no vale, porque el estado cambió después.
+> - **`-target`**: limitar una operación a un recurso.
+
 ## Objetivo
 
 - Crear el **bucket del estado de Vigía**, protegido para siempre.
@@ -27,9 +42,62 @@ Es exactamente lo que harás en un trabajo: "llevar a Terraform" lo que se creó
 
 > 💰 **Unos 0,15 USD por sesión**, como la v3: la t3.small de Vigía y su IPv4. Destruye la instancia al terminar (clase 101).
 
-## Teoría
+## Cómo va esta clase
 
-### La estructura
+Seis piezas. En cada una lees **una** idea y la aplicas enseguida a Vigía; no pases a la siguiente sin haber terminado la anterior.
+
+Es una clase larga; repártela en **dos o tres mañanas**:
+- **Primer día:** las **piezas 1 a 3** (unos 50 min). Preparas el terreno y conectas el backend.
+- **Segundo día:** la **pieza 4** (unos 90 min). Escribes los recursos; no se crea nada en AWS.
+- **Tercer día** (o el resto del segundo): las **piezas 5 y 6**, el Rómpelo y el cierre. Aquí se aplica y se crea la instancia, que es lo que cuesta.
+
+Las marcas ⏸️ señalan dónde parar. Hasta la pieza 5 no hay nada que cobre por hora.
+
+## Las piezas
+
+### Pieza 1 — Qué se adopta y qué se recrea
+
+| Recurso de las fases 6 y 7 | Qué hacer | Por qué |
+|----------------------------|-----------|---------|
+| el repositorio ECR `vigia` | **importar** | tiene tus imágenes, y el pipeline publica ahí |
+| el bucket `vigia-informes-<cuenta>` | **importar** | tiene tus informes |
+| los grupos `/vigia/api` y `/vigia/checker` | **importar** | tienen logs (7 días) |
+| el proveedor OIDC y el rol `vigia-github` | **importar** | el pipeline de la v4 los usa |
+| la `lab-vpc`, el SG `vigia-web`, el rol y el perfil `vigia-ec2` | **borrar a mano y recrear** | no tienen datos, y la red nueva será de Vigía, no del laboratorio |
+
+La regla: se importa lo que **guarda algo** o lo que **otro sistema usa** por su nombre; lo demás se recrea desde el código, más limpio.
+
+**Pruébalo.** Borra lo que no se va a adoptar:
+
+```bash
+cd ~/my-devops-journey/labs/clase-71 && bash borrar-vpc.sh
+aws iam remove-role-from-instance-profile --instance-profile-name vigia-ec2 --role-name vigia-ec2
+aws iam delete-instance-profile --instance-profile-name vigia-ec2
+for p in $(aws iam list-attached-role-policies --role-name vigia-ec2 --query 'AttachedPolicies[].PolicyArn' --output text); do
+  aws iam detach-role-policy --role-name vigia-ec2 --policy-arn "$p"
+done
+for p in $(aws iam list-role-policies --role-name vigia-ec2 --query 'PolicyNames' --output text); do
+  aws iam delete-role-policy --role-name vigia-ec2 --policy-name "$p"
+done
+aws iam delete-role --role-name vigia-ec2
+aws iam get-role --role-name vigia-ec2
+```
+
+Es parte de tu guía de destrucción de la clase 79. Si al terminar la fase 7 ya lo habías borrado todo, aquí no hay nada que hacer.
+
+👀 **Qué deberías ver:** `borrar-vpc.sh` termina sin errores, y el último comando falla con `NoSuchEntity`: el rol ya no existe. Antes de borrar el rol hay que quitarle sus políticas y sacarlo del perfil; si no, AWS se niega (`DeleteConflict`).
+
+✋ **Sin mirar:** ¿por qué se importa el repositorio de ECR en lugar de recrearlo?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque tiene tus imágenes y el pipeline publica ahí. Recrearlo sería perderlas; importarlo deja todo como está y solo hace que Terraform lo gestione.
+</details>
+
+**En resumen:** se adopta lo que guarda datos o lo que otros usan; lo demás se recrea desde el código.
+
+### Pieza 2 — La estructura y el bucket del estado
 
 ```
 vigia/
@@ -50,63 +118,7 @@ Los dos directorios tienen **estados distintos**:
 - `infra/estado` es pequeño, local y casi nunca cambia;
 - `infra` guarda el suyo en el bucket que crea el primero.
 
-### Qué se adopta y qué se recrea
-
-| Recurso de las fases 6 y 7 | Qué hacer | Por qué |
-|----------------------------|-----------|---------|
-| el repositorio ECR `vigia` | **importar** | tiene tus imágenes, y el pipeline publica ahí |
-| el bucket `vigia-informes-<cuenta>` | **importar** | tiene tus informes |
-| los grupos `/vigia/api` y `/vigia/checker` | **importar** | tienen logs (7 días) |
-| el proveedor OIDC y el rol `vigia-github` | **importar** | el pipeline de la v4 los usa |
-| la `lab-vpc`, el SG `vigia-web`, el rol y el perfil `vigia-ec2` | **borrar a mano y recrear** | no tienen datos, y la red nueva será de Vigía, no del laboratorio |
-
-Un bloque **`import`** dice "este recurso del código es **ese** objeto que ya existe en AWS":
-
-```hcl
-import {
-  to = aws_ecr_repository.vigia
-  id = "vigia"
-}
-```
-
-- **Lo que pasa:** en el siguiente `plan`, Terraform lo lee y lo apunta en el estado; no crea nada.
-- **El `id`:** depende del tipo de recurso. Lo dice la sección *Import* de su página en el Registry: un nombre, un ARN, `rol:política`…
-- **Si el código no coincide exactamente con lo que existe,** el plan propone cambios para igualarlo. Por ejemplo, añadir las etiquetas de `default_tags`. Léelos: **nunca** debe salir un reemplazo (`-/+`) en algo que importas.
-
-En la clase 99 verás el resto: generar el código de lo importado, y olvidar un recurso sin borrarlo.
-
-### El cloud-init desde Terraform
-
-La instancia usa **tu** `deploy/cloud-init.yaml` de la v3, con sus marcadores. Terraform puede leer el archivo y sustituirlos con funciones:
-- `file()` lee el archivo;
-- `replace()`, encadenada, cambia cada marcador por su valor: la imagen, la región, el bucket y tu usuario de GitHub.
-
-Con `user_data_replace_on_change = true` (clase 95), cambiar la imagen en `terraform.tfvars` crea una instancia nueva, como hacía tu guía de la v3.
-
-¿Por qué no `templatefile()`? Porque tu script usa `${…}` de Bash, como `${IMAGEN%%/*}`, y `templatefile` intentaría interpretarlo como suyo. Habría que escaparlo todo con `$${…}`.
-
-## Práctica guiada
-
-### Bloque 1 · Preparar el terreno
-
-#### 1. Lo que no se va a adoptar (10 min)
-
-```bash
-cd ~/my-devops-journey/labs/clase-71 && bash borrar-vpc.sh
-aws iam remove-role-from-instance-profile --instance-profile-name vigia-ec2 --role-name vigia-ec2
-aws iam delete-instance-profile --instance-profile-name vigia-ec2
-for p in $(aws iam list-attached-role-policies --role-name vigia-ec2 --query 'AttachedPolicies[].PolicyArn' --output text); do
-  aws iam detach-role-policy --role-name vigia-ec2 --policy-arn "$p"
-done
-for p in $(aws iam list-role-policies --role-name vigia-ec2 --query 'PolicyNames' --output text); do
-  aws iam delete-role-policy --role-name vigia-ec2 --policy-name "$p"
-done
-aws iam delete-role --role-name vigia-ec2
-```
-
-Es parte de tu guía de destrucción de la clase 79. Si al terminar la fase 7 ya lo habías borrado todo, aquí no hay nada que hacer.
-
-#### 2. El repositorio y `.gitignore` (5 min)
+**Pruébalo.** La rama y el `.gitignore`:
 
 ```bash
 cd ~/vigia && git switch main && git pull && git switch -c terraform
@@ -121,8 +133,6 @@ cat >> .gitignore <<'EOF'
 infra/terraform.tfvars
 EOF
 ```
-
-#### 3. El bucket del estado (15 min)
 
 `infra/estado/main.tf`, como el de la clase 96 pero **para siempre**:
 
@@ -177,15 +187,26 @@ output "bucket" {
 
 ```bash
 cd infra/estado && terraform init && terraform apply && cd ..
+git status --short
 ```
 
-Su `terraform.tfstate` local es pequeño y no tiene secretos, pero **no** va a Git (tu `.gitignore` lo impide). Haz una copia en tus notas privadas o en un gestor de archivos seguro: es lo único que necesitas para gestionar ese bucket.
+👀 **Qué deberías ver:** `Apply complete! Resources: 3 added` y el output `bucket = "vigia-tfstate-<tu cuenta>"`. En `git status`, el `.gitignore` modificado y `infra/` como nuevo, pero no el `terraform.tfstate`: el `.gitignore` lo deja fuera.
 
-### Bloque 2 · Vigía en Terraform
+Su `terraform.tfstate` local es pequeño y no tiene secretos, pero **no** va a Git. Haz una copia en tus notas privadas o en un gestor de archivos seguro: es lo único que necesitas para gestionar ese bucket.
 
-#### 4. El backend, el provider y las variables (20 min)
+✋ **Sin mirar:** ¿qué diferencia hay entre este bucket y el de la clase 96?
 
-`infra/versions.tf`, con el backend **parcial** (clase 96, Rómpelo 1):
+<details>
+<summary>Comprueba</summary>
+
+Este lleva `prevent_destroy` en lugar de `force_destroy`: no se va a destruir nunca, y ningún plan puede borrarlo por error.
+</details>
+
+**En resumen:** dos configuraciones, dos estados: el bucket del estado, local y protegido; el resto de Vigía, en ese bucket.
+
+### Pieza 3 — El backend parcial, el provider y las variables
+
+`infra/versions.tf`, con el backend **parcial** (clase 96, Rómpelo 1): sin el nombre del bucket, que lleva tu número de cuenta.
 
 ```hcl
 terraform {
@@ -214,7 +235,7 @@ provider "aws" {
 
 `Proyecto = "vigia"` en todo: el `verify-aws.sh` de la v3, el pipeline de la v4 y los permisos de `ssm:SendCommand` dependen de esa etiqueta.
 
-`infra/variables.tf`: escríbelo tú, con descripción y tipo en cada una. Necesitas:
+**Pruébalo.** `infra/variables.tf`: escríbelo tú, con descripción y tipo en cada una. Necesitas:
 - `region`, con `us-east-1` por defecto;
 - `mi_ip`, con una validación que exija una sola IP en `/32` (clase 94);
 - `github_user`;
@@ -240,9 +261,23 @@ cp terraform.tfvars.example terraform.tfvars   # y edítalo
 terraform init -backend-config="bucket=vigia-tfstate-$(aws sts get-caller-identity --query Account --output text)"
 ```
 
-#### 5. Los recursos (90 min)
+👀 **Qué deberías ver:** `Successfully configured the backend "s3"!` y `Terraform has been successfully initialized!`. Todavía no hay recursos: el estado de Vigía está vacío.
 
-Escribe `infra/main.tf`, `infra/github.tf` y `infra/outputs.tf`. Este es el mapa: cada fila es algo que ya hiciste a mano, y la columna de la derecha, el recurso de Terraform que lo hace. Busca cada uno en el Registry.
+✋ **Sin mirar:** ¿por qué `terraform.tfvars.example` va a Git y `terraform.tfvars` no?
+
+<details>
+<summary>Comprueba</summary>
+
+El ejemplo enseña qué variables hay que dar, con valores inventados. El de verdad lleva tu IP y tus ID: es de tu entorno, no del código.
+</details>
+
+**En resumen:** backend parcial con el bucket al inicializar, `default_tags` con `Proyecto = "vigia"` y un `.tfvars.example` para quien venga después.
+
+> ⏸️ Si partes la clase en varias mañanas, el primer día termina aquí. No hay nada que cobre por hora.
+
+### Pieza 4 — Los recursos, y el cloud-init desde Terraform
+
+Escribe `infra/main.tf`, `infra/github.tf` y `infra/outputs.tf`. Este es el mapa: cada fila es algo que ya hiciste a mano, y la columna de la derecha, el recurso de Terraform que lo hace. Busca cada uno en el Registry (clase 93).
 
 | Lo que hiciste a mano (clase) | Recurso de Terraform |
 |-------------------------------|----------------------|
@@ -296,11 +331,54 @@ resource "aws_cloudwatch_log_group" "vigia" {
 - **`jsonencode()`** escribe el JSON de la política desde un objeto de Terraform. Así escribirás también las políticas de IAM y la del bucket, sin heredocs ni comillas escapadas.
 - **Un `for_each`** con un `toset()` crea los dos grupos: `aws_cloudwatch_log_group.vigia["api"]` y `["checker"]`.
 
-Las pistas de abajo te ayudan con lo más delicado. Cuando lo tengas, `terraform fmt` y `terraform validate`.
+**El cloud-init.** La instancia usa **tu** `deploy/cloud-init.yaml` de la v3, con sus marcadores. Terraform puede leer el archivo y sustituirlos con funciones:
+- `file()` lee el archivo;
+- `replace()`, encadenada, cambia cada marcador por su valor: la imagen, la región, el bucket y tu usuario de GitHub (pista 1).
 
-#### 6. Adoptar lo que existe (20 min)
+Con `user_data_replace_on_change = true` (clase 95), cambiar la imagen en `terraform.tfvars` crea una instancia nueva, como hacía tu guía de la v3.
 
-`infra/importar.tf`:
+¿Por qué no `templatefile()`? Porque tu script usa `${…}` de Bash, como `${IMAGEN%%/*}`, y `templatefile` intentaría interpretarlo como suyo. Habría que escaparlo todo con `$${…}`.
+
+**Pruébalo.** Escribe los recursos con el mapa y las pistas de abajo. Cuando lo tengas:
+
+```bash
+terraform fmt
+terraform validate
+```
+
+👀 **Qué deberías ver:** `terraform fmt` lista los archivos que ha reordenado (o nada, si ya estaban bien), y `validate` termina con `Success! The configuration is valid.` Si falla, el mensaje dice el archivo y la línea: suele ser una referencia a un recurso con otro nombre.
+
+✋ **Sin mirar:** ¿por qué usas `replace()` y no `templatefile()` con tu `cloud-init.yaml`?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque el script usa `${…}` de Bash (`${IMAGEN%%/*}`), y `templatefile` lo interpretaría como suyo. Con `replace()` solo se tocan los marcadores `__…__`.
+</details>
+
+**En resumen:** cada paso que hiciste a mano es un recurso; el cloud-init se lee con `file()` y se rellena con `replace()`.
+
+> ⏸️ Si partes la clase en varias mañanas, el segundo día termina aquí. Mañana empiezas aplicando: reserva tiempo para terminar y destruir la instancia el mismo día.
+
+### Pieza 5 — Adoptar con `import`
+
+Un bloque **`import`** dice "este recurso del código es **ese** objeto que ya existe en AWS":
+
+```hcl
+import {
+  to = aws_ecr_repository.vigia
+  id = "vigia"
+}
+```
+
+- **Lo que pasa:** en el siguiente `plan`, Terraform lo lee y lo apunta en el estado; no crea nada.
+- **El `id`:** depende del tipo de recurso. Lo dice la sección *Import* de su página en el Registry: un nombre, un ARN, `rol:política`…
+- **Si el código no coincide exactamente con lo que existe,** el plan propone cambios para igualarlo. Por ejemplo, añadir las etiquetas de `default_tags`. Léelos: **nunca** debe salir un reemplazo (`-/+`) en algo que importas.
+- **Un plan guardado** (`plan -out`) y después `apply` de ese archivo garantiza que se aplica exactamente lo que revisaste.
+
+En la clase 99 verás el resto: generar el código de lo importado, y olvidar un recurso sin borrarlo.
+
+**Pruébalo.** `infra/importar.tf`:
 
 ```hcl
 # Lo que ya existía, creado a mano en las fases 6 y 7: Terraform lo adopta sin recrearlo.
@@ -335,28 +413,42 @@ Ajusta los nombres de la izquierda (`to`) a los de **tu** código. Si al termina
 
 ¿Y las piezas del bucket (versionado, bloqueo, ciclo de vida, política) o la política del rol del pipeline? No hace falta importarlas: al "crearlas", Terraform escribe su configuración encima de la que había, sin borrar nada.
 
+🔮 **Predice:** ¿qué dirá la última línea del plan?
+
 ```bash
 terraform plan -out=vigia.tfplan
 ```
 
-🔮 **Predice:** ¿qué dirá la última línea? Algo como `Plan: 6 to import, 23 to add, 5 to change, 0 to destroy`. Los cambios son, sobre todo, las etiquetas de `default_tags` en lo importado y las condiciones de la política de confianza del rol del pipeline.
+👀 **Qué deberías ver:** algo como `Plan: 6 to import, 23 to add, 5 to change, 0 to destroy`. Los cambios son, sobre todo, las etiquetas de `default_tags` en lo importado y las condiciones de la política de confianza del rol del pipeline.
 
 Revisa el plan línea a línea, buscando dos cosas:
 - **ningún `-/+`** en algo importado;
 - **ningún `destroy`.**
 
-Si ves un reemplazo en el repositorio de ECR o en el bucket, para: algún argumento de tu código no coincide con la realidad (por ejemplo, el nombre del bucket).
+Si ves un reemplazo en el repositorio de ECR o en el bucket, para: algún argumento de tu código no coincide con la realidad (por ejemplo, el nombre del bucket). Cuando el plan esté limpio:
 
 ```bash
 terraform apply vigia.tfplan
 terraform output
 ```
 
-Aplicar un plan **guardado** (`-out`) garantiza que se aplica exactamente lo que revisaste. Con el `apply` terminado, borra `importar.tf`: lo importado ya está en el estado, y el siguiente `plan` debe decir `No changes`.
+Con el `apply` terminado, borra `importar.tf`: lo importado ya está en el estado, y el siguiente `plan` debe decir `No changes`.
 
-#### 7. ¿Funciona Vigía? (20 min)
+✋ **Sin mirar:** en el plan de algo que importas aparece un `-/+`. ¿Qué significa y qué haces?
 
-La instancia es nueva: tarda unos minutos en instalar Docker y arrancar Compose.
+<details>
+<summary>Comprueba</summary>
+
+Que algún argumento de tu código no coincide con lo que existe y no se puede cambiar en el sitio (por ejemplo, el nombre), así que Terraform lo borraría y lo crearía de nuevo, con sus datos. No apliques: corrige el código hasta que el plan no tenga reemplazos.
+</details>
+
+**En resumen:** `import` adopta sin recrear; revisa que no haya `-/+` ni `destroy` y aplica el plan guardado.
+
+### Pieza 6 — ¿Funciona Vigía?
+
+La instancia es nueva: tarda unos minutos en instalar Docker y arrancar Compose. Las mismas pruebas de la v3 dicen si Terraform la ha dejado igual que tu guía.
+
+**Pruébalo:**
 
 ```bash
 URL=$(terraform output -raw url) && sleep 240 && curl -s "$URL/health"; echo
@@ -365,9 +457,33 @@ VIGIA_BUCKET=$(terraform output -raw bucket_informes) bash ~/my-devops-journey/r
 
 Si el informe de hoy no está, lánzalo a mano como en la clase 79 (`sudo systemctl start vigia-report.service`, por Session Manager).
 
+👀 **Qué deberías ver:** `/health` devuelve un JSON con `"status": "ok"`, y `verify-aws.sh` termina en `Fallos: 0`.
+
 Para terminar, que el pipeline de la v4 despliegue en esta instancia: lanza tu workflow a mano con el SHA de `main` (clase 90). Si la instancia lleva la etiqueta `Proyecto=vigia`, el pipeline la encuentra.
 
 Commit y PR (sin `terraform.tfvars` ni estados: compruébalo con `git status`).
+
+✋ **Sin mirar:** ¿por qué el pipeline de la v4 encuentra la instancia nueva sin que cambies nada en él?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque busca la instancia por la etiqueta `Proyecto=vigia`, no por su ID, y `default_tags` se la pone. El rol del pipeline también es el mismo: lo importaste.
+</details>
+
+**En resumen:** las pruebas de la v3 y el pipeline de la v4 confirman que la Vigía de Terraform es la misma que la de tu guía.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `import { to = aws_x.y  id = "…" }` | adoptar un recurso que ya existe |
+| `import { for_each = …  to = aws_x.y[each.key] … }` | adoptar varios a la vez |
+| `terraform plan -out=vigia.tfplan` · `terraform apply vigia.tfplan` | revisar un plan y aplicar exactamente ese |
+| `terraform init -backend-config="bucket=…"` | backend parcial |
+| `replace(file("…"), "__X__", valor)` | rellenar marcadores de un archivo |
+| `jsonencode({ … })` | una política JSON desde un objeto |
+| `terraform destroy -target=aws_instance.vigia` | destruir un solo recurso |
 
 ## Pistas
 
@@ -454,10 +570,12 @@ terraform destroy -target=aws_instance.vigia
 
 En `notas/fase-8/clase-97.md`:
 
-1. ¿Qué recursos importaste y cuáles recreaste? ¿Por qué cada uno?
-2. ¿Por qué el bucket del estado tiene su propia configuración y su estado local?
-3. ¿Qué buscas en el plan antes de aplicar algo que importa recursos, y por qué aplicas un plan guardado?
-4. **Repaso (clase 96, sin mirar):** ¿por qué el bloque `backend` no admite variables y cómo le pasas el nombre del bucket?
+1. ¿Qué recursos importaste y cuáles recreaste? ¿Por qué cada uno? *(2 líneas. Empieza así: «Importé…, porque guardan… o los usa… Recreé…, porque…»)*
+2. ¿Por qué el bucket del estado tiene su propia configuración y su estado local? *(2 líneas. Empieza así: «Porque el bucket tiene que existir antes de que…»)*
+3. ¿Qué buscas en el plan antes de aplicar algo que importa recursos, y por qué aplicas un plan guardado? *(2 líneas. Empieza así: «Que nada importado salga con…»)*
+4. **Repaso (clase 96, sin mirar):** ¿por qué el bloque `backend` no admite variables y cómo le pasas el nombre del bucket? *(1–2 líneas. Empieza así: «Porque el backend se configura antes de…»)*
+
+Después, escríbeme `examíname clase-97`.
 
 ## Autocorrección
 

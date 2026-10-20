@@ -2,6 +2,20 @@
 
 **Dónde:** tu Ubuntu + AWS + GitHub · **Tiempo:** 2 bloques largos (unas 5–6 h) · **Bloque:** C. Proyecto · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** la prueba de que la infraestructura es código de verdad: `terraform destroy` lo borra todo (menos el bucket del estado) y, con una receta de tres pasos, `terraform apply` lo vuelve a levantar desde cero, sin tocar nada a mano, hasta que las pruebas de aceptación salen en verde.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - El bucket del estado con `prevent_destroy` y el backend parcial (clases 96 y 97).
+> - Toda Vigía en `infra/`, los bloques `import` y el plan guardado (clase 97); el módulo `red` y los `moved` (clase 98).
+> - El *drift*, `sensitive` y lo que Terraform no ve (clase 99); el workflow de `plan` en cada PR (clase 100).
+> - `-target` (clase 97); el pipeline de la v4 que publica en ECR (clases 87 y 90); el diagnóstico de cloud-init (clase 78).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **recrear desde cero** (*rebuild from scratch*): destruirlo todo y volver a crearlo solo con el código.
+> - **orden de arranque** (*bootstrap order*): qué hay que crear antes que qué, cuando una pieza necesita otra que todavía no existe.
+> - **`force_delete` / `force_destroy`**: dejar que `destroy` borre un repositorio de ECR con imágenes o un bucket con objetos.
+> - **datos de larga vida**: lo que debe sobrevivir a un `destroy` (imágenes, informes, el estado).
+
 ## Objetivo
 
 Cerrar Vigía v5. Toda su infraestructura vive en `infra/`, y la prueba de fuego es **destruirla entera y recrearla desde cero** sin tocar nada a mano:
@@ -178,6 +192,19 @@ Measured from `destroy` to everything green: N minutes.
 Every PR that touches `infra/` runs `fmt`, `validate` and `plan` with a read-only role; applies are manual.
 ````
 
+Y para *What broke and how I found it*, una línea por campo:
+
+```markdown
+## What broke and how I found it (v5)
+
+- **Symptom:** ____
+- **What I checked:** ____
+- **Cause:** ____
+- **Fix:** ____
+```
+
+Un ejemplo, ya relleno (de la pista 5): *Symptom:* after rebuilding from scratch, `/health` never answered. *What I checked:* `cloud-init status --long` and `/var/log/cloud-init-output.log` over Session Manager. *Cause:* the instance booted before `vigia:<SHA>` existed in ECR, so the pull failed with `manifest unknown`. *Fix:* a three-step bootstrap: ECR and the CI role first with `-target`, then the pipeline publishes the image, then the full apply.
+
 Etiqueta y release:
 
 ```bash
@@ -195,10 +222,12 @@ Termina la instancia (`terraform destroy -target=aws_instance.vigia`) o, si vas 
 
 En `notas/fase-8/clase-101.md`:
 
-1. Cuenta la recreación desde cero, paso a paso, y por qué necesita ese orden.
-2. ¿Qué pasa si alguien cambia a mano un recurso que gestiona Terraform? (Respóndelo como en una entrevista.)
-3. ¿Qué cambiarías en `infra/` para que un `destroy` no pudiera borrar las imágenes ni los informes?
-4. **Repaso (clase 100, sin mirar):** ¿por qué el rol del `plan` acepta los PR y el del despliegue no?
+1. Cuenta la recreación desde cero, paso a paso, y por qué necesita ese orden. *(4 líneas: una por paso y una con el porqué. Empieza así: «1. Con `-target`, el repositorio de ECR y el rol del pipeline…»)*
+2. ¿Qué pasa si alguien cambia a mano un recurso que gestiona Terraform? Respóndelo como en una entrevista. *(3–4 líneas. Empieza así: «El siguiente `plan` refresca el estado, ve la diferencia y propone… Tengo tres salidas:…»)*
+3. ¿Qué cambiarías en `infra/` para que un `destroy` no pudiera borrar las imágenes ni los informes? *(2 líneas. Empieza así: «Separaría los datos de larga vida en otra configuración, con…»)*
+4. **Repaso (clase 100, sin mirar):** ¿por qué el rol del `plan` acepta los PR y el del despliegue no? *(1–2 líneas. Empieza así: «Porque el rol del `plan` solo lee:…»)*
+
+Después, escríbeme `examíname clase-101`.
 
 ## Autocorrección
 
