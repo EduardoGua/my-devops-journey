@@ -2,6 +2,20 @@
 
 **Dónde:** tu Ubuntu + GitHub · **Tiempo:** 2 bloques largos (unas 5 h) · **Bloque:** C. Proyecto · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** cierras Vigía v6. El chequeo corre como **CronJob** y distingue "un sitio está caído" (el chequeo funcionó) de "no he podido trabajar" (un fallo de verdad); publicas una versión con una actualización gradual, provocas una rota y vuelves atrás dejando Git igual que el cluster; y sabes explicar qué cambiaría en **EKS** y cuánto costaría.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Todo lo de la clase 114: `k8s/`, el Secret, el ConfigMap, la API y PostgreSQL en kind.
+> - Los códigos de salida de `vigia check` (clase 54); Jobs, CronJobs y `concurrencyPolicy` (clase 108).
+> - `rollout status`, `undo`, `history`, `change-cause` y `kubectl diff` (clase 104).
+> - ECR, RDS, los balanceadores y EBS (fase 6); OIDC y los roles sin llaves (clase 86).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **plano de control gestionado**: el *control plane* que mantiene el proveedor (EKS en AWS).
+> - **grupo de nodos** (*node group*): las EC2 que hacen de nodos, con su escalado.
+> - **EKS Pod Identity**: dar permisos de IAM a un pod sin llaves.
+> - **External Secrets**: un controlador que copia secretos de AWS Secrets Manager al cluster.
+
 ## Objetivo
 
 Cerrar Vigía v6:
@@ -220,6 +234,19 @@ Secrets Manager with External Secrets, and EKS Pod Identity for AWS access. Not 
 
 Ajusta los nombres de archivo a los tuyos. Y en *Limitations*, al menos: un solo nodo, el Secret sin copia fuera del cluster y PostgreSQL sin copias de seguridad.
 
+Y para *What broke and how I found it*, una línea por campo:
+
+```markdown
+## What broke and how I found it (v6)
+
+- **Symptom:** ____
+- **What I checked:** ____
+- **Cause:** ____
+- **Fix:** ____
+```
+
+Un ejemplo, ya relleno (del Rómpelo 1 de la clase 114): *Symptom:* after a `rollout restart`, the new API pods stayed in `CreateContainerConfigError`. *What I checked:* `kubectl -n vigia describe pod`, whose events said `secret "vigia-db" not found`. *Cause:* the Secret had been deleted; the old pods kept working because they had read their variables at startup. *Fix:* recreated the Secret with the same password, recovered from a running pod; lesson: keep the password in a secrets manager too.
+
 Etiqueta y release:
 
 ```bash
@@ -237,10 +264,12 @@ Nada que pague: deja Vigía en tu cluster si vas a seguir con la fase 10, o apá
 
 En `notas/fase-9/clase-115.md`:
 
-1. Cuenta la actualización rota, paso a paso: qué viste, por qué el servicio no se cortó y cómo dejaste Git y el cluster iguales.
-2. ¿Por qué el CronJob trata el código 1 como éxito? ¿Qué código debe devolver un chequeo que no pudo trabajar?
-3. "¿Cómo llevarías Vigía a producción en AWS?": responde en un minuto, en voz alta, con la tabla de EKS.
-4. **Repaso (clase 114, sin mirar):** ¿por qué PostgreSQL va en un StatefulSet?
+1. Cuenta la actualización rota, paso a paso: qué viste, por qué el servicio no se cortó y cómo dejaste Git y el cluster iguales. *(4 líneas. Empieza así: «Con la 6.0.2, el Deployment creó un ReplicaSet nuevo con un pod que…»)*
+2. ¿Por qué el CronJob trata el código 1 como éxito? ¿Qué código debe devolver un chequeo que no pudo trabajar? *(2 líneas. Empieza así: «Porque un sitio caído es el resultado de un chequeo que funcionó:…»)*
+3. "¿Cómo llevarías Vigía a producción en AWS?": responde en un minuto, en voz alta, con la tabla de EKS. *(En voz alta; si quieres apuntarlo, 5 puntos. Empieza así: «The manifests stay almost the same. Images come from ECR,…»)*
+4. **Repaso (clase 114, sin mirar):** ¿por qué PostgreSQL va en un StatefulSet? *(1–2 líneas.)*
+
+Después, escríbeme `examíname clase-115`.
 
 ## Autocorrección
 

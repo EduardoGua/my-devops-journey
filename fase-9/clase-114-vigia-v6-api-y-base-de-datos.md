@@ -2,6 +2,20 @@
 
 **Dónde:** tu Ubuntu + GitHub · **Tiempo:** 2 bloques largos (unas 5 h) · **Bloque:** C. Proyecto · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** Vigía pasa de Compose a Kubernetes con manifiestos tuyos: PostgreSQL como StatefulSet con su disco, la contraseña en un Secret que nunca toca Git, la configuración en un ConfigMap, la API con dos réplicas, sondas y recursos, y una entrada desde fuera por el Gateway. Todo lo que aprendiste en las clases 102 a 113, junto y sin chuleta.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Tu `compose.yaml` de la v2, con sus servicios, volúmenes y *healthchecks* (clase 66); el Dockerfile de Vigía (fase 5).
+> - Deployments, Services y el DNS del cluster (clases 104 y 105); ConfigMaps y Secrets (clase 106).
+> - Sondas y recursos (clase 107); StatefulSets y PVC (clase 109); namespaces y ServiceAccounts (clase 110).
+> - Gateway y HTTPRoute (clase 111); el método de depuración (clase 112).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **`kind load docker-image`**: copiar una imagen de tu Docker a los nodos de kind, sin registro.
+> - **`imagePullPolicy`**: cuándo descarga el kubelet la imagen (`Always`, `IfNotPresent`, `Never`).
+> - **variable dependiente**: una variable de entorno que usa el valor de otra, con `$(NOMBRE)`.
+> - **secreto de arranque**: el que hay que crear a mano antes de desplegar, porque no está en Git.
+
 ## Objetivo
 
 Llevar Vigía a Kubernetes, en tu cluster de kind, con manifiestos tuyos en `k8s/`:
@@ -207,10 +221,12 @@ Muestra las líneas que difieren. Las causas típicas:
 
 En `notas/fase-9/clase-114.md`:
 
-1. Tu tabla de equivalencias Compose → Kubernetes (pista 1, con tus palabras).
-2. ¿Por qué PostgreSQL va en un StatefulSet y la API en un Deployment?
-3. ¿Por qué el Secret no está en `k8s/`? ¿Cómo lo recrearía otra persona que clone tu repositorio?
-4. **Repaso (clase 113, sin mirar):** ¿qué diferencia hay entre `helm rollback` y `kubectl rollout undo`?
+1. Tu tabla de equivalencias Compose → Kubernetes (pista 1, con tus palabras). *(Una tabla de dos columnas, una fila por pieza de tu `compose.yaml`. Empieza así: «| `services.db` + su volumen | StatefulSet `db` con `volumeClaimTemplates` + Service *headless* |»)*
+2. ¿Por qué PostgreSQL va en un StatefulSet y la API en un Deployment? *(2 líneas. Empieza así: «PostgreSQL guarda datos: necesita…»)*
+3. ¿Por qué el Secret no está en `k8s/`? ¿Cómo lo recrearía otra persona que clone tu repositorio? *(2 líneas. Empieza así: «Porque base64 no es cifrado:…»)*
+4. **Repaso (clase 113, sin mirar):** ¿qué diferencia hay entre `helm rollback` y `kubectl rollout undo`? *(1–2 líneas.)*
+
+Después, escríbeme `examíname clase-114`.
 
 ## Autocorrección
 

@@ -2,6 +2,23 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** B. Kubernetes para operar
 
+> 💡 **La idea de hoy:** un **namespace** separa los nombres, los permisos y las cuotas de cada aplicación o equipo (pero no la red). **RBAC** dice quién (*subject*) puede hacer qué (*Role*) y dónde (*binding*), y solo suma: lo que no está permitido está prohibido. Los pods tienen su propia identidad, una **ServiceAccount**, con un token montado que conviene no montar si la aplicación no habla con el API.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - El mínimo privilegio, los roles y las políticas de IAM (clases 69 y 70).
+> - Que un Secret solo está a salvo si pocos pueden leerlo (clase 106).
+> - `requests` y `limits` (clase 107); el DNS `<servicio>.<namespace>` (clase 105).
+> - `kubectl auth whoami` y el kubeconfig de administrador (clase 102).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **namespace**: un espacio de nombres dentro del cluster.
+> - ***cluster-scoped***: un objeto que no vive en ningún namespace (nodos, PVs, StorageClasses).
+> - **ResourceQuota** / **LimitRange**: el techo del namespace entero / los valores por defecto de cada contenedor.
+> - **Role / ClusterRole**: permisos en un namespace / en todo el cluster.
+> - **RoleBinding / ClusterRoleBinding**: dan un Role a alguien en un namespace / en todo el cluster.
+> - **ServiceAccount**: la identidad de un programa que corre en el cluster.
+> - **suplantar** (`--as`): preguntar en nombre de otro.
+
 ## Objetivo
 
 - Separar aplicaciones y equipos con **namespaces**, y ponerles techo con **ResourceQuota** y valores por defecto con **LimitRange**.
@@ -13,9 +30,19 @@
 
 En un cluster real conviven decenas de aplicaciones y varios equipos. Sin separación, cualquiera puede borrar lo de otro, y un pod comprometido puede leer todos los Secrets. Es el mínimo privilegio de IAM (clases 69 y 70) dentro de Kubernetes, y la segunda línea de defensa de la clase 106: un Secret solo está a salvo si pocos pueden leerlo.
 
-## Teoría
+## Cómo va esta clase
 
-### Namespaces
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber hecho la anterior. Todas usan el namespace `equipo-a`.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 y 2** (unos 30 min); el segundo, las **piezas 3 a 5**, el Rómpelo, el reto y el cierre.
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-110 && cd ~/my-devops-journey/labs/clase-110
+```
+
+## Las piezas
+
+### Pieza 1 — Namespaces
 
 Un namespace es un espacio de nombres dentro del cluster: dos objetos pueden llamarse igual si están en namespaces distintos. Sirve de frontera para:
 - **los nombres:** `web` en `equipo-a` y `web` en `equipo-b` son objetos distintos;
@@ -25,8 +52,6 @@ Un namespace es un espacio de nombres dentro del cluster: dos objetos pueden lla
 
 No es una frontera de **red**: por defecto, un pod de un namespace llega a cualquier pod de otro. Para cortar eso hacen falta *NetworkPolicies*, que quedan fuera de esta fase.
 
-Los que trae el cluster:
-
 | Namespace | Qué hay |
 |-----------|---------|
 | `default` | lo que creas sin decir dónde |
@@ -35,48 +60,33 @@ Los que trae el cluster:
 
 Algunos objetos no viven en ningún namespace: los nodos, los PersistentVolumes, las StorageClasses y los propios namespaces. Son *cluster-scoped*.
 
-### ResourceQuota y LimitRange
+**Pruébalo:**
+
+```bash
+kubectl get namespaces
+kubectl api-resources --namespaced=false | head -8
+```
+
+👀 **Qué deberías ver:** `default`, `kube-node-lease`, `kube-public`, `kube-system` y `local-path-storage` (el aprovisionador de discos de kind). En `api-resources`, la columna `NAMESPACED` en `false`: `namespaces`, `nodes`, `persistentvolumes`…
+
+✋ **Sin mirar:** un pod del namespace `equipo-a`, ¿puede conectarse por red a un pod de `equipo-b`?
+
+<details>
+<summary>Comprueba</summary>
+
+Sí, por defecto: un namespace no separa la red. Para cortarlo hacen falta NetworkPolicies.
+</details>
+
+**En resumen:** el namespace separa nombres, permisos, cuotas y DNS; la red, no.
+
+### Pieza 2 — Un namespace con techo
 
 - **ResourceQuota:** el techo del namespace entero: "como mucho 3 pods, 1 CPU y 1 Gi de memoria reservados en total".
 - **LimitRange:** los valores por defecto y los límites de **cada** contenedor: "si no dice nada, reserva 50m de CPU y 64 Mi".
 
 Van juntos: con una cuota de CPU o de memoria, un pod sin `requests` se rechaza. El LimitRange le pone unos por defecto.
 
-### RBAC: quién, qué y dónde
-
-```
-Subject (quién)             Role / ClusterRole (qué)              RoleBinding / ClusterRoleBinding (une los dos)
-─────────────────           ───────────────────────────           ──────────────────────────────────────────────
-User: eduardo               verbos sobre recursos:                RoleBinding: dentro de un namespace
-Group: equipo-a               get, list, watch → pods             ClusterRoleBinding: en todo el cluster
-ServiceAccount: lector        create, delete   → deployments
-```
-
-- Un **Role** vive en un namespace y da permisos dentro de él. Un **ClusterRole** se define para todo el cluster: sirve para recursos *cluster-scoped*, o como plantilla reutilizable.
-- Un **RoleBinding** da un Role (o un ClusterRole) a alguien **dentro de un namespace**. Un **ClusterRoleBinding** lo da en **todo** el cluster.
-- RBAC solo suma: no hay reglas de "denegar". Lo que no está permitido está prohibido, como en IAM sin un `Deny` explícito.
-
-Los verbos más comunes: `get`, `list`, `watch`, `create`, `update`, `patch` y `delete`. Y algunos subrecursos tienen permiso propio, como `pods/log` (leer logs) y `pods/exec` (entrar en un pod).
-
-ClusterRoles que ya trae el cluster: `view` (leer casi todo, menos los Secrets), `edit`, `admin` y `cluster-admin` (todo).
-
-### ServiceAccounts: la identidad de los pods
-
-Las personas son *Users* (en kind, tu certificado). Los programas que corren dentro del cluster usan **ServiceAccounts**. Cada namespace tiene una llamada `default`, y cada pod usa una.
-
-Kubernetes monta en el pod un **token** de su ServiceAccount, en `/var/run/secrets/kubernetes.io/serviceaccount/`. Es un token de corta duración (alrededor de 1 hora) que el kubelet renueva solo. Con él, el pod habla con el API. Si la aplicación no necesita hablar con el API, como Vigía, `automountServiceAccountToken: false`: lo que no está, no se puede robar.
-
-## Práctica guiada
-
-```bash
-mkdir -p ~/my-devops-journey/labs/clase-110 && cd ~/my-devops-journey/labs/clase-110
-kubectl get namespaces
-kubectl api-resources --namespaced=false | head -8
-```
-
-### 1. Un namespace con techo (20 min)
-
-`equipo-a.yaml`:
+**Pruébalo.** `equipo-a.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -118,7 +128,7 @@ for n in 1 2 3 4; do kubectl -n equipo-a run p$n --image=busybox:1.37 -- sleep 1
 
 🔮 **Predice:** ¿cuántos de los cuatro se crean?
 
-Tres. El cuarto:
+👀 **Qué deberías ver:** tres. El cuarto:
 
 ```
 Error from server (Forbidden): pods "p4" is forbidden: exceeded quota: cuota, requested: pods=1, used: pods=3, limited: pods=3
@@ -131,7 +141,7 @@ kubectl -n equipo-a get pod p1 -o jsonpath='{.spec.containers[0].resources}{"\n"
 kubectl -n equipo-a describe resourcequota cuota
 ```
 
-Los valores del LimitRange. Para no escribir `-n equipo-a` en cada orden, cambia el namespace de tu contexto:
+Los valores del LimitRange (`{"limits":{"memory":"128Mi"},"requests":{"cpu":"50m","memory":"64Mi"}}`), y la cuota con `pods 3 3`. Para no escribir `-n equipo-a` en cada orden, cambia el namespace de tu contexto:
 
 ```bash
 kubectl config set-context --current --namespace=equipo-a
@@ -141,9 +151,37 @@ kubectl config set-context --current --namespace=default
 
 Vuelve siempre a `default` al terminar: un namespace olvidado en el contexto es la mejor forma de borrar algo en el sitio equivocado.
 
-### 2. Una ServiceAccount de solo lectura (20 min)
+✋ **Sin mirar:** en un namespace con cuota de CPU y sin LimitRange, lanzas un pod sin `resources`. ¿Qué pasa?
 
-`lector.yaml`: una ServiceAccount, un Role que solo lee pods y sus logs, y el RoleBinding que los une:
+<details>
+<summary>Comprueba</summary>
+
+El API lo rechaza: con una cuota de recursos, cada pod debe declarar los suyos (o un LimitRange ponérselos). Lo verás en el Rómpelo 2.
+</details>
+
+**En resumen:** la cuota pone el techo del namespace; el LimitRange, los valores de cada contenedor.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Comprueba que tu contexto vuelve a estar en `default` (`kubectl config get-contexts`) y apaga el cluster con `docker stop lab-control-plane cloud-provider-kind`.
+
+### Pieza 3 — RBAC: quién, qué y dónde
+
+```
+Subject (quién)             Role / ClusterRole (qué)              RoleBinding / ClusterRoleBinding (une los dos)
+─────────────────           ───────────────────────────           ──────────────────────────────────────────────
+User: eduardo               verbos sobre recursos:                RoleBinding: dentro de un namespace
+Group: equipo-a               get, list, watch → pods             ClusterRoleBinding: en todo el cluster
+ServiceAccount: lector        create, delete   → deployments
+```
+
+- Un **Role** vive en un namespace y da permisos dentro de él. Un **ClusterRole** se define para todo el cluster: sirve para recursos *cluster-scoped*, o como plantilla reutilizable.
+- Un **RoleBinding** da un Role (o un ClusterRole) a alguien **dentro de un namespace**. Un **ClusterRoleBinding** lo da en **todo** el cluster.
+- RBAC solo suma: no hay reglas de "denegar". Lo que no está permitido está prohibido, como en IAM sin un `Deny` explícito.
+
+Los verbos más comunes: `get`, `list`, `watch`, `create`, `update`, `patch` y `delete`. Y algunos subrecursos tienen permiso propio, como `pods/log` (leer logs) y `pods/exec` (entrar en un pod).
+
+ClusterRoles que ya trae el cluster: `view` (leer casi todo, menos los Secrets), `edit`, `admin` y `cluster-admin` (todo).
+
+**Pruébalo.** `lector.yaml`: una ServiceAccount, un Role que solo lee pods y sus logs, y el RoleBinding que los une:
 
 ```yaml
 apiVersion: v1
@@ -181,7 +219,27 @@ roleRef:
 
 ```bash
 kubectl apply -f lector.yaml
+kubectl -n equipo-a get serviceaccount,role,rolebinding
+kubectl -n equipo-a describe role ver-pods
 ```
+
+👀 **Qué deberías ver:** las tres piezas creadas, y en `describe` una tabla con `pods` y `pods/log` y los verbos `[get list watch]`.
+
+✋ **Sin mirar:** ¿qué diferencia hay entre un RoleBinding y un ClusterRoleBinding?
+
+<details>
+<summary>Comprueba</summary>
+
+El RoleBinding da permisos dentro de **su** namespace; el ClusterRoleBinding, en **todo** el cluster.
+</details>
+
+**En resumen:** Role (qué), subject (quién) y binding (dónde); RBAC solo suma.
+
+### Pieza 4 — Comprobar permisos con `auth can-i`
+
+`kubectl auth can-i <verbo> <recurso>` pregunta al API si algo está permitido. Con `--as`, preguntas en nombre de otro: **suplantar**. Tú eres administrador y puedes preguntar en nombre de cualquiera. Es la forma de probar permisos sin crear credenciales. El nombre de una ServiceAccount, para RBAC, es `system:serviceaccount:<namespace>:<nombre>`.
+
+**Pruébalo.**
 
 🔮 **Predice:** antes de ejecutarlo, escribe sí o no para cada fila.
 
@@ -193,6 +251,8 @@ done
 printf "%-28s %s\n" "list pods -n default" "$(kubectl auth can-i list pods -n default --as=$SA)"
 ```
 
+👀 **Qué deberías ver:**
+
 ```
 list pods                    yes
 get pods --subresource=log   yes
@@ -202,7 +262,7 @@ create deployments           no
 list pods -n default         no
 ```
 
-`--as` es **suplantar** a otro: tú eres administrador y puedes preguntar en nombre de cualquiera. Es la forma de probar permisos sin crear credenciales. Tú, en cambio:
+Tú, en cambio:
 
 ```bash
 kubectl auth can-i '*' '*'
@@ -211,9 +271,23 @@ kubectl auth whoami
 
 `yes` a todo: el usuario de kind está en un grupo con `cluster-admin`.
 
-### 3. Lo que hace un pod con su token (20 min)
+✋ **Sin mirar:** ¿por qué `lector` no puede listar pods en `default`?
 
-Un pod que usa la ServiceAccount `lector` y ejecuta `kubectl get pods,secrets` desde dentro del cluster. `curioso.yaml`:
+<details>
+<summary>Comprueba</summary>
+
+Porque su RoleBinding está en `equipo-a`, y un RoleBinding solo da permisos en su namespace.
+</details>
+
+**En resumen:** `kubectl auth can-i … --as=…` prueba permisos sin crear credenciales.
+
+### Pieza 5 — ServiceAccounts: el token de un pod
+
+Las personas son *Users* (en kind, tu certificado). Los programas que corren dentro del cluster usan **ServiceAccounts**. Cada namespace tiene una llamada `default`, y cada pod usa una.
+
+Kubernetes monta en el pod un **token** de su ServiceAccount, en `/var/run/secrets/kubernetes.io/serviceaccount/`. Es un token de corta duración (alrededor de 1 hora) que el kubelet renueva solo. Con él, el pod habla con el API. Si la aplicación no necesita hablar con el API, como Vigía, `automountServiceAccountToken: false`: lo que no está, no se puede robar.
+
+**Pruébalo.** Un pod que usa la ServiceAccount `lector` y ejecuta `kubectl get pods,secrets` desde dentro del cluster. `curioso.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -232,16 +306,20 @@ spec:
 
 La imagen oficial de kubectl no trae ni shell: solo kubectl. Dentro de un pod, kubectl encuentra solo el token montado y la dirección del API.
 
+La cuota de `equipo-a` admite 3 pods, y ya tienes `p1`, `p2` y `p3`: borra dos para dejar sitio.
+
 ```bash
+kubectl -n equipo-a delete pod p2 p3
 kubectl apply -f curioso.yaml
 kubectl -n equipo-a logs curioso
 ```
+
+👀 **Qué deberías ver:**
 
 ```
 NAME      READY   STATUS    RESTARTS   AGE
 curioso   1/1     Running   0          0s
 p1        1/1     Running   0          2m35s
-…
 Error from server (Forbidden): secrets is forbidden: User "system:serviceaccount:equipo-a:lector" cannot list resource "secrets" in API group "" in the namespace "equipo-a"
 ```
 
@@ -250,15 +328,34 @@ Los pods sí, los Secrets no: RBAC, desde dentro de un pod. Ahora el mismo pod c
 ```bash
 kubectl apply -f curioso-default.yaml
 kubectl -n equipo-a logs curioso-default
-```
-
-`Forbidden` para todo: la ServiceAccount `default` no tiene permisos. Pero su token **sí** estaba montado. Mira cuánto dura:
-
-```bash
 kubectl -n equipo-a get pod curioso-default -o jsonpath='{.spec.volumes[0].projected.sources[0]}{"\n"}'
 ```
 
-`expirationSeconds: 3607`: una hora, y el kubelet lo renueva.
+`Forbidden` para todo: la ServiceAccount `default` no tiene permisos. Pero su token **sí** estaba montado, con `expirationSeconds: 3607`: una hora, y el kubelet lo renueva.
+
+✋ **Sin mirar:** si alguien entra en un pod por una vulnerabilidad de la aplicación, ¿qué puede hacer con su token?
+
+<details>
+<summary>Comprueba</summary>
+
+Usarlo contra el API con todos los permisos de la ServiceAccount del pod. Por eso: permisos mínimos y, si no habla con el API, `automountServiceAccountToken: false`.
+</details>
+
+**En resumen:** cada pod tiene una identidad; si no la necesita, no se le monta.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `kubectl get namespaces` · `kubectl api-resources --namespaced=false` | namespaces y objetos *cluster-scoped* |
+| `kind: ResourceQuota` + `spec.hard` | techo del namespace |
+| `kind: LimitRange` + `defaultRequest` / `default` | valores por defecto de cada contenedor |
+| `kubectl config set-context --current --namespace=equipo-a` | cambiar de namespace (¡y volver!) |
+| `kind: Role` + `rules: [{apiGroups, resources, verbs}]` | permisos en un namespace |
+| `kind: RoleBinding` + `subjects` + `roleRef` | dárselos a alguien |
+| `kubectl auth can-i list pods -n equipo-a --as=system:serviceaccount:equipo-a:lector` | probar un permiso |
+| `kubectl auth can-i --list -n … --as=…` | todos sus permisos |
+| `serviceAccountName: lector` · `automountServiceAccountToken: false` | la identidad del pod; sin token |
 
 ## Rómpelo
 
@@ -274,9 +371,43 @@ kubectl -n equipo-a get pod curioso-default -o jsonpath='{.spec.volumes[0].proje
 
 ## Reto
 
-1. Reutiliza un ClusterRole: `kubectl -n otro create rolebinding lector-view --clusterrole=view --serviceaccount=equipo-a:lector`. ¿Qué puede hacer `lector` en `otro`: listar pods, listar Deployments, leer Secrets, borrar pods? ¿Por qué `view` no incluye los Secrets?
-2. `kubectl auth can-i --list -n equipo-a --as=system:serviceaccount:equipo-a:lector`. ¿Qué permisos tiene, además de los de tu Role? ¿De dónde salen?
-3. Crea `sin-token.yaml`: `curioso` con `automountServiceAccountToken: false` y otro nombre. ¿Qué dice su log? ¿Por qué?
+Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** Reutiliza un ClusterRole: dale `view` a `lector` en el namespace `otro`. ¿Qué puede hacer allí: listar pods, listar Deployments, leer Secrets, borrar pods? ¿Por qué `view` no incluye los Secrets?
+
+> 🧩 **Ejemplo resuelto:** la pieza 3: el RoleBinding `lector-ver-pods` daba el **Role** `ver-pods` a `lector` en `equipo-a`.
+
+**Ahora tú, con huecos:** `kubectl -n otro create rolebinding lector-view --clusterrole=____ --serviceaccount=equipo-a:____`. Después, el bucle de la pieza 4 con `-n otro` y `list deployments`. Completa: «Puede ____ y ____; no puede ____ ni ____. `view` excluye los Secrets porque leerlos permitiría…».
+
+<details>
+<summary>Pista</summary>
+
+Piensa qué hay dentro de un Secret: a veces, el token de **otra** ServiceAccount con más permisos.
+</details>
+
+**2.** `kubectl auth can-i --list -n equipo-a --as=system:serviceaccount:equipo-a:lector`. ¿Qué permisos tiene, además de los de tu Role? ¿De dónde salen?
+
+> 🧩 **Ejemplo resuelto:** la pieza 4: `kubectl auth can-i list pods -n equipo-a --as=$SA` respondía una sola pregunta.
+
+**Ahora tú, con huecos:** «Además de `pods` y `pods/log`, tiene ____ (con el verbo ____). Salen del ClusterRole ____, que se da a todo usuario autenticado para…».
+
+<details>
+<summary>Pista</summary>
+
+Busca las filas `selfsubject…`. Y mira `kubectl get clusterrolebinding | grep basic`.
+</details>
+
+**3.** Crea `sin-token.yaml`: `curioso` con `automountServiceAccountToken: false` y otro nombre. ¿Qué dice su log? ¿Por qué?
+
+> 🧩 **Ejemplo resuelto:** la pieza 5: `curioso-default` tenía el token montado, aunque su ServiceAccount no tuviera permisos.
+
+**Ahora tú, con huecos:** en el `spec` del pod, `automountServiceAccountToken: ____` y `name: sin-token`. Completa: «El log dice ____. Sin token montado, kubectl no encuentra… y prueba…».
+
+<details>
+<summary>Pista</summary>
+
+Si la cuota no te deja, borra antes `curioso` o `curioso-default`.
+</details>
 
 ## Destruir al terminar
 
@@ -292,10 +423,12 @@ Borrar un namespace borra **todo** lo que hay dentro. Es cómodo en un laborator
 
 En `notas/fase-9/clase-110.md`:
 
-1. ¿Para qué sirve un namespace? ¿Y qué **no** separa?
-2. Explica Role, ClusterRole, RoleBinding y ClusterRoleBinding con el ejemplo de `lector`.
-3. ¿Qué es el token de una ServiceAccount, qué puede hacer quien lo robe y cómo lo evitas en un pod que no habla con el API?
-4. **Repaso (clase 109, sin mirar):** ¿por qué un StatefulSet no borra sus PVC al escalar hacia abajo?
+1. ¿Para qué sirve un namespace? ¿Y qué **no** separa? *(2 líneas. Empieza así: «Agrupa objetos y es la frontera de… No separa…»)*
+2. Explica Role, ClusterRole, RoleBinding y ClusterRoleBinding con el ejemplo de `lector`. *(4 líneas, una por pieza. Empieza así: «`ver-pods` es un Role:…»)*
+3. ¿Qué es el token de una ServiceAccount, qué puede hacer quien lo robe y cómo lo evitas en un pod que no habla con el API? *(3 líneas. Empieza así: «Es la credencial de la ServiceAccount del pod, montada en…»)*
+4. **Repaso (clase 109, sin mirar):** ¿por qué un StatefulSet no borra sus PVC al escalar hacia abajo? *(1–2 líneas.)*
+
+Después, escríbeme `examíname clase-110`.
 
 ## Autocorrección
 
@@ -304,17 +437,17 @@ En `notas/fase-9/clase-110.md`:
 
 **Cierre:**
 1. Agrupa objetos y es la frontera de los nombres, los permisos (Roles y RoleBindings) y las cuotas. No separa la red: sin NetworkPolicies, un pod llega a cualquier otro pod del cluster. Tampoco los objetos *cluster-scoped*, como los nodos.
-2. `ver-pods` es un **Role**: permisos (`get`, `list`, `watch` sobre `pods` y `pods/log`) dentro de `equipo-a`. El **RoleBinding** `lector-ver-pods` se los da a la ServiceAccount `lector`, solo en `equipo-a`. Un **ClusterRole**, como `view`, es lo mismo para todo el cluster: se puede dar en un namespace con un RoleBinding (Reto 1) o en todos con un **ClusterRoleBinding** (Rómpelo 3).
+2. `ver-pods` es un **Role**: permisos (`get`, `list`, `watch` sobre `pods` y `pods/log`) dentro de `equipo-a`. El **RoleBinding** `lector-ver-pods` se los da a la ServiceAccount `lector`, solo en `equipo-a`. Un **ClusterRole**, como `view`, es lo mismo para todo el cluster: se puede dar en un namespace con un RoleBinding (reto 1) o en todos con un **ClusterRoleBinding** (Rómpelo 3).
 3. Es la credencial de la ServiceAccount del pod, montada en `/var/run/secrets/kubernetes.io/serviceaccount/token`. Quien entre en el pod (por una vulnerabilidad de la aplicación, por ejemplo) puede usarla contra el API, con todos los permisos de esa ServiceAccount. Si el pod no necesita el API: `automountServiceAccountToken: false`, y además ningún permiso de más para su ServiceAccount.
 4. Porque perder los datos debe ser una decisión explícita: si escalas por error o vuelves a subir, cada réplica recupera su disco.
 
 **Rómpelo 1:** en `equipo-a`, no; en `otro`, sí. Un RoleBinding da permisos solo en **su** namespace, aunque la ServiceAccount viva en otro.
 
-**Reto 1:** listar pods y Deployments en `otro`, sí; leer Secrets y borrar pods, no. `view` es de solo lectura, y excluye los Secrets a propósito: leerlos permitiría usar las credenciales de otras ServiceAccounts y, con ellas, escalar privilegios.
+**Reto 1:** `--clusterrole=view --serviceaccount=equipo-a:lector`. Listar pods y Deployments en `otro`, sí; leer Secrets y borrar pods, no. `view` es de solo lectura, y excluye los Secrets a propósito: leerlos permitiría usar las credenciales de otras ServiceAccounts y, con ellas, escalar privilegios.
 
 **Reto 2:** aparecen, además, `selfsubjectreviews`, `selfsubjectaccessreviews` y `selfsubjectrulesreviews` (`create`), y lecturas básicas como `/.well-known/openid-configuration/`. Las da el ClusterRole `system:basic-user` (y alguno más) a todo usuario autenticado: lo mínimo para preguntar "¿quién soy y qué puedo hacer?".
 
-**Reto 3:** `The connection to the server localhost:8080 was refused`. Sin token montado, kubectl no encuentra la configuración del cluster y prueba la dirección por defecto, donde no hay nada. Es lo que quieres para un pod que no debe hablar con el API.
+**Reto 3:** `automountServiceAccountToken: false`. El log dice `The connection to the server localhost:8080 was refused`. Sin token montado, kubectl no encuentra la configuración del cluster y prueba la dirección por defecto, donde no hay nada. Es lo que quieres para un pod que no debe hablar con el API.
 </details>
 
 ## Inglés
