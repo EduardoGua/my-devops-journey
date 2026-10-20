@@ -2,6 +2,20 @@
 
 **Dónde:** tu Ubuntu + GitHub · **Tiempo:** 1 bloque largo (unas 3 h) · **Bloque:** B. Proyecto · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** Vigía sale de tu PC y se publica en GitHub, y desde hoy trabajas en él como en un equipo: `main` protegida, una rama y un PR por cambio, y una **etiqueta** (`v0.1`) que marca la versión terminada. Una etiqueta es como una rama que nunca se mueve.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - `.gitignore`, buenos mensajes de commit y `git log` (clase 22).
+> - Ramas y conflictos (clase 23).
+> - El ciclo rama → push → PR → squash, y el ruleset que protege `main` (clase 24).
+> - Tu `vigia.sh` de la clase 21, con su etiqueta local `v0`.
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **etiqueta** (*tag*): un nombre fijo para un commit; marca una versión.
+> - **etiqueta anotada**: la que guarda autor, fecha y mensaje (`git tag -a`).
+> - **release**: la página de GitHub de una versión, construida sobre una etiqueta.
+> - **pinned**: un repositorio fijado arriba en tu perfil de GitHub.
+
 ## Objetivo
 
 Publicar Vigía en GitHub y trabajar en él como en un equipo: `.gitignore`, una rama y un pull request por cambio, `main` protegida, mensajes de commit en inglés y la etiqueta `v0.1`. Al terminar, quien visite tu perfil verá Vigía arriba, con un README que explica qué hace y cómo ejecutarlo.
@@ -26,29 +40,9 @@ Tres cambios que encajan bien en R4 (puedes elegir otros):
 2. Añadir la opción `-h` / `--help` con un `case` (clase 17).
 3. Documentar la instalación y la programación con cron en el README.
 
-## Teoría: etiquetas y *releases*
-
-Una **etiqueta** (*tag*) es un nombre fijo para un commit. Una rama avanza con cada commit nuevo; una etiqueta no se mueve nunca. Por eso se usan para marcar versiones.
-
-```
-A ── B ── C ── D ── E      ← main (avanza)
-          ▲         ▲
-          v0        v0.1    ← etiquetas (fijas)
-```
-
-| Comando | Qué hace |
-|---------|----------|
-| `git tag -a v0.1 -m "mensaje"` | crea una etiqueta **anotada** (guarda autor, fecha y mensaje) en el commit actual |
-| `git tag` | lista las etiquetas |
-| `git show v0.1` | muestra la etiqueta y su commit |
-| `git push origin v0.1` | la publica: `git push` normal **no** sube etiquetas |
-| `git switch --detach v0` | mira el código tal como estaba en esa versión |
-
-Una **release** de GitHub es una página construida sobre una etiqueta, con notas de la versión y archivos descargables. Muchos proyectos publican así sus versiones.
-
-Regla: **una etiqueta publicada no se mueve**. Si te equivocaste, creas otra (`v0.1.1`). Moverla sería reescribir historia compartida (clase 22).
-
 ## Práctica guiada
+
+Siete pasos. La teoría nueva de hoy, las etiquetas, está en el paso 6, justo donde la usas. Si la haces en dos sesiones, la primera termina después del paso 3 (el primer PR).
 
 ### 1. Publicar el repo
 
@@ -60,6 +54,8 @@ gh repo create vigia --public --source=. --remote=origin --push
 git push origin v0
 git ls-remote --tags origin
 ```
+
+👀 **Qué deberías ver:** el repo creado y subido, y en `git ls-remote --tags origin` una línea con `refs/tags/v0`.
 
 `gh repo create … --push` crea el repo en GitHub, lo conecta como `origin` y sube `main`. La etiqueta `v0` necesita su propio `push`.
 
@@ -135,6 +131,28 @@ Si algo falla (un permiso de ejecución que no se subió, un paso que falta en e
 
 ### 6. Etiqueta y *release*
 
+Una **etiqueta** (*tag*) es un nombre fijo para un commit. Una rama avanza con cada commit nuevo; una etiqueta no se mueve nunca. Por eso se usan para marcar versiones.
+
+```
+A ── B ── C ── D ── E      ← main (avanza)
+          ▲         ▲
+          v0        v0.1    ← etiquetas (fijas)
+```
+
+| Comando | Qué hace |
+|---------|----------|
+| `git tag -a v0.1 -m "mensaje"` | crea una etiqueta **anotada** (guarda autor, fecha y mensaje) en el commit actual |
+| `git tag` | lista las etiquetas |
+| `git show v0.1` | muestra la etiqueta y su commit |
+| `git push origin v0.1` | la publica: `git push` normal **no** sube etiquetas |
+| `git switch --detach v0` | mira el código tal como estaba en esa versión |
+
+Una **release** de GitHub es una página construida sobre una etiqueta, con notas de la versión y archivos descargables. Muchos proyectos publican así sus versiones.
+
+Regla: **una etiqueta publicada no se mueve**. Si te equivocaste, creas otra (`v0.1.1`). Moverla sería reescribir historia compartida (clase 22).
+
+**Ahora, la tuya:**
+
 ```bash
 cd ~/vigia && git switch main && git pull
 git tag -a v0.1 -m "v0.1: published on GitHub, PR workflow"
@@ -142,6 +160,8 @@ git push origin v0.1
 gh release create v0.1 --title "v0.1" --notes "First public version: Bash uptime checks scheduled with cron."
 git log --oneline --decorate -6
 ```
+
+👀 **Qué deberías ver:** la dirección de la release y, en el log, `tag: v0.1` en el último commit de `main` y `tag: v0` más abajo.
 
 ### 7. Fijarlo en tu perfil
 
@@ -182,10 +202,12 @@ Se puede borrar, pero si alguien ya la había descargado, en su clon sigue exist
 
 En `notas/fase-2/clase-25.md`:
 
-1. ¿Qué diferencia hay entre una rama y una etiqueta? ¿Para qué usas cada una?
-2. ¿Por qué Vigía tiene su propio repositorio en lugar de vivir dentro de `my-devops-journey`?
-3. Copia la descripción de uno de tus PR y revísala como lo haría otra persona: ¿se entiende sin ver el código? ¿Qué le falta?
-4. **Repaso (clase 24, sin mirar):** ¿qué es `origin/main` y por qué no se actualiza solo?
+1. ¿Qué diferencia hay entre una rama y una etiqueta? ¿Para qué usas cada una? *(2 líneas. Empieza así: «Una rama avanza con cada commit…; una etiqueta… Uso las ramas para… y las etiquetas para…»)*
+2. ¿Por qué Vigía tiene su propio repositorio en lugar de vivir dentro de `my-devops-journey`? *(2 líneas. Empieza así: «Porque es un proyecto que alguien puede clonar y usar solo… y en mi perfil…»)*
+3. Elige uno de tus PR y revísalo como lo haría otra persona: ¿se entiende sin ver el código? *(2 líneas: lo que se entiende y lo que le falta. Empieza así: «Se entiende… Le falta…»)*
+4. **Repaso (clase 24, sin mirar):** ¿qué es `origin/main` y por qué no se actualiza solo? *(2 líneas. Empieza así: «Es mi copia local de… Solo se actualiza cuando…»)*
+
+Después, escríbeme `examíname clase-25`.
 
 ## Autocorrección
 
