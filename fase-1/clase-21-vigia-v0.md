@@ -350,7 +350,8 @@ Probado en Ubuntu 26.04 con la lista difícil: 3 `UP`, 3 `DOWN`, código 1, unos
 
 1. Marca la clase 21 y Vigía v0 en [`PROGRESO.md`](../PROGRESO.md).
 2. Revisa los **criterios de salida de la fase 1** en `PROGRESO.md` y márcalos solo si los cumples **sin mirar**.
-3. Anota tus horas del mes en el registro mensual de la Ruta 2.0.
+3. Anota tus horas del mes en el registro mensual de la Ruta 2.0 (`bash ~/my-devops-journey/recursos/sesion.sh mes`).
+4. Empieza [Bandit](bandit.md), la prueba de la fase: niveles 0–20 en sesiones de 20–30 minutos, a la vez que la fase 2 y nunca en lugar de su clase.
 
 ## Siguiente
 

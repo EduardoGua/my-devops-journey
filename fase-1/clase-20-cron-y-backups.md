@@ -2,7 +2,7 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** C. Scripting con Bash
 
-> 💡 **La idea de hoy:** `cron` es un **despertador para comandos**: le dices «a esta hora, ejecuta esto» y lo hace aunque no estés delante. La trampa es que lo ejecuta en un entorno casi vacío (otro PATH, otro shell, otra carpeta y sin pantalla), así que un script que funciona en tu terminal puede fallar en cron **sin decir nada**. Hoy aprendes a escribir scripts que funcionan igual en los dos sitios.
+> 💡 **La idea de hoy:** `cron` es el **programador de tareas** de Linux, como un despertador para comandos: le dices «a esta hora, ejecuta esto» y lo hace aunque no estés delante. La trampa es que lo ejecuta en un entorno casi vacío (otro PATH, otro shell, otra carpeta y sin pantalla), así que un script que funciona en tu terminal puede fallar en cron **sin decir nada**. Hoy aprendes a escribir scripts que funcionan igual en los dos sitios.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - `>> log 2>&1` para guardar datos y errores en un log (clase 04).
@@ -11,7 +11,7 @@
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **cron**: el programa que ejecuta comandos a una hora fija.
-> - **crontab**: tu lista de alarmas, una línea por tarea.
+> - **crontab**: tu lista de tareas programadas, una línea por tarea.
 > - **rotación** (de copias): borrar las copias más viejas para que no se acumulen.
 > - **ruta absoluta**: la que empieza por `/`; funciona desde cualquier carpeta.
 > - **timer de systemd**: la alternativa moderna a cron (clase 12).
@@ -28,11 +28,23 @@
 
 Backups, limpieza de logs, informes diarios, comprobaciones de salud: todo lo periódico se programa. En servidores Linux lo verás con cron y con timers de systemd. La misma sintaxis de cron vuelve en los **CronJob de Kubernetes** (fase 9), en los `schedule` de GitHub Actions (fase 7) y en las reglas programadas de AWS. "El backup no se ejecutaba y nadie se dio cuenta" es un incidente clásico: hoy aprendes a comprobarlo. Y en la clase 21, cron lanzará Vigía cada 5 minutos.
 
-## Teoría
+## Cómo va esta clase
 
-Cuatro piezas. La 3 es la que más fallos evita: léela despacio.
+Seis piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. La pieza 3 (el entorno de cron) es la que más fallos evita: léela despacio. Ojo: cron trabaja por minutos, así que en varias piezas tendrás que **esperar a que cambie el minuto** (`date` te dice cuánto falta).
 
-### 1. La línea de cron: cuándo se ejecuta
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 40 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
+
+Primero, las carpetas de hoy y una copia de tu crontab (si nunca usaste cron, `crontab -l` dice `no crontab for educo` y el respaldo queda vacío: es normal):
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-20 ~/bin ~/logs ~/backups
+cd ~/my-devops-journey/labs/clase-20
+crontab -l > ~/crontab.respaldo 2>/dev/null ; echo "respaldo hecho"
+```
+
+## Las piezas
+
+### Pieza 1 — La línea de cron, y el comando `crontab`
 
 Cada línea de cron son **cinco campos de tiempo** y un comando:
 
@@ -59,9 +71,7 @@ Un `*` significa «**cualquiera**»: `* * * * *` es «cada minuto de cada hora d
 
 Para comprobar una expresión, [crontab.guru](https://crontab.guru) la traduce a palabras.
 
-**En resumen:** cinco campos de tiempo (minuto, hora, día, mes y día de la semana) y el comando; `*` es «cualquiera».
-
-### 2. Poner y quitar alarmas: `crontab`
+Cada usuario tiene su propio **crontab**, la lista de sus tareas programadas, y se maneja con el comando `crontab`:
 
 | Comando | Qué hace |
 |---------|----------|
@@ -70,13 +80,63 @@ Para comprobar una expresión, [crontab.guru](https://crontab.guru) la traduce a
 | `crontab archivo` | reemplaza tu crontab por el contenido del archivo |
 | `crontab -r` | ⚠️ **lo borra entero, sin preguntar**. La `r` está al lado de la `e` en el teclado |
 
-Antes de tocarlo, haz una copia: `crontab -l > ~/crontab.respaldo`.
+Antes de tocarlo, haz una copia: `crontab -l > ~/crontab.respaldo` (ya la hiciste arriba). Las tareas del sistema viven aparte, en `/etc/crontab`, `/etc/cron.d/` y `/etc/cron.daily/`. En tu portátil, las de `/etc/cron.daily/` las lanza **anacron**, que recupera las ejecuciones perdidas si el equipo estaba apagado.
 
-**En resumen:** `crontab -e` para editar y, antes, siempre una copia con `crontab -l > …`.
+**Pruébalo:** una tarea que se ejecuta cada minuto.
 
-Cada usuario tiene su propio crontab. Las tareas del sistema viven en `/etc/crontab`, `/etc/cron.d/` y `/etc/cron.daily/`. En tu portátil, las de `/etc/cron.daily/` las lanza **anacron**, que recupera las ejecuciones perdidas si el equipo estaba apagado.
+```bash
+crontab -e
+```
 
-### 3. El entorno de cron: aquí falla casi todo
+Añade al final esta línea, guarda y sal:
+
+```
+* * * * * date >> /tmp/cron-prueba.txt
+```
+
+```bash
+crontab -l
+```
+
+Espera a que cambie el minuto un par de veces (`date`) y mira:
+
+```bash
+cat /tmp/cron-prueba.txt
+```
+
+👀 **Qué deberías ver:** tu línea en `crontab -l` y, en `/tmp/cron-prueba.txt`, una fecha por minuto, siempre con los segundos cerca de `:00`. Deja la línea puesta: la usas en la pieza 2.
+
+✋ **Sin mirar:** ¿qué significa `0 21 * * *`?
+
+<details>
+<summary>Comprueba</summary>
+
+Todos los días a las 21:00 (minuto 0, hora 21, cualquier día, cualquier mes, cualquier día de la semana).
+</details>
+
+**En resumen:** cinco campos de tiempo (minuto, hora, día, mes y día de la semana) y el comando; `*` es «cualquiera». `crontab -e` para editar y, antes, siempre una copia con `crontab -l > …`.
+
+### Pieza 2 — ¿Se ejecutó? Los logs de cron
+
+```bash
+journalctl -u cron --since "10 min ago" --no-pager
+```
+
+Cada ejecución deja una línea `CRON[1234]: (educo) CMD (…el comando…)`. Si la tarea no aparece ahí, cron no la lanzó. Si aparece pero no hizo lo esperado, mira **tu** log.
+
+**Pruébalo:**
+
+```bash
+journalctl -u cron --since "5 min ago" --no-pager | tail -5
+```
+
+👀 **Qué deberías ver:** una línea `(educo) CMD (date >> /tmp/cron-prueba.txt)` por cada minuto que pasó.
+
+Ahora vuelve a `crontab -e` y **borra esa línea**: ya sabes que cron funciona.
+
+**En resumen:** si la línea `CMD` está en `journalctl -u cron`, la tarea se ejecutó; si no hizo lo esperado, mira tu log.
+
+### Pieza 3 — El entorno de cron: aquí falla casi todo
 
 Cron ejecuta tus comandos en un entorno casi vacío, distinto del de tu terminal. No tiene tu PATH, ni tus alias, ni tu carpeta actual, ni una pantalla donde escribir. Un script que funciona en tu terminal puede fallar en cron sin que nadie se entere.
 
@@ -99,66 +159,7 @@ De ahí salen cuatro reglas:
 
 Y una de hardware: si tu portátil está apagado o suspendido a la hora programada, cron **no** recupera esa ejecución.
 
-**En resumen:** en cron: rutas absolutas, la salida a un log y nada de `%` sueltos.
-
-### 4. Comprobar que sonó: los logs
-
-```bash
-journalctl -u cron --since "10 min ago" --no-pager
-```
-
-Cada ejecución deja una línea `CRON[1234]: (educo) CMD (…el comando…)`. Si la tarea no aparece ahí, cron no la lanzó. Si aparece pero no hizo lo esperado, mira **tu** log.
-
-**En resumen:** si la línea `CMD` está en `journalctl -u cron`, la alarma sonó; si no hizo lo esperado, mira tu log.
-
-### Para saber más: cron frente a un timer de systemd (clase 12)
-
-| | cron | timer de systemd |
-|--|------|------------------|
-| Definición | una línea | dos archivos (`.service` y `.timer`) |
-| Logs | solo los que tú redirijas | automáticos en el journal (`journalctl -u nombre`) |
-| Si el equipo estaba apagado | esa ejecución se pierde | `Persistent=true` la lanza al volver |
-| Dónde lo verás | casi cualquier servidor; la misma sintaxis en Kubernetes y en CI | las tareas del propio sistema en distribuciones modernas |
-
-Para Vigía usarás cron: es más simple y su sintaxis te servirá en la fase 9.
-
-### Tu chuleta de la clase
-
-| Escribes | Qué hace |
-|----------|----------|
-| `crontab -l > ~/crontab.respaldo` | copia de seguridad de tus alarmas (siempre lo primero) |
-| `crontab -e` · `crontab -l` · `crontab archivo` | editar · ver · reemplazar por un archivo |
-| `min hora día mes día-semana comando` | la línea: `*` = cualquiera, `*/5` = cada 5, `1-5` = de 1 a 5 |
-| `… /ruta/absoluta/script.sh >> /ruta/log 2>&1` | la forma segura: ruta absoluta y salida a un log |
-| `\%` | un `%` dentro del crontab (sin `\`, corta la línea) |
-| `journalctl -u cron --since "10 min ago"` | ¿sonó la alarma? |
-| `touch -d "8 days ago" archivo` | fabricar un archivo «viejo» para probar una rotación |
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. ¿Qué significa `0 21 * * *`?
-2. Un script funciona en tu terminal, pero desde cron dice que no encuentra un comando. ¿Qué es lo primero que sospechas?
-3. ¿Por qué no se pone `date +%F` directamente en una línea de crontab?
-
-<details>
-<summary>Comprueba</summary>
-
-1. Todos los días a las 21:00 (minuto 0, hora 21, cualquier día, cualquier mes, cualquier día de la semana). 2. El PATH: cron solo tiene `/usr/bin:/bin`. Arreglo: rutas absolutas. 3. Porque en el crontab el `%` corta la línea: hay que escaparlo (`\%`) o, mejor, poner la lógica en un script.
-</details>
-
-## Práctica guiada
-
-### 0. Preparación
-
-```bash
-mkdir -p ~/my-devops-journey/labs/clase-20 ~/bin ~/logs ~/backups
-cd ~/my-devops-journey/labs/clase-20
-crontab -l > ~/crontab.respaldo 2>/dev/null ; echo "respaldo hecho"
-```
-
-Si nunca usaste cron, `crontab -l` dice `no crontab for educo` y el respaldo queda vacío. Es normal.
-
-### 1. El entorno de cron, visto con tus ojos
+**Pruébalo: el entorno de cron, visto con tus ojos.**
 
 ```bash
 crontab -e
@@ -178,16 +179,31 @@ Espera a que cambie el minuto (`date`) y compara:
 cat /tmp/env-cron.txt
 env | wc -l ; wc -l < /tmp/env-cron.txt
 diff <(env | sort) <(sort /tmp/env-cron.txt) | head -30
-journalctl -u cron --since "5 min ago" --no-pager | tail -5
 ```
 
-👀 **Qué deberías ver:** pocas variables en cron (menos de diez) frente a las decenas de tu terminal; en el `diff`, `PATH=/usr/bin:/bin` y `SHELL=/bin/sh` del lado de cron; y una línea `CMD (env > …)` en el log de cron.
-
-Cron tiene menos de diez variables; tu terminal, decenas. Fíjate en `PATH=/usr/bin:/bin` y en `SHELL=/bin/sh`.
+👀 **Qué deberías ver:** pocas variables en cron (menos de diez) frente a las decenas de tu terminal; en el `diff`, `PATH=/usr/bin:/bin` y `SHELL=/bin/sh` del lado de cron; y, al final del archivo, tu `HOME` como carpeta de trabajo.
 
 Vuelve a `crontab -e` y **borra esa línea**.
 
-### 2. El script de backup
+✋ **Sin mirar:**
+1. Un script funciona en tu terminal, pero desde cron dice que no encuentra un comando. ¿Qué es lo primero que sospechas?
+2. ¿Por qué no se pone `date +%F` directamente en una línea de crontab?
+
+<details>
+<summary>Comprueba</summary>
+
+1. El PATH: cron solo tiene `/usr/bin:/bin`. Arreglo: rutas absolutas. 2. Porque en el crontab el `%` corta la línea: hay que escaparlo (`\%`) o, mejor, poner la lógica en un script.
+</details>
+
+**En resumen:** en cron: rutas absolutas, la salida a un log y nada de `%` sueltos.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Antes de irte, comprueba con `crontab -l` que no dejaste ninguna línea de prueba.
+
+### Pieza 4 — El script de backup
+
+Lo que vas a programar con cron: un script que comprime una carpeta con la fecha en el nombre y borra las copias de más de 7 días. Usa todo lo de las clases 16 a 19.
+
+**Pruébalo:**
 
 ```bash
 nano ~/bin/backup.sh
@@ -235,9 +251,13 @@ tar -tzf ~/backups/datos-prueba-*.tar.gz
 
 👀 **Qué deberías ver:** `shellcheck` sin avisos; `[INFO] creado … (4,0K)` y `rotación: 0 copias…`; tu copia en `~/backups`; y, dentro de ella, `datos-prueba/` y `datos-prueba/a.txt`.
 
-### 3. Probar la rotación sin esperar una semana
+**En resumen:** el backup comprime con `tar -czf`, pone la fecha y la hora en el nombre y rota con `find -mtime +7 -delete`.
 
-`touch -d` cambia la fecha de modificación de un archivo: puedes fabricar backups "viejos".
+### Pieza 5 — Probar la rotación sin esperar una semana
+
+`touch -d` cambia la fecha de modificación de un archivo: puedes fabricar backups "viejos" y comprobar que la rotación borra solo los que tiene que borrar.
+
+**Pruébalo:**
 
 ```bash
 touch -d "8 days ago" ~/backups/datos-prueba-2026-01-01_000000.tar.gz
@@ -258,9 +278,13 @@ ls -l --time-style=+%F ~/backups
 `rotación: 1 copias de más de 7 días borradas`, y en la lista ya no está la copia de 8 días (`2026-01-01`); la de 3 días (`2026-01-02`) sigue.
 </details>
 
-### 4. Programarlo
+**En resumen:** con `touch -d "8 days ago"` pruebas una rotación en segundos.
 
-Primero, cada minuto, para verlo funcionar:
+### Pieza 6 — Programarlo, con las reglas de la pieza 3
+
+Ruta absoluta al script, ruta absoluta a la carpeta, la salida a un log y ningún `%` en la línea: la fecha la pone el script.
+
+**Pruébalo.** Primero, cada minuto, para verlo funcionar:
 
 ```bash
 crontab -e
@@ -279,9 +303,36 @@ cat ~/logs/backup.log
 ls -l ~/backups
 ```
 
+👀 **Qué deberías ver:** una línea `CMD (/home/educo/bin/backup.sh …)` por minuto; en tu log, sus líneas `[INFO] creado …` y `rotación: …`; y una copia `notas-….tar.gz` nueva por minuto en `~/backups`.
+
 Cuando funcione, cambia el horario a uno diario en el que tu portátil suela estar encendido, por ejemplo `0 21 * * *`, y borra las copias de prueba que sobran.
 
 Un backup en el mismo disco protege de un borrado accidental, pero no de que el disco muera. En la fase 6 lo subirás a S3.
+
+**En resumen:** prueba cada minuto, comprueba el log de cron, tu log y el resultado, y después pon el horario de verdad.
+
+### Para saber más: cron frente a un timer de systemd (clase 12)
+
+| | cron | timer de systemd |
+|--|------|------------------|
+| Definición | una línea | dos archivos (`.service` y `.timer`) |
+| Logs | solo los que tú redirijas | automáticos en el journal (`journalctl -u nombre`) |
+| Si el equipo estaba apagado | esa ejecución se pierde | `Persistent=true` la lanza al volver |
+| Dónde lo verás | casi cualquier servidor; la misma sintaxis en Kubernetes y en CI | las tareas del propio sistema en distribuciones modernas |
+
+Para Vigía usarás cron: es más simple y su sintaxis te servirá en la fase 9.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `crontab -l > ~/crontab.respaldo` | copia de seguridad de tus tareas programadas (siempre lo primero) |
+| `crontab -e` · `crontab -l` · `crontab archivo` | editar · ver · reemplazar por un archivo |
+| `min hora día mes día-semana comando` | la línea: `*` = cualquiera, `*/5` = cada 5, `1-5` = de 1 a 5 |
+| `… /ruta/absoluta/script.sh >> /ruta/log 2>&1` | la forma segura: ruta absoluta y salida a un log |
+| `\%` | un `%` dentro del crontab (sin `\`, corta la línea) |
+| `journalctl -u cron --since "10 min ago"` | ¿se ejecutó la tarea? |
+| `touch -d "8 days ago" archivo` | fabricar un archivo «viejo» para probar una rotación |
 
 ## Rómpelo
 

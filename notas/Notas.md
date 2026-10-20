@@ -16,12 +16,12 @@ No hace falta copiarla a mano: este comando crea el archivo de la clase con las 
 bash ~/my-devops-journey/recursos/nueva-nota.sh 04      # el número de la clase
 ```
 
-Así queda una nota cerrada:
+Así queda una nota cerrada. La línea `Tiempo:` la rellena `cerrar-clase.sh` con lo que mediste con `sesion.sh`:
 
 ```markdown
 # Clase 01 — La terminal, el shell y el kernel
 Fecha: 2026-10-05
-Tiempo: 70 min
+Tiempo: 1 h 10 min en 2 sesiones
 
 ## Cierre
 1. ...
@@ -32,5 +32,8 @@ Tiempo: 70 min
 ## Autocorrección
 Cierre: 1 ✅ · 2 🟡 · 3 ✅ · 4 ✅
 Reto: 1 ✅ · 2 ✅ · 3 ❌ · 4 ✅   (el reto se hace en la terminal: aquí solo la marca)
-Corrección 2: ...
+
+Correcciones (una por cada 🟡 o ❌, con tus palabras, sin copiar la clase):
+Corrección cierre 2: ...
+Corrección reto 3: ...
 ```

@@ -38,9 +38,15 @@ En AWS lanzarás instancias EC2: servidores Linux que no ves, que administras po
 | `--cloud-init archivo.yaml` | *User data* (clase 37) |
 | `multipass shell` | SSH / Session Manager |
 
-## Teoría
+## Cómo va esta clase
 
-### ¿Qué es una máquina virtual?
+Cinco piezas. En cada una entiendes **una** idea y la haces enseguida en la terminal; no pases a la siguiente sin haber ejecutado la anterior. Mira el prompt antes de cada comando: desde hoy hay dos máquinas, tu PC y la VM.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (instalar, crear y entrar: unos 30 min, la primera descarga tarda); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+
+## Las piezas
+
+### Pieza 1 — Qué es una máquina virtual, y crear la tuya
 
 ```
 ┌───────────────────── Tu PC (host) ──────────────────────┐
@@ -61,50 +67,7 @@ Un **contenedor** (Docker, fase 5) es otra cosa: comparte el kernel del host. Po
 
 Ya comprobé que tu equipo soporta virtualización por hardware (`/dev/kvm` existe y la CPU tiene las extensiones). Con 7 GB de RAM puedes mantener **dos VMs de 1 GB** encendidas a la vez sin problema.
 
-**En resumen:** una VM es un ordenador completo dentro del tuyo; una EC2 es lo mismo, en un centro de datos de Amazon.
-
-### El snapshot: tu punto de guardado
-
-Un **snapshot** es como el **punto de guardado de un videojuego**: congela el disco de la VM tal como está. Si después rompes algo, cargas la partida guardada y vuelves a ese momento en segundos. Durante todo el bloque B harás uno antes de cada experimento peligroso. En AWS se hace lo mismo con los discos de las EC2 (*EBS snapshots*).
-
-Tres palabras que no conviene confundir, porque en AWS una de ellas te sigue costando dinero:
-
-| Multipass | Qué hace | En AWS |
-|-----------|----------|--------|
-| `stop` | **apaga** la VM; el disco se conserva | *Stop*: no pagas CPU, **sí** el disco |
-| `delete` | la marca como borrada, pero **aún se puede recuperar** | (no existe en AWS) |
-| `delete --purge` | la **destruye** para siempre | *Terminate* |
-
-**En resumen:** antes de romper algo, guarda partida. Y en AWS, `stop` sigue cobrando el disco.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. Tu VM tiene su propio kernel. ¿Qué pieza de tu PC reparte el hardware real entre él y la VM?
-2. Vas a probar algo que puede romper la VM. ¿Qué haces antes?
-3. Apagas una EC2 con *Stop*. ¿Dejas de pagar del todo?
-
-<details>
-<summary>Comprueba</summary>
-
-1. El **hipervisor** (KVM). 2. Un **snapshot**, el punto de guardado. 3. No: el disco (el volumen EBS) se sigue cobrando. Solo *Terminate* lo detiene.
-</details>
-
-### Tu chuleta de la clase
-
-| Comando | Qué hace |
-|---------|----------|
-| `multipass launch lts --name X --cpus 1 --memory 1G --disk 10G` | crear una VM |
-| `multipass list` · `multipass info X` | ver tus VMs · ver una (IP, disco, versión) |
-| `multipass shell X` | entrar (salir: `exit`) |
-| `multipass exec X -- comando` | ejecutar algo dentro sin entrar |
-| `multipass transfer archivo X:/ruta/` | copiar un archivo a la VM |
-| `multipass stop X` · `multipass start X` | apagar · encender |
-| `multipass snapshot X --name N` · `multipass restore X.N` | guardar partida (con la VM parada) · cargarla |
-| `multipass delete X` · `recover X` · `delete --purge X` | marcarla como borrada · recuperarla · destruirla |
-
-## Práctica guiada
-
-### 1. Instalar Multipass
+**Pruébalo: instala Multipass y crea tu servidor.**
 
 ```bash
 sudo snap install multipass
@@ -112,8 +75,6 @@ multipass version
 ```
 
 Si `multipass version` dice que no puede conectar con el demonio, espera 30 segundos y repite: el servicio está arrancando.
-
-### 2. Lanzar tu primer servidor
 
 ```bash
 multipass find | head -15             # imágenes disponibles (como el catálogo de AMIs)
@@ -131,7 +92,13 @@ multipass info servidor-01
 
 Anota en tu cierre: la **IP** (IPv4), la versión de Ubuntu y el disco.
 
-### 3. Entrar
+**En resumen:** una VM es un ordenador completo dentro del tuyo; una EC2 es lo mismo, en un centro de datos de Amazon.
+
+### Pieza 2 — Entrar: ahora estás en otro ordenador
+
+Al entrar en la VM, tu terminal habla con **otro** shell, en **otro** kernel. El prompt `usuario@máquina` es lo que te dice dónde estás.
+
+**Pruébalo:**
 
 ```bash
 multipass shell servidor-01
@@ -142,6 +109,7 @@ multipass shell servidor-01
 El prompt cambió: `ubuntu@servidor-01:~$`. **Ahora estás en otro ordenador.** Acostúmbrate a mirar el prompt antes de cada comando: es tu protección contra ejecutar algo en la máquina equivocada.
 
 Dentro de la VM:
+
 ```bash
 whoami
 hostnamectl
@@ -157,15 +125,27 @@ exit
 
 👀 **Qué deberías ver:** `ubuntu`, `servidor-01`, un kernel distinto del de tu PC, una IP `10.x.x.x`, alrededor de 1 GB de memoria y 10 GB de disco, `status: done` y, en el último, `root`.
 
-### 3b. ¿Tiene internet tu servidor?
+✋ **Sin mirar:** tu VM tiene su propio kernel. ¿Qué pieza de tu PC reparte el hardware real entre él y la VM?
 
-Compruébalo antes de seguir: las próximas clases instalan paquetes dentro de la VM. (`multipass exec` ejecuta un comando dentro de la VM sin entrar en ella; lo verás con calma en el paso 4.)
+<details>
+<summary>Comprueba</summary>
+
+El **hipervisor** (KVM).
+</details>
+
+**En resumen:** dentro de la VM todo es suyo: kernel, IP, memoria y disco. El prompt te dice en qué máquina estás.
+
+### Pieza 3 — ¿Tiene internet tu servidor?
+
+La VM sale a internet **a través de tu PC**: tu PC reenvía su tráfico. Compruébalo antes de seguir, porque las próximas clases instalan paquetes dentro de la VM. (`multipass exec` ejecuta un comando dentro de la VM sin entrar en ella; lo verás con calma en la pieza 4.)
+
+**Pruébalo:**
 
 ```bash
 multipass exec servidor-01 -- curl -sI -m 10 http://archive.ubuntu.com/ubuntu/ | head -1
 ```
 
-Si ves una línea `HTTP/1.1 200 OK` (o un `30x`), todo está bien: **sáltate el resto de este apartado**.
+Si ves una línea `HTTP/1.1 200 OK` (o un `30x`), todo está bien: **sáltate el resto de esta pieza**.
 
 Si no sale nada o da error, es casi seguro un choque conocido entre **Docker y Multipass**. En tu PC está instalado Docker, que pone la regla de "reenvío" del firewall en `DROP` (lo comprobé: `FORWARD DROP`). Esa regla puede bloquear el tráfico que tu PC reenvía desde las VMs hacia internet. Lo entenderás del todo en las clases 30 (NAT) y 33 (firewall). Por ahora, el arreglo:
 
@@ -183,9 +163,19 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now multipass-docker
 ```
 
+👀 **Qué deberías ver:** después del arreglo, la línea `HTTP/1.1 200 OK` (o un `30x`).
+
 Anota en tu cierre si te hizo falta: es tu primer incidente de red resuelto.
 
-### 4. Ejecutar sin entrar
+**En resumen:** la VM sale a internet a través de tu PC; si tu firewall no reenvía su tráfico, la VM se queda sin red.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Puedes dejar la VM encendida, o apagarla con `multipass stop servidor-01` y encenderla mañana con `multipass start servidor-01`.
+
+### Pieza 4 — Trabajar en la VM sin entrar: `exec` y `transfer`
+
+Para un comando suelto o para copiar un archivo no hace falta entrar en la VM. En `multipass exec`, el `--` separa las opciones de multipass del comando que se ejecuta dentro. Es muy útil en scripts.
+
+**Pruébalo:**
 
 ```bash
 multipass exec servidor-01 -- uptime
@@ -194,9 +184,7 @@ multipass exec servidor-01 -- df -h /
 
 👀 **Qué deberías ver:** cuánto lleva encendida la VM y su disco, sin haber entrado en ella.
 
-Muy útil para scripts: el `--` separa las opciones de multipass del comando que se ejecuta dentro.
-
-### 5. Pasar archivos
+Ahora, un archivo de tu PC a la VM:
 
 ```bash
 echo "hola desde el host" > /tmp/saludo.txt
@@ -206,7 +194,21 @@ multipass exec servidor-01 -- cat /home/ubuntu/saludo.txt
 
 👀 **Qué deberías ver:** `hola desde el host`: el archivo viajó de tu PC a la VM.
 
-### 6. Parar, arrancar y snapshots
+**En resumen:** `multipass exec X -- comando` ejecuta dentro sin entrar; `multipass transfer` copia archivos.
+
+### Pieza 5 — Apagar, borrar y el snapshot
+
+Un **snapshot** congela el disco de la VM tal como está, como un punto de guardado: si después rompes algo, vuelves a ese momento en segundos. Durante todo el bloque B harás uno antes de cada experimento peligroso. Solo se pueden hacer con la VM **parada**. En AWS se hace lo mismo con los discos de las EC2 (*EBS snapshots*).
+
+Tres comandos que no conviene confundir, porque en AWS uno de ellos te sigue costando dinero:
+
+| Multipass | Qué hace | En AWS |
+|-----------|----------|--------|
+| `stop` | **apaga** la VM; el disco se conserva | *Stop*: no pagas CPU, **sí** el disco |
+| `delete` | la marca como borrada, pero **aún se puede recuperar** | (no existe en AWS) |
+| `delete --purge` | la **destruye** para siempre | *Terminate* |
+
+**Pruébalo:**
 
 ```bash
 multipass stop servidor-01
@@ -218,7 +220,30 @@ multipass start servidor-01
 
 👀 **Qué deberías ver:** `servidor-01` en `Stopped`; después, el snapshot `limpio` en la lista; y al final, la VM otra vez en `Running`.
 
-Un **snapshot** congela el estado del disco. Antes de cada laboratorio peligroso harás uno, y si destrozas el servidor, vuelves atrás en segundos. Los snapshots solo se pueden hacer con la VM **parada**.
+✋ **Sin mirar:**
+1. Vas a probar algo que puede romper la VM. ¿Qué haces antes?
+2. Apagas una EC2 con *Stop*. ¿Dejas de pagar del todo?
+
+<details>
+<summary>Comprueba</summary>
+
+1. Un **snapshot** con la VM parada. 2. No: el disco (el volumen EBS) se sigue cobrando. Solo *Terminate* lo detiene.
+</details>
+
+**En resumen:** antes de romper algo, haz un snapshot. Y en AWS, `stop` sigue cobrando el disco.
+
+## Tu chuleta de la clase
+
+| Comando | Qué hace |
+|---------|----------|
+| `multipass launch lts --name X --cpus 1 --memory 1G --disk 10G` | crear una VM |
+| `multipass list` · `multipass info X` | ver tus VMs · ver una (IP, disco, versión) |
+| `multipass shell X` | entrar (salir: `exit`) |
+| `multipass exec X -- comando` | ejecutar algo dentro sin entrar |
+| `multipass transfer archivo X:/ruta/` | copiar un archivo a la VM |
+| `multipass stop X` · `multipass start X` | apagar · encender |
+| `multipass snapshot X --name N` · `multipass restore X.N` | crear un snapshot (con la VM parada) · volver a él |
+| `multipass delete X` · `recover X` · `delete --purge X` | marcarla como borrada · recuperarla · destruirla |
 
 ## Rómpelo
 
@@ -317,15 +342,15 @@ multipass exec servidor-01 -- ____
 Los dos comandos de la clase 01: el que dice cuánto lleva encendida la máquina y el que da la versión del kernel (`uname` con una opción).
 </details>
 
-**4.** Deja `servidor-01` **encendido** y con el snapshot `limpio` creado: lo usarás en las próximas clases. (Si ya lo creaste en la práctica 6, solo compruébalo).
+**4.** Deja `servidor-01` **encendido** y con el snapshot `limpio` creado: lo usarás en las próximas clases. (Si ya lo creaste en la pieza 5, solo compruébalo).
 
-> 🧩 **Ejemplo resuelto:** guardar partida con el nombre `prueba`.
+> 🧩 **Ejemplo resuelto:** crear un snapshot con el nombre `prueba`.
 > ```bash
 > multipass stop servidor-01
 > multipass snapshot servidor-01 --name prueba
 > multipass start servidor-01
 > ```
-> La VM tiene que estar **parada** para guardar partida: por eso primero `stop` y al final `start`.
+> La VM tiene que estar **parada** para crear el snapshot: por eso primero `stop` y al final `start`.
 
 **Ahora tú, con huecos:** `multipass list --____`
 

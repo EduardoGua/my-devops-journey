@@ -27,37 +27,124 @@
 
 Toda aplicación en un servidor corre como servicio: nginx, bases de datos, tu API, el agente de CloudWatch, el agente de SSM. "El servicio está caído" es la incidencia más común de operaciones, y `systemctl status` + `journalctl -u` es la respuesta de los primeros 30 segundos. Además, escribir un unit file es exactamente lo que harás para desplegar una app en una EC2 sin contenedores.
 
-## Teoría
+## Cómo va esta clase
 
-Cinco piezas.
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida en el servidor; no pases a la siguiente sin haber ejecutado la anterior.
 
-### 1. Qué hace systemd
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 45 min: en la 3 creas tu propio servicio); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+
+Todo se hace dentro de la VM:
+
+```bash
+multipass shell servidor-01
+```
+
+## Las piezas
+
+### Pieza 1 — systemd y sus *units*
 
 `systemd` es el **PID 1**: el primer proceso que arranca el kernel, padre de todos los demás (lo viste en el árbol de la clase 11). Se ocupa de tres cosas:
 - al encender, **arranca** los servicios en el orden correcto;
 - mientras funcionan, los **vigila** y los vuelve a levantar si se caen;
 - y apunta todo lo que dicen en su registro, el *journal* (clase 13).
 
-**En resumen:** systemd arranca los servicios, los vigila y los vuelve a levantar si se caen.
-
-### 2. Las *units*
-
-Cada cosa que gestiona systemd tiene un archivo de instrucciones, una **unit**. Hoy usarás dos tipos:
-- `.service`: un programa que debe estar funcionando (`nginx.service`).
-- `.timer`: algo que debe ejecutarse a ciertas horas (`apt-daily.timer`), la alternativa moderna a cron.
-
-Las units viven en dos sitios, y esto importa:
+Cada cosa que gestiona systemd tiene un archivo de instrucciones, una **unit**. Hoy usarás dos tipos: `.service`, un programa que debe estar funcionando (`nginx.service`), y `.timer`, algo que debe ejecutarse a ciertas horas (`apt-daily.timer`), la alternativa moderna a cron. Las units viven en dos sitios, y esto importa:
 
 | Dónde | Qué hay | ¿Las tocas? |
 |-------|---------|-------------|
 | `/usr/lib/systemd/system/` | las units **del fabricante**, que instalan los paquetes | **No**: una actualización las sobrescribe |
 | `/etc/systemd/system/` | **las tuyas** y tus cambios | **Sí**: tienen prioridad sobre las del fabricante |
 
-**En resumen:** cada servicio tiene su unit; las del fabricante no se tocan, y las tuyas van en `/etc/systemd/system/`.
+**Pruébalo: lee el estado de nginx.**
 
-### 3. Leer una unit
+```bash
+systemctl status nginx --no-pager
+```
 
-Así es la unit del servicio que vas a crear hoy. Cada `#` explica la línea de debajo:
+```
+● nginx.service - A high performance web server and a reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; enabled; preset: enabled)
+             └ de dónde sale la unit                       └ ¿arranca con el sistema?
+     Active: active (running) since ...; 2h ago
+             └ ¿está corriendo ahora?
+   Main PID: 1234 (nginx)
+     Memory: 4.1M
+     CGroup: /system.slice/nginx.service
+             ├─1234 "nginx: master process ..."
+             └─1235 "nginx: worker process"
+oct 05 10:00:00 servidor-01 systemd[1]: Started nginx.service ...   ← últimas líneas de log
+```
+
+La unit de nginx es del fabricante: está en `/usr/lib/systemd/system/`. Mírala entera, y mira qué servicios están en marcha y si alguno falló:
+
+```bash
+systemctl cat nginx
+systemctl list-units --type=service --state=running --no-pager
+systemctl list-units --failed --no-pager
+```
+
+👀 **Qué deberías ver:** la unit de nginx entera, con sus secciones `[Unit]`, `[Service]` e `[Install]` (las leerás a fondo en la pieza 3); la lista de servicios en marcha; y, si todo va bien, `0 loaded units listed` en los fallidos.
+
+**En resumen:** systemd arranca los servicios, los vigila y los vuelve a levantar si se caen. Cada servicio tiene su unit; las del fabricante no se tocan, y las tuyas van en `/etc/systemd/system/`.
+
+### Pieza 2 — Dar órdenes a systemd: `systemctl`, y `start` frente a `enable`
+
+Lo esencial son seis órdenes:
+
+```bash
+systemctl status nginx          # ¿cómo está? (estado, PID y sus últimas líneas de log)
+sudo systemctl start nginx      # arráncalo AHORA
+sudo systemctl stop nginx       # páralo
+sudo systemctl restart nginx    # páralo y arráncalo
+sudo systemctl enable nginx     # arráncalo CADA VEZ que se encienda el servidor
+sudo systemctl daemon-reload    # vuelve a leer las units (después de editar una)
+```
+
+La confusión más cara del oficio es la de `start` y `enable`. Son dos preguntas **independientes**:
+- **¿Está abierto ahora?** Es `start`, y lo dice `is-active`.
+- **¿Abrirá mañana, cuando se reinicie?** Es `enable`, y lo dice `is-enabled`.
+
+Arrancas un servicio a mano, compruebas que funciona y te vas… pero no lo habilitaste. Semanas después la EC2 se reinicia y la web no vuelve. Por eso se usa `sudo systemctl enable --now x`: lo habilita **y** lo arranca.
+
+**Pruébalo:**
+
+```bash
+systemctl is-active nginx; systemctl is-enabled nginx
+```
+
+👀 **Qué deberías ver:** `active` y `enabled`: las dos preguntas, contestadas por separado.
+
+🔮 **Predice:** tras `stop`, ¿qué devolverá `curl`? ¿Y qué dirán `is-active` e `is-enabled`?
+
+```bash
+sudo systemctl stop nginx
+curl -s -m 3 localhost || echo "no responde"
+systemctl is-active nginx; systemctl is-enabled nginx
+sudo systemctl start nginx
+curl -s -o /dev/null -w "%{http_code}\n" localhost
+sudo systemctl reload nginx
+systemctl status nginx --no-pager | head -5
+```
+
+<details>
+<summary>Qué deberías ver</summary>
+
+`no responde` tras el `stop`, con `inactive` y… `enabled`: parado ahora, pero arrancará al encender. Después, `200` tras el `start`; y nginx otra vez `active (running)` después del `reload`.
+</details>
+
+✋ **Sin mirar:** instalas un servicio, haces `enable` y te vas. ¿Está funcionando ahora mismo?
+
+<details>
+<summary>Comprueba</summary>
+
+No necesariamente: `enable` solo hace que arranque **al encender**. Para arrancarlo ya, `start` (o las dos cosas con `enable --now`).
+</details>
+
+**En resumen:** `start` = ahora; `enable` = al encender. Casi siempre quieres las dos: `enable --now`.
+
+### Pieza 3 — Leer y escribir una unit: tu propio servicio
+
+Así es la unit del servicio que vas a crear ahora. Cada `#` explica la línea de debajo:
 
 ```ini
 [Unit]
@@ -86,126 +173,7 @@ Tres secciones: `[Unit]` dice **qué es** y cuándo arrancarlo; `[Service]` dice
 
 ⚠️ Los comentarios (`#`) van **en su propia línea**. Un `#` al final de una línea con valor **no** es un comentario: pasaría a formar parte del valor.
 
-**En resumen:** `[Unit]` dice qué es, `[Service]` cómo ejecutarlo e `[Install]` si arranca al encender.
-
-### 4. Dar órdenes a systemd: `systemctl`
-
-Lo esencial son seis órdenes:
-
-```bash
-systemctl status nginx          # ¿cómo está? (estado, PID y sus últimas líneas de log)
-sudo systemctl start nginx      # arráncalo AHORA
-sudo systemctl stop nginx       # páralo
-sudo systemctl restart nginx    # páralo y arráncalo
-sudo systemctl enable nginx     # arráncalo CADA VEZ que se encienda el servidor
-sudo systemctl daemon-reload    # vuelve a leer las units (después de editar una)
-```
-
-La confusión más cara del oficio es la de `start` y `enable`. Son dos preguntas **independientes**:
-- **¿Está abierto ahora?** Es `start`, y lo dice `is-active`.
-- **¿Abrirá mañana, cuando se reinicie?** Es `enable`, y lo dice `is-enabled`.
-
-Arrancas un servicio a mano, compruebas que funciona y te vas… pero no lo habilitaste. Semanas después la EC2 se reinicia y la web no vuelve. Por eso se usa `sudo systemctl enable --now x`: lo habilita **y** lo arranca.
-
-**En resumen:** `start` = ahora; `enable` = al encender. Casi siempre quieres las dos: `enable --now`.
-
-### 5. Para entrevistas: qué pasa al encender un servidor
-
-```
-firmware (BIOS/UEFI) ─► gestor de arranque (GRUB) ─► kernel (+ initramfs) ─► systemd (PID 1) ─► targets y servicios ─► login
-  comprueba el hardware    elige y carga el kernel      monta el disco raíz       arranca todo en orden      (multi-user.target)
-```
-
-En una EC2 no ves la pantalla, pero sí la **consola del sistema** (*Get system log* / *EC2 serial console*). Ahí se diagnostica una instancia que no arranca, por ejemplo por un `fstab` roto (clase 14).
-
-**En resumen:** firmware → GRUB → kernel → systemd → servicios.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. Instalas un servicio, haces `enable` y te vas. ¿Está funcionando ahora mismo?
-2. Has editado una unit en `/etc/systemd/system/`. ¿Qué tienes que hacer antes de reiniciar el servicio?
-3. ¿Por qué no se edita una unit de `/usr/lib/systemd/system/`?
-
-<details>
-<summary>Comprueba</summary>
-
-1. No necesariamente: `enable` solo hace que arranque **al encender**. Para arrancarlo ya, `start` (o las dos cosas con `enable --now`). 2. `sudo systemctl daemon-reload`, para que systemd vuelva a leer las units. 3. Porque es del fabricante: la próxima actualización del paquete la sobrescribiría. Tus cambios van en `/etc/systemd/system/`.
-</details>
-
-### Tu chuleta de la clase
-
-| `systemctl …` | Efecto |
-|---------------|--------|
-| `status x` | estado, PID, memoria y las últimas líneas de log |
-| `start` / `stop` / `restart x` | arrancar / parar / parar y arrancar |
-| `reload x` | recargar la configuración **sin cortar** (si el servicio lo soporta) |
-| `enable` / `disable x` | arrancar (o no) **al encender**. ⚠️ No lo arranca ahora |
-| `enable --now x` | habilitar y arrancar a la vez |
-| `is-active x` · `is-enabled x` | respuesta corta, ideal para scripts |
-| `daemon-reload` | releer las units tras editarlas |
-| `list-units --type=service --failed` | qué servicios fallaron |
-| `cat x` · `edit x` · `revert x` | ver la unit efectiva · cambiar solo unas líneas (*drop-in*) · deshacer esos cambios |
-| `reset-failed x` | limpiar el estado `failed` para poder arrancarlo otra vez |
-
-Otros tipos de unit que verás: `.target` (un grupo de units, como `multi-user.target`, «el arranque normal»), `.socket` y `.mount`. Un *drop-in* es un archivo `/etc/systemd/system/x.service.d/override.conf` que cambia solo algunas líneas de una unit: lo crea `systemctl edit x`.
-
-## Práctica guiada
-
-```bash
-multipass shell servidor-01
-```
-
-### 1. Leer un status
-
-```bash
-systemctl status nginx --no-pager
-```
-
-```
-● nginx.service - A high performance web server and a reverse proxy server
-     Loaded: loaded (/usr/lib/systemd/system/nginx.service; enabled; preset: enabled)
-             └ de dónde sale la unit                       └ ¿arranca con el sistema?
-     Active: active (running) since ...; 2h ago
-             └ ¿está corriendo ahora?
-   Main PID: 1234 (nginx)
-     Memory: 4.1M
-     CGroup: /system.slice/nginx.service
-             ├─1234 "nginx: master process ..."
-             └─1235 "nginx: worker process"
-oct 05 10:00:00 servidor-01 systemd[1]: Started nginx.service ...   ← últimas líneas de log
-```
-
-```bash
-systemctl is-active nginx; systemctl is-enabled nginx
-systemctl cat nginx
-systemctl list-units --type=service --state=running --no-pager
-systemctl list-units --failed --no-pager
-```
-
-👀 **Qué deberías ver:** `active` y `enabled`; la unit de nginx entera; la lista de servicios en marcha; y, si todo va bien, `0 loaded units listed` en los fallidos.
-
-### 2. Parar, arrancar y recargar
-
-🔮 **Predice:** tras `stop`, ¿qué devolverá `curl`?
-
-```bash
-sudo systemctl stop nginx
-curl -s -m 3 localhost || echo "no responde"
-sudo systemctl start nginx
-curl -s -o /dev/null -w "%{http_code}\n" localhost
-sudo systemctl reload nginx
-systemctl status nginx --no-pager | head -5
-```
-
-<details>
-<summary>Qué deberías ver</summary>
-
-`no responde` tras el `stop`; `200` tras el `start`; y nginx otra vez `active (running)` después del `reload`.
-</details>
-
-### 3. Tu propio servicio
-
-Prepara la app y su usuario:
+**Pruébalo.** Prepara la app y su usuario:
 
 ```bash
 id appsvc 2>/dev/null || sudo useradd --system --no-create-home --shell /usr/sbin/nologin appsvc
@@ -214,13 +182,13 @@ echo "<h1>Mi app en servidor-01</h1>" | sudo tee /srv/miapp/index.html
 sudo chown -R appsvc:appsvc /srv/miapp
 ```
 
-Escribe la unit:
+Escribe la unit. Está en `/etc/systemd/system/` porque es tuya:
 
 ```bash
 sudo nano /etc/systemd/system/miapp.service
 ```
 
-Copia el ejemplo de la teoría tal cual. Después:
+Copia la unit de arriba tal cual. Después:
 
 ```bash
 sudo systemctl daemon-reload
@@ -230,13 +198,27 @@ curl -s localhost:8080
 ps -o user,pid,cmd -C python3
 ```
 
-👀 **Qué deberías ver:** `active (running)`; tu página, `<h1>Mi app en servidor-01</h1>`; y el proceso de python3 con el usuario `appsvc`.
+👀 **Qué deberías ver:** `active (running)`; tu página, `<h1>Mi app en servidor-01</h1>`; y el proceso de python3 con el usuario `appsvc`, no root.
 
-Comprueba que el proceso corre como `appsvc`, no como root.
+✋ **Sin mirar:**
+1. Has editado una unit en `/etc/systemd/system/`. ¿Qué tienes que hacer antes de reiniciar el servicio?
+2. ¿Por qué no se edita una unit de `/usr/lib/systemd/system/`?
 
-### 4. Auto-reparación
+<details>
+<summary>Comprueba</summary>
 
-🔮 **Predice:** si matas el proceso con `SIGKILL`, ¿qué hará systemd?
+1. `sudo systemctl daemon-reload`, para que systemd vuelva a leer las units. 2. Porque es del fabricante: la próxima actualización del paquete la sobrescribiría. Tus cambios van en `/etc/systemd/system/`.
+</details>
+
+**En resumen:** `[Unit]` dice qué es, `[Service]` cómo ejecutarlo e `[Install]` si arranca al encender. Tras escribir una unit: `daemon-reload` y `enable --now`.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`.
+
+### Pieza 4 — La auto-reparación: `Restart=on-failure`
+
+La línea `Restart=on-failure` de tu unit le dice a systemd que, si el proceso **muere con error**, lo vuelva a levantar, esperando `RestartSec` segundos. Una parada que **tú pides** no es un fallo.
+
+**Pruébalo.** 🔮 **Predice:** si matas el proceso con `SIGKILL`, ¿qué hará systemd?
 
 ```bash
 sudo kill -9 $(systemctl show -p MainPID --value miapp)
@@ -254,26 +236,61 @@ Al segundo, `activating (auto-restart)`; a los 3 segundos, otra vez `active (run
 systemd detectó la muerte, esperó `RestartSec=3` y lo levantó con un **PID nuevo**.
 
 ¿Y con un `stop` normal?
+
 ```bash
 sudo systemctl stop miapp
 sleep 5; systemctl is-active miapp
 sudo systemctl start miapp
 ```
-No se reinicia: `Restart=on-failure` solo actúa ante fallos, no ante una parada pedida.
 
-### 5. ¿Sobrevive a un reinicio?
+👀 **Qué deberías ver:** `inactive`. No se reinicia: `Restart=on-failure` solo actúa ante fallos, no ante una parada pedida.
+
+**En resumen:** con `Restart=on-failure`, systemd levanta el servicio si muere con error, pero respeta un `stop`.
+
+### Pieza 5 — Qué pasa al encender un servidor
+
+Para entrevistas, el orden del arranque:
+
+```
+firmware (BIOS/UEFI) ─► gestor de arranque (GRUB) ─► kernel (+ initramfs) ─► systemd (PID 1) ─► targets y servicios ─► login
+  comprueba el hardware    elige y carga el kernel      monta el disco raíz       arranca todo en orden      (multi-user.target)
+```
+
+Al llegar a systemd, arranca todo lo que está `enabled`. En una EC2 no ves la pantalla, pero sí la **consola del sistema** (*Get system log* / *EC2 serial console*). Ahí se diagnostica una instancia que no arranca, por ejemplo por un `fstab` roto (clase 14).
+
+**Pruébalo: ¿sobreviven tus servicios a un reinicio?**
 
 ```bash
 sudo reboot
 ```
 
 Espera 20 segundos y, desde tu PC:
+
 ```bash
 multipass exec servidor-01 -- systemctl is-active miapp nginx
 multipass exec servidor-01 -- curl -s localhost:8080
 ```
 
-Ambos `active`, porque están `enabled`.
+👀 **Qué deberías ver:** `active` dos veces y tu página: los dos arrancaron solos porque están `enabled`.
+
+**En resumen:** firmware → GRUB → kernel → systemd → servicios. Lo que está `enabled` arranca solo al encender.
+
+## Tu chuleta de la clase
+
+| `systemctl …` | Efecto |
+|---------------|--------|
+| `status x` | estado, PID, memoria y las últimas líneas de log |
+| `start` / `stop` / `restart x` | arrancar / parar / parar y arrancar |
+| `reload x` | recargar la configuración **sin cortar** (si el servicio lo soporta) |
+| `enable` / `disable x` | arrancar (o no) **al encender**. ⚠️ No lo arranca ahora |
+| `enable --now x` | habilitar y arrancar a la vez |
+| `is-active x` · `is-enabled x` | respuesta corta, ideal para scripts |
+| `daemon-reload` | releer las units tras editarlas |
+| `list-units --type=service --failed` | qué servicios fallaron |
+| `cat x` · `edit x` · `revert x` | ver la unit efectiva · cambiar solo unas líneas (*drop-in*) · deshacer esos cambios |
+| `reset-failed x` | limpiar el estado `failed` para poder arrancarlo otra vez |
+
+Otros tipos de unit que verás: `.target` (un grupo de units, como `multi-user.target`, «el arranque normal»), `.socket` y `.mount`. Un *drop-in* es un archivo `/etc/systemd/system/x.service.d/override.conf` que cambia solo algunas líneas de una unit: lo crea `systemctl edit x`.
 
 ## Rómpelo
 
@@ -398,7 +415,7 @@ systemctl is-active ____
 <details>
 <summary>Pista</summary>
 
-Copia un nombre de la lista en el hueco, y repite con otros dos. Recuerda las dos preguntas de la pieza 4: pueden tener respuestas distintas.
+Copia un nombre de la lista en el hueco, y repite con otros dos. Recuerda las dos preguntas de la pieza 2: pueden tener respuestas distintas.
 </details>
 
 **3.** (El más largo.) Crea un **timer** que cada minuto añada la fecha y la carga del sistema a `/var/log/latido.log`. Necesitas dos units: `latido.service` (`Type=oneshot`, con `ExecStart=/bin/sh -c 'echo "$(date) $(cat /proc/loadavg)" >> /var/log/latido.log'`) y `latido.timer` (con `[Timer] OnCalendar=minutely` y `[Install] WantedBy=timers.target`).

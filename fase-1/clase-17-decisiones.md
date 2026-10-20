@@ -28,11 +28,21 @@
 
 Un script sin comprobaciones hace daño en silencio: sigue después de un fallo, trabaja en la carpeta equivocada o dice "todo bien" con el servicio caído. Los *health checks* de un balanceador, los pasos de un pipeline de CI y los scripts de despliegue son, en el fondo, decisiones sobre códigos de salida. Hoy arreglas `tamano.sh`, que en la clase 16 mentía.
 
-## Teoría
+## Cómo va esta clase
 
-Cinco piezas. La 1 es la idea que cambia cómo ves los scripts: léela despacio.
+Seis piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. La pieza 1 es la idea que cambia cómo ves los scripts: léela despacio.
 
-### 1. `if` mira el código de salida de un comando
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 30 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
+
+Primero, la carpeta de hoy:
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-17 && cd ~/my-devops-journey/labs/clase-17
+```
+
+## Las piezas
+
+### Pieza 1 — `if` mira el código de salida de un comando
 
 Recuerda el **código de salida** que deja cada programa al terminar (clase 04): 0 si fue bien, otra cosa si falló. `if` no evalúa «verdadero o falso»: **ejecuta un comando y mira su código de salida**.
 
@@ -46,8 +56,6 @@ fi
 
 No hay corchetes porque no hacen falta: `grep` ya deja su código de salida. Para encadenar varios casos existe `elif` («y si no, si…»):
 
-**En resumen:** `if comando; then …` entra si el código de salida del comando es 0.
-
 ```bash
 if [[ $USO -ge 90 ]]; then echo "crítico"
 elif [[ $USO -ge 80 ]]; then echo "aviso"
@@ -55,104 +63,7 @@ else echo "bien"
 fi
 ```
 
-### 2. `[[ ]]`: un comando que solo sabe hacer preguntas
-
-Los corchetes dobles **también son un comando**: hacen una pregunta y dejan código 0 si la respuesta es «sí». Las preguntas más útiles:
-
-| Sobre… | Pregunta | Ejemplo |
-|--------|----------|---------|
-| archivos | ¿existe? ¿es un archivo? ¿es un directorio? | `[[ -e $F ]]` · `[[ -f $F ]]` · `[[ -d $D ]]` |
-| texto | ¿está vacío? ¿es igual a…? ¿se parece a…? | `[[ -z $V ]]` · `[[ $V == si ]]` · `[[ $V == web-* ]]` |
-| números | ¿es igual? ¿menor? ¿mayor o igual? | `[[ $N -eq 0 ]]` · `[[ $N -lt 10 ]]` · `[[ $N -ge 80 ]]` |
-
-Los números se comparan con letras (`-eq` *equal*, `-lt` *less than*, `-ge` *greater or equal*…) porque `<` y `>` dentro de `[[ ]]` comparan **texto**, por orden alfabético. Lo comprobarás en el Rómpelo 2.
-
-Verás también corchetes **simples**, `[ … ]`: es la versión clásica, que funciona en cualquier `sh` pero es más frágil con las variables vacías. En tus scripts de bash, usa siempre los dobles.
-
-**En resumen:** `[[ ]]` pregunta sobre archivos (`-f`, `-d`), texto (`==`, `-z`) o números (`-lt`, `-ge`).
-
-### 3. `(( ))`: cuentas con números enteros
-
-```bash
-(( INTENTOS > 3 )) && echo "demasiados intentos"   # comparar: código 0 si es verdad
-TOTAL=$(( A + B * 2 ))                            # calcular
-```
-
-Dentro de `(( ))` no hace falta el `$` delante de las variables, y `<` y `>` sí comparan números. Solo trabaja con **enteros**: nada de decimales.
-
-**En resumen:** `(( ))` compara y calcula con números enteros.
-
-### 4. `case`: elegir entre varias opciones
-
-Cuando un valor puede ser una de varias cosas (como las opciones de un menú), `case` es más legible que una cadena de `elif`:
-
-```bash
-case "$1" in
-  start)      echo "arrancando" ;;
-  stop)       echo "parando" ;;
-  -h|--help)  echo "Uso: $0 start|stop" ;;
-  *)          echo "Opción desconocida: $1" >&2; exit 2 ;;
-esac
-```
-
-Cada opción termina en `;;`. `|` separa alternativas («esto o aquello») y `*` es «cualquier otra cosa».
-
-**En resumen:** `case` elige un camino según el valor, con `*)` para «cualquier otra cosa».
-
-### 5. Fallar pronto: validar al principio
-
-Un buen script comprueba **al principio** que tiene todo lo que necesita, en vez de descubrirlo a mitad del trabajo:
-
-```bash
-#!/bin/bash
-# Uso: ./copia.sh <carpeta>
-[[ $# -eq 1 ]]  || { echo "Uso: $0 <carpeta>" >&2; exit 2; }
-[[ -d $1 ]]     || { echo "Error: '$1' no es un directorio" >&2; exit 1; }
-command -v tar > /dev/null || { echo "Error: falta tar" >&2; exit 1; }
-# a partir de aquí, todo lo que el script necesita existe
-```
-
-Cada línea se lee «comprueba esto **o** (`||`) quéjate y sal». `{ …; }` agrupa varios comandos para hacerlos juntos, y `command -v tar` deja código 0 si el programa `tar` existe. Es mucho mejor que fallar a mitad del trabajo con un error confuso y las cosas a medias.
-
-**En resumen:** comprueba al principio y, si falta algo, sal con un mensaje claro.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. En `if grep -q root /etc/passwd; then …`, ¿qué decide si se entra en el `then`?
-2. ¿Cómo preguntas si `/srv/datos` es un directorio?
-3. ¿Con qué comparas números dentro de `[[ ]]`: con `<` o con `-lt`?
-
-<details>
-<summary>Comprueba</summary>
-
-1. El **código de salida** de `grep`: si es 0, entra. 2. `[[ -d /srv/datos ]]`. 3. Con `-lt`: `<` compararía texto. (O usa `(( ))`, donde `<` sí compara números).
-</details>
-
-### Tu chuleta de la clase
-
-| Pregunta | Operadores |
-|----------|------------|
-| Archivos | `-e` existe · `-f` es un archivo · `-d` es un directorio · `-r` / `-w` / `-x` se puede leer, escribir, ejecutar · `-s` no está vacío |
-| Texto | `-z` vacío · `-n` no vacío · `==` igual · `!=` distinto · `== patrón*` como un comodín · `=~ regex` como una expresión regular |
-| Números | `-eq` igual · `-ne` distinto · `-lt` menor · `-le` menor o igual · `-gt` mayor · `-ge` mayor o igual |
-| Juntar preguntas | `&&` (y) · `\|\|` (o) · `!` (no), dentro de los corchetes |
-
-| Estructura | Forma |
-|------------|-------|
-| decidir | `if cmd; then …; elif cmd; then …; else …; fi` |
-| contar | `(( N > 3 ))` · `N=$(( N + 1 ))` |
-| elegir | `case "$X" in a) …;; b\|c) …;; *) …;; esac` |
-| fallar pronto | `[[ condición ]] \|\| { echo "Error…" >&2; exit 1; }` |
-
-## Práctica guiada
-
-```bash
-mkdir -p ~/my-devops-journey/labs/clase-17 && cd ~/my-devops-journey/labs/clase-17
-```
-
-### 1. `if` con comandos
-
-🔮 **Predice:** ¿qué imprime cada línea?
+**Pruébalo.** 🔮 **Predice:** ¿qué imprime cada línea?
 
 ```bash
 if ls /etc/hostname > /dev/null 2>&1; then echo "existe"; else echo "no existe"; fi
@@ -167,7 +78,31 @@ if ping -c1 -W1 1.1.1.1 > /dev/null 2>&1; then echo "hay internet"; fi
 `existe`; `no existe`; `hola` seguido de `echo devolvió 0`; y `hay internet` si tienes conexión.
 </details>
 
-### 2. Comprobaciones
+✋ **Sin mirar:** en `if grep -q root /etc/passwd; then …`, ¿qué decide si se entra en el `then`?
+
+<details>
+<summary>Comprueba</summary>
+
+El **código de salida** de `grep`: si es 0, entra.
+</details>
+
+**En resumen:** `if comando; then …` entra si el código de salida del comando es 0.
+
+### Pieza 2 — `[[ ]]`: un comando que solo sabe hacer preguntas
+
+Los corchetes dobles **también son un comando**: hacen una pregunta y dejan código 0 si la respuesta es «sí». Las preguntas más útiles:
+
+| Sobre… | Pregunta | Ejemplo |
+|--------|----------|---------|
+| archivos | ¿existe? ¿es un archivo? ¿es un directorio? | `[[ -e $F ]]` · `[[ -f $F ]]` · `[[ -d $D ]]` |
+| texto | ¿está vacío? ¿es igual a…? ¿se parece a…? | `[[ -z $V ]]` · `[[ $V == si ]]` · `[[ $V == web-* ]]` |
+| números | ¿es igual? ¿menor? ¿mayor o igual? | `[[ $N -eq 0 ]]` · `[[ $N -lt 10 ]]` · `[[ $N -ge 80 ]]` |
+
+Los números se comparan con letras (`-eq` *equal*, `-lt` *less than*, `-ge` *greater or equal*…) porque `<` y `>` dentro de `[[ ]]` comparan **texto**, por orden alfabético. Lo comprobarás en el Rómpelo 2.
+
+Verás también corchetes **simples**, `[ … ]`: es la versión clásica, que funciona en cualquier `sh` pero es más frágil con las variables vacías. En tus scripts de bash, usa siempre los dobles.
+
+**Pruébalo:**
 
 ```bash
 ARCHIVO=/etc/hostname
@@ -181,16 +116,62 @@ VACIA=""
 NOMBRE="servidor-01"
 [[ $NOMBRE == servidor-* ]] && echo "es un servidor"
 [[ $NOMBRE =~ ^servidor-[0-9]+$ ]] && echo "y su nombre tiene el formato correcto"
-
-USO=85
-(( USO >= 80 )) && echo "disco por encima del 80 %"
 ```
 
-👀 **Qué deberías ver:** `es un archivo`, `no es un directorio`, `no puedo escribirlo`, `está vacía`, `es un servidor`, `y su nombre tiene el formato correcto` y `disco por encima del 80 %`.
+👀 **Qué deberías ver:** `es un archivo`, `no es un directorio`, `no puedo escribirlo` (el archivo es de root, clase 06), `está vacía`, `es un servidor` y `y su nombre tiene el formato correcto`.
 
-`[[ -w /etc/hostname ]]` dice que no: el archivo es de root (clase 06).
+✋ **Sin mirar:**
+1. ¿Cómo preguntas si `/srv/datos` es un directorio?
+2. ¿Con qué comparas números dentro de `[[ ]]`: con `<` o con `-lt`?
 
-### 3. Arreglar `tamano.sh`
+<details>
+<summary>Comprueba</summary>
+
+1. `[[ -d /srv/datos ]]`. 2. Con `-lt`: `<` compararía texto. (O usa `(( ))`, la pieza 3, donde `<` sí compara números.)
+</details>
+
+**En resumen:** `[[ ]]` pregunta sobre archivos (`-f`, `-d`), texto (`==`, `-z`) o números (`-lt`, `-ge`).
+
+### Pieza 3 — `(( ))`: cuentas con números enteros
+
+```bash
+(( INTENTOS > 3 )) && echo "demasiados intentos"   # comparar: código 0 si es verdad
+TOTAL=$(( A + B * 2 ))                            # calcular
+```
+
+Dentro de `(( ))` no hace falta el `$` delante de las variables, y `<` y `>` sí comparan números. Solo trabaja con **enteros**: nada de decimales.
+
+**Pruébalo:**
+
+```bash
+USO=85
+(( USO >= 80 )) && echo "disco por encima del 80 %"
+A=7; B=3
+echo "total: $(( A + B * 2 ))  ·  división entera: $(( A / B ))  ·  resto: $(( A % B ))"
+```
+
+👀 **Qué deberías ver:** `disco por encima del 80 %` y `total: 13  ·  división entera: 2  ·  resto: 1`: `7 / 3` da 2, sin decimales.
+
+**En resumen:** `(( ))` compara y calcula con números enteros.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+
+### Pieza 4 — Fallar pronto: validar al principio
+
+Un buen script comprueba **al principio** que tiene todo lo que necesita, en vez de descubrirlo a mitad del trabajo:
+
+```bash
+#!/bin/bash
+# Uso: ./copia.sh <carpeta>
+[[ $# -eq 1 ]]  || { echo "Uso: $0 <carpeta>" >&2; exit 2; }
+[[ -d $1 ]]     || { echo "Error: '$1' no es un directorio" >&2; exit 1; }
+command -v tar > /dev/null || { echo "Error: falta tar" >&2; exit 1; }
+# a partir de aquí, todo lo que el script necesita existe
+```
+
+Cada línea se lee «comprueba esto **o** (`||`) quéjate y sal». `{ …; }` agrupa varios comandos para hacerlos juntos, y `command -v tar` deja código 0 si el programa `tar` existe. Es mucho mejor que fallar a mitad del trabajo con un error confuso y las cosas a medias.
+
+**Pruébalo: arregla el `tamano.sh` de la clase 16**, que con una ruta inexistente mentía y devolvía 0.
 
 ```bash
 cp ../clase-16/tamano.sh .
@@ -227,7 +208,13 @@ echo "$RUTA ocupa $TAMANO"
 
 Ahora el script dice la verdad: quien lo use (una persona, cron o un pipeline) sabe que falló.
 
-### 4. Tu primer health check
+**En resumen:** comprueba al principio y, si falta algo, sal con un mensaje claro y un código distinto de 0.
+
+### Pieza 5 — Tu primer health check
+
+Un **health check** es un script que comprueba si algo está vivo y lo dice con su **código de salida**: 0 si responde bien, 1 si no. Así lo pueden usar cron, un balanceador o un pipeline, sin leer el texto. Para una web, `curl` te da el código HTTP: un 2xx o 3xx es una respuesta buena.
+
+**Pruébalo:**
 
 ```bash
 cat > revisar-url.sh <<'EOF'
@@ -268,7 +255,24 @@ Las opciones de `curl`:
 
 `000` significa que **no hubo respuesta HTTP**: el nombre no se resolvió, la conexión se rechazó o se agotó el tiempo. Recuérdalo: lo verás a menudo en los logs de Vigía.
 
-### 5. `case`: un servicio de mentira
+**En resumen:** un health check responde con su código de salida; con `curl -w '%{http_code}'` sabes qué contestó la web, y `000` es que no contestó.
+
+### Pieza 6 — `case`: elegir entre varias opciones
+
+Cuando un valor puede ser una de varias cosas (como las opciones de un menú), `case` es más legible que una cadena de `elif`:
+
+```bash
+case "$1" in
+  start)      echo "arrancando" ;;
+  stop)       echo "parando" ;;
+  -h|--help)  echo "Uso: $0 start|stop" ;;
+  *)          echo "Opción desconocida: $1" >&2; exit 2 ;;
+esac
+```
+
+Cada opción termina en `;;`. `|` separa alternativas («esto o aquello») y `*` es «cualquier otra cosa».
+
+**Pruébalo: un servicio de mentira.**
 
 ```bash
 cat > servicio.sh <<'EOF'
@@ -310,6 +314,25 @@ chmod +x servicio.sh
 </details>
 
 El código 3 para "inactivo" no es casual: `systemctl status` usa la misma convención (clase 12). Compruébalo con `systemctl status apt-daily.service > /dev/null; echo $?`.
+
+**En resumen:** `case` elige un camino según el valor, con `*)` para «cualquier otra cosa».
+
+## Tu chuleta de la clase
+
+| Pregunta | Operadores |
+|----------|------------|
+| Archivos | `-e` existe · `-f` es un archivo · `-d` es un directorio · `-r` / `-w` / `-x` se puede leer, escribir, ejecutar · `-s` no está vacío |
+| Texto | `-z` vacío · `-n` no vacío · `==` igual · `!=` distinto · `== patrón*` como un comodín · `=~ regex` como una expresión regular |
+| Números | `-eq` igual · `-ne` distinto · `-lt` menor · `-le` menor o igual · `-gt` mayor · `-ge` mayor o igual |
+| Juntar preguntas | `&&` (y) · `\|\|` (o) · `!` (no), dentro de los corchetes |
+
+| Estructura | Forma |
+|------------|-------|
+| decidir | `if cmd; then …; elif cmd; then …; else …; fi` |
+| contar | `(( N > 3 ))` · `N=$(( N + 1 ))` |
+| elegir | `case "$X" in a) …;; b\|c) …;; *) …;; esac` |
+| fallar pronto | `[[ condición ]] \|\| { echo "Error…" >&2; exit 1; }` |
+| health check | `curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL"` |
 
 ## Rómpelo
 

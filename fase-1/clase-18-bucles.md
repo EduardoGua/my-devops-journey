@@ -27,11 +27,21 @@
 
 Los scripts de operaciones repiten: revisar 20 servidores, comprimir 300 logs, esperar a que la base de datos arranque antes de lanzar la aplicación. El patrón "reintenta N veces con una pausa" aparece en todos los scripts de despliegue y de CI. Y leer una lista línea a línea es el corazón de Vigía.
 
-## Teoría
+## Cómo va esta clase
 
-Cuatro piezas. Todas dicen lo mismo de formas distintas: «**haz esto con cada uno**».
+Cinco piezas, y todas dicen lo mismo de formas distintas: «**haz esto con cada uno**». En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior.
 
-### 1. `for`: con cada uno de una lista
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 35 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+
+Primero, la carpeta de hoy:
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-18 && cd ~/my-devops-journey/labs/clase-18
+```
+
+## Las piezas
+
+### Pieza 1 — `for`: con cada uno de una lista
 
 ```bash
 for SERVIDOR in web-01 web-02 db-01; do      # con cada uno de estos tres...
@@ -56,25 +66,29 @@ for (( i = 1; i <= 5; i++ )); do echo "intento $i"; done   # i vale 1, 2, 3, 4 y
 for i in {1..5}; do echo "intento $i"; done                # lo mismo, si el límite es fijo
 ```
 
-**En resumen:** `for X in lista` hace algo con cada elemento: palabras, archivos o números.
-
-### 2. `while`: mientras pase algo
-
-`while` repite **mientras** un comando deje código de salida 0, igual que `if` decide con él (clase 17):
+**Pruébalo:**
 
 ```bash
-while ! curl -fs -o /dev/null http://localhost:8080; do     # mientras NO (!) responda...
-  echo "esperando…"; sleep 2                                # ...espera 2 segundos y vuelve a probar
-done
+for S in web-01 web-02 db-01; do echo "ping a $S"; done
+for F in /etc/*.conf; do echo "$F"; done | head -5
+for (( i = 3; i > 0; i-- )); do echo "$i…"; sleep 1; done; echo "¡despegue!"
 ```
 
-`curl -f` (*fail*) hace que una respuesta de error de la web (un 404 o un 500) cuente como fallo; sin `-f`, `curl` solo falla si no puede conectar.
+👀 **Qué deberías ver:** `ping a web-01`, `web-02` y `db-01`; cinco archivos `.conf` de `/etc`; y la cuenta atrás 3, 2, 1 con `¡despegue!`.
 
-Ese ejemplo tiene un problema grave: si el servicio no arranca nunca, **espera para siempre**. Todo bucle de espera necesita un **límite** de intentos: lo construirás en la práctica 5.
+✋ **Sin mirar:**
+1. ¿Qué imprime `for X in a b c; do echo "[$X]"; done`?
+2. ¿Por qué no se escribe `for F in $(ls)`?
 
-**En resumen:** `while` repite mientras el comando salga bien. Ponle siempre un límite.
+<details>
+<summary>Comprueba</summary>
 
-### 3. Leer un archivo línea a línea
+1. `[a]`, `[b]` y `[c]`, uno por línea. 2. Porque `$(ls)` parte los nombres que tienen espacios; el comodín (`for F in *`) los entrega enteros.
+</details>
+
+**En resumen:** `for X in lista` hace algo con cada elemento: palabras, archivos o números.
+
+### Pieza 2 — Leer un archivo línea a línea
 
 Es el corazón de Vigía: una lista de URLs en un archivo, y hacer algo con cada una.
 
@@ -87,7 +101,7 @@ done < urls.txt
 
 Pieza a pieza:
 
-| Pieza | Para qué |
+| Parte | Para qué |
 |-------|----------|
 | `read -r URL` | lee una línea en `URL`. `-r` impide que interprete las `\` |
 | `\|\| [[ -n $URL ]]` | procesa la **última línea** aunque no termine en salto de línea |
@@ -95,60 +109,9 @@ Pieza a pieza:
 | `\#*` | "empieza por `#`" (se escapa porque `#` abre un comentario) |
 | `< urls.txt` al final | el archivo entra por stdin al bucle entero |
 
-`read` también reparte una línea en varias variables, separando por espacios: `read -r A B RESTO` pone la primera palabra en `A`, la segunda en `B` y todo lo demás en `RESTO`. Por convención, `_` es la variable para lo que no te interesa.
-
 (`read` recorta los espacios del principio y del final de cada línea: es lo que quieres para una lista de URLs. Si algún día necesitas la línea **exacta**, usa `IFS= read -r LINEA`).
 
-**En resumen:** `while read -r L … done < archivo` hace algo con cada línea, saltándose las vacías y los comentarios.
-
-### 4. ¿Bucle o `awk`?
-
-Para **analizar texto** (contar, filtrar, sumar columnas), el pipeline de la clase 05 (`awk | sort | uniq -c`) es mucho más rápido. Usa un bucle cuando tengas que **hacer algo** con cada elemento: lanzar una petición, comprimir un archivo o conectarte a un servidor.
-
-**En resumen:** para contar o filtrar, un pipeline; para **hacer algo** con cada elemento, un bucle.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. ¿Qué imprime `for X in a b c; do echo "[$X]"; done`?
-2. ¿Por qué no se escribe `for F in $(ls)`?
-3. ¿Qué le falta a un bucle `while` que espera a que un servicio arranque?
-
-<details>
-<summary>Comprueba</summary>
-
-1. `[a]`, `[b]` y `[c]`, uno por línea. 2. Porque `$(ls)` parte los nombres que tienen espacios; el comodín (`for F in *`) los entrega enteros. 3. Un **límite** de intentos: si el servicio no arranca nunca, esperaría para siempre.
-</details>
-
-### Tu chuleta de la clase
-
-| Forma | Para qué |
-|-------|----------|
-| `for X in a b c; do …; done` | con cada elemento de una lista |
-| `for F in /ruta/*.log; do …; done` | con cada archivo (nunca con `$(ls)`) |
-| `for (( i = 1; i <= N; i++ )); do …; done` · `for i in {1..5}` | contar |
-| `while cmd; do …; done` · `while ! cmd; do …; done` | mientras salga bien · mientras falle |
-| `while read -r L \|\| [[ -n $L ]]; do …; done < archivo` | cada línea de un archivo, sin perder la última |
-| `continue` · `break` | pasar a la siguiente vuelta · salir del bucle |
-| `done < <(comando)` | leer la salida de un comando sin usar un pipe (Rómpelo 2) |
-| `shopt -s nullglob` | que un comodín sin coincidencias no produzca nada (Rómpelo 4) |
-
-## Práctica guiada
-
-```bash
-mkdir -p ~/my-devops-journey/labs/clase-18 && cd ~/my-devops-journey/labs/clase-18
-```
-
-### 1. `for`
-
-```bash
-for S in web-01 web-02 db-01; do echo "ping a $S"; done
-for F in /etc/*.conf; do echo "$F"; done | head -5
-for (( i = 3; i > 0; i-- )); do echo "$i…"; sleep 1; done; echo "¡despegue!"
-```
-
-👀 **Qué deberías ver:** `ping a web-01`, `web-02` y `db-01`; cinco archivos `.conf` de `/etc`; y la cuenta atrás 3, 2, 1 con `¡despegue!`.
-
-### 2. Un archivo de configuración
+**Pruébalo, primero con un archivo de configuración** que tiene de todo: un comentario, una línea vacía, espacios delante y una última línea sin salto de línea.
 
 ```bash
 cat > urls.txt <<'EOF'
@@ -163,11 +126,9 @@ printf 'https://github.com' >> urls.txt
 cat -A urls.txt
 ```
 
-👀 **Qué deberías ver:** cada línea termina en `$`, menos la última (`https://github.com`): no tiene salto de línea.
+👀 **Qué deberías ver:** `cat -A` muestra los finales de línea como `$`. Cada línea termina en `$`, menos la última (`https://github.com`): no tiene salto de línea. Pasa a menudo con archivos editados a mano.
 
-`cat -A` muestra los finales de línea como `$`. La última línea (`github.com`) **no** tiene `$`: no termina en salto de línea. Pasa a menudo con archivos editados a mano.
-
-### 3. Leerlo línea a línea
+**Ahora léelo:**
 
 ```bash
 cat > leer.sh <<'EOF'
@@ -197,7 +158,13 @@ chmod +x leer.sh
 4 URLs numeradas de 1 a 4, con Wikipedia **sin** los espacios de delante y GitHub incluida, y `Total: 4 URLs`.
 </details>
 
-### 4. Bucle + la clase 17
+**En resumen:** `while read -r L … done < archivo` hace algo con cada línea, saltándose las vacías y los comentarios.
+
+### Pieza 3 — ¿Bucle o `awk`? Hacer algo con cada línea
+
+Para **analizar texto** (contar, filtrar, sumar columnas), el pipeline de la clase 05 (`awk | sort | uniq -c`) es mucho más rápido. Usa un bucle cuando tengas que **hacer algo** con cada elemento: lanzar una petición, comprimir un archivo o conectarte a un servidor. Revisar cada URL es justo eso.
+
+**Pruébalo** con el health check de la clase 17:
 
 ```bash
 while read -r URL || [[ -n $URL ]]; do
@@ -210,7 +177,25 @@ done < urls.txt
 
 Esto ya se parece mucho a Vigía. En la clase 21 le añadirás el tiempo de respuesta, un log, robustez y cron.
 
-### 5. Reintentos con límite
+**En resumen:** para contar o filtrar, un pipeline; para **hacer algo** con cada elemento, un bucle.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+
+### Pieza 4 — `while`: mientras pase algo, y siempre con límite
+
+`while` repite **mientras** un comando deje código de salida 0, igual que `if` decide con él (clase 17):
+
+```bash
+while ! curl -fs -o /dev/null http://localhost:8080; do     # mientras NO (!) responda...
+  echo "esperando…"; sleep 2                                # ...espera 2 segundos y vuelve a probar
+done
+```
+
+`curl -f` (*fail*) hace que una respuesta de error de la web (un 404 o un 500) cuente como fallo; sin `-f`, `curl` solo falla si no puede conectar.
+
+Ese ejemplo tiene un problema grave: si el servicio no arranca nunca, **espera para siempre**. Todo bucle de espera necesita un **límite** de intentos. Lo construyes ahora, con un `for` que cuenta los intentos.
+
+**Pruébalo:**
 
 ```bash
 cat > esperar-url.sh <<'EOF'
@@ -257,7 +242,21 @@ pkill -f "http.server 8018"
 
 `pkill -f` busca en la línea de comandos completa, así que encuentra el `python3` aunque lo hayas lanzado dentro de un paréntesis.
 
-### 6. Leer la salida de un comando
+✋ **Sin mirar:** ¿qué le falta a un bucle `while` que espera a que un servicio arranque?
+
+<details>
+<summary>Comprueba</summary>
+
+Un **límite** de intentos: si el servicio no arranca nunca, esperaría para siempre.
+</details>
+
+**En resumen:** `while` repite mientras el comando salga bien. Ponle siempre un límite.
+
+### Pieza 5 — Leer la salida de un comando, repartida en variables
+
+`read` también reparte una línea en varias variables, separando por espacios: `read -r A B RESTO` pone la primera palabra en `A`, la segunda en `B` y todo lo demás en `RESTO`. Por convención, `_` es la variable para lo que no te interesa. Y el bucle puede leer la salida de un comando, no solo un archivo.
+
+**Pruébalo:**
 
 ```bash
 df -h --output=target,pcent | tail -n +2 | while read -r MONTAJE USO; do
@@ -268,6 +267,22 @@ done
 👀 **Qué deberías ver:** una línea por disco, como `/ está al 58%`.
 
 `tail -n +2` salta la cabecera y `read` reparte cada línea en dos variables.
+
+**En resumen:** `cmd | while read -r A B; do …; done` hace algo con cada línea de un comando, con cada columna en su variable.
+
+## Tu chuleta de la clase
+
+| Forma | Para qué |
+|-------|----------|
+| `for X in a b c; do …; done` | con cada elemento de una lista |
+| `for F in /ruta/*.log; do …; done` | con cada archivo (nunca con `$(ls)`) |
+| `for (( i = 1; i <= N; i++ )); do …; done` · `for i in {1..5}` | contar |
+| `while cmd; do …; done` · `while ! cmd; do …; done` | mientras salga bien · mientras falle |
+| `while read -r L \|\| [[ -n $L ]]; do …; done < archivo` | cada línea de un archivo, sin perder la última |
+| `read -r A B RESTO` | repartir una línea en variables |
+| `continue` · `break` | pasar a la siguiente vuelta · salir del bucle |
+| `done < <(comando)` | leer la salida de un comando sin usar un pipe (Rómpelo 2) |
+| `shopt -s nullglob` | que un comodín sin coincidencias no produzca nada (Rómpelo 4) |
 
 ## Rómpelo
 

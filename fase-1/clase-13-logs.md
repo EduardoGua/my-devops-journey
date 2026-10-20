@@ -28,11 +28,21 @@
 
 Los logs son la **memoria** del servidor. En un incidente, la pregunta "¿qué pasó a las 14:03?" solo se responde con logs. En AWS los enviarás a **CloudWatch Logs**, y en Kubernetes a herramientas como Loki, pero la habilidad es la misma: filtrar por fuente, tiempo y gravedad hasta encontrar la línea que explica el fallo.
 
-## Teoría
+## Cómo va esta clase
 
-Cuatro piezas. La idea de fondo: los logs son la **caja negra** del servidor, y aprender a buscar en ellos es aprender a reconstruir qué pasó.
+Seis piezas. En cada una lees **una** idea (en la 2, dos que van juntas) y la pruebas enseguida en el servidor; no pases a la siguiente sin haber ejecutado la anterior. La idea de fondo: buscar en los logs es reconstruir qué pasó.
 
-### 1. Quién escribe los logs y dónde acaban
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 35 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
+
+Todo se hace dentro de la VM, salvo cuando la clase te pide **tu PC** (para generar tráfico):
+
+```bash
+multipass shell servidor-01
+```
+
+## Las piezas
+
+### Pieza 1 — Quién escribe los logs y dónde acaban
 
 ```
   procesos y servicios
@@ -58,9 +68,30 @@ Tres caminos:
 
 Lo que un servicio escribe por **stdout y stderr** (clase 04) acaba en el journal sin configurar nada. Por eso tu `miapp` de la clase 12 ya tiene logs. Docker y Kubernetes funcionan igual: **la app escribe por stdout y stderr, y la plataforma lo recoge**.
 
+**Pruébalo:**
+
+```bash
+ls -lh /var/log/
+sudo ls -lh /var/log/nginx/
+journalctl --disk-usage
+journalctl -n 20 --no-pager
+```
+
+👀 **Qué deberías ver:** los archivos de `/var/log` con su tamaño (mira si hay `syslog` y `auth.log`); `access.log` y `error.log` de nginx; cuánto ocupa el journal; y sus 20 últimas líneas.
+
+✋ **Sin mirar:**
+1. Tu `miapp` escribe por stdout. ¿Dónde ves lo que escribe?
+2. En tu VM no existe `/var/log/auth.log`. ¿Se perdieron los intentos de login?
+
+<details>
+<summary>Comprueba</summary>
+
+1. En el journal: `journalctl -u miapp` (lo harás en la pieza 2). 2. No: esa VM no tiene rsyslog, pero todo está en el journal (`journalctl -u ssh`, pieza 4).
+</details>
+
 **En resumen:** casi todo va al journal (`journalctl`); algunas apps, como nginx, escriben además sus propios archivos en `/var/log`.
 
-### 2. La gravedad de cada mensaje
+### Pieza 2 — Buscar en el journal: la gravedad y los filtros
 
 Cada línea del journal lleva una etiqueta de gravedad. Las tres que más usarás:
 
@@ -71,10 +102,6 @@ Cada línea del journal lleva una etiqueta de gravedad. Las tres que más usará
 | **info** (6) | información normal |
 
 Por encima de `err` están `crit`, `alert` y `emerg` (el sistema está en peligro), y por debajo de `info`, `debug` (detalle para depurar). Al filtrar, `journalctl -p err` te enseña `err` **y todo lo más grave**.
-
-**En resumen:** `-p err` te enseña los errores y todo lo más grave.
-
-### 3. Buscar en el journal: cuatro filtros
 
 Buscar en un log es ir **estrechando**: de qué servicio, desde cuándo, cómo de grave. Los cuatro filtros básicos se pueden combinar:
 
@@ -87,60 +114,7 @@ journalctl -u nginx -f                  # en DIRECTO, como tail -f (Ctrl+C para 
 
 Combinados: `journalctl -u nginx -p err --since "1 hour ago"` son «los errores de nginx de la última hora». Añade `-n 20` para ver solo las 20 últimas líneas y `--no-pager` para que no se abra el visor.
 
-**En resumen:** estrecha con `-u` (qué servicio), `--since` (desde cuándo) y `-p` (qué gravedad).
-
-### 4. La rotación: que los logs no llenen el disco
-
-Los logs crecen sin parar. `logrotate`, cada día o cada semana, renombra `access.log` → `access.log.1`, comprime los viejos (`.gz`) y borra los más antiguos. Su configuración está en `/etc/logrotate.d/`. Para leer un log comprimido sin descomprimirlo: `zcat`, `zgrep` y `zless` (clase 03).
-
-**En resumen:** logrotate renombra, comprime y borra los logs viejos para que no llenen el disco.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. Tu `miapp` escribe por stdout. ¿Dónde ves lo que escribe?
-2. ¿Qué comando muestra los errores de nginx desde hace 10 minutos?
-3. En tu VM no existe `/var/log/auth.log`. ¿Se perdieron los intentos de login?
-
-<details>
-<summary>Comprueba</summary>
-
-1. En el journal: `journalctl -u miapp`. 2. `journalctl -u nginx -p err --since "10 min ago"`. 3. No: esa VM no tiene rsyslog, pero todo está en el journal (`journalctl -u ssh`).
-</details>
-
-### Tu chuleta de la clase
-
-| Comando | Qué muestra |
-|---------|-------------|
-| `journalctl -u nginx` · `-f` | un servicio · en directo |
-| `journalctl -n 50` · `-e` | las últimas 50 líneas · salta al final |
-| `journalctl --since "10 min ago"` | desde hace 10 minutos |
-| `journalctl --since "2026-10-05 14:00" --until "2026-10-05 14:30"` | un intervalo (sin fecha, la hora es de hoy) |
-| `journalctl -p err -b` | errores desde el último arranque |
-| `journalctl -b -1` | el arranque **anterior** (útil tras un reinicio inesperado) |
-| `journalctl -k` | solo mensajes del kernel |
-| `journalctl _COMM=sudo` | por nombre de proceso (en Ubuntu 26.04, las sesiones SSH aparecen como `sshd-session`; es más fiable usar `-u ssh`) |
-| `journalctl -o json-pretty -n 1` | en JSON: así lo leen las herramientas |
-| `journalctl --no-pager` · `--disk-usage` | sin visor, para pipes · cuánto ocupa el journal |
-| `logger -p user.warning "texto"` | escribir tú en el journal |
-
-## Práctica guiada
-
-```bash
-multipass shell servidor-01
-```
-
-### 1. El paisaje
-
-```bash
-ls -lh /var/log/
-sudo ls -lh /var/log/nginx/
-journalctl --disk-usage
-journalctl -n 20 --no-pager
-```
-
-👀 **Qué deberías ver:** los archivos de `/var/log` con su tamaño; `access.log` y `error.log` de nginx; cuánto ocupa el journal; y sus 20 últimas líneas.
-
-### 2. Tus servicios en el journal
+**Pruébalo:**
 
 ```bash
 journalctl -u miapp -n 20 --no-pager
@@ -150,14 +124,38 @@ journalctl -b -p warning --no-pager | tail -20
 
 👀 **Qué deberías ver:** las líneas de arranque de `miapp`; lo que ha dicho nginx en la última hora (quizá nada: `-- No entries --`); y los avisos desde que encendiste la VM.
 
-### 3. Generar tráfico y seguirlo en directo
+Ahora escribe tú un aviso en el journal y búscalo por su gravedad. En un script, `logger` es la forma correcta de dejar rastro de lo que hace:
 
-En la VM:
+```bash
+logger -p user.warning "Prueba de aviso desde la clase 13"
+journalctl -n 3 --no-pager
+journalctl -p warning --since "1 min ago" --no-pager
+```
+
+👀 **Qué deberías ver:** tu mensaje `Prueba de aviso desde la clase 13` entre las últimas líneas, y también entre los avisos del último minuto.
+
+✋ **Sin mirar:** ¿qué comando muestra los errores de nginx desde hace 10 minutos?
+
+<details>
+<summary>Comprueba</summary>
+
+`journalctl -u nginx -p err --since "10 min ago"`.
+</details>
+
+**En resumen:** estrecha con `-u` (qué servicio), `--since` (desde cuándo) y `-p` (qué gravedad); `-p err` te enseña los errores y todo lo más grave.
+
+### Pieza 3 — El log propio de una app: nginx, en directo
+
+nginx escribe cada petición en `/var/log/nginx/access.log`: una línea con la IP de quien pidió, la fecha, la petición y el **código de estado** (el campo 9, como en la clase 05). Con `tail -f` lo ves llegar en directo.
+
+**Pruébalo.** En la VM:
+
 ```bash
 sudo tail -f /var/log/nginx/access.log
 ```
 
 En **tu PC** (otra terminal), con la IP de la VM (`multipass list`):
+
 ```bash
 IP=$(multipass info servidor-01 | awk '/IPv4/ {print $2}')
 curl -s http://$IP/ > /dev/null
@@ -176,9 +174,16 @@ sudo grep " 404 " /var/log/nginx/access.log | tail -3
 
 👀 **Qué deberías ver:** un `200` y unos 21 `404` (la página que no existe y las 20 `pagina-N`), y las tres últimas líneas con 404.
 
-### 4. Intentos de login fallidos
+**En resumen:** las apps como nginx tienen su propio log; `tail -f` lo sigue en directo, y `awk` + `sort | uniq -c` lo resume.
 
-Desde **tu PC**, intenta entrar con usuarios que no existen (es tu propia VM, es seguro):
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`. Mañana necesitarás otra vez la variable `IP` en tu PC (la primera línea del bloque de `curl`).
+
+### Pieza 4 — Los intentos de login, en el log
+
+Cada intento de entrar por SSH, bueno o malo, queda en el journal del servicio `ssh` (y en `auth.log`, si hay rsyslog).
+
+**Pruébalo.** Desde **tu PC**, intenta entrar con usuarios que no existen (es tu propia VM, es seguro):
+
 ```bash
 ssh -o ConnectTimeout=3 -o BatchMode=yes noexiste@$IP
 ssh -o ConnectTimeout=3 -o BatchMode=yes admin@$IP
@@ -186,34 +191,37 @@ ssh -o ConnectTimeout=3 -o BatchMode=yes root@$IP
 ```
 
 En la VM:
+
 ```bash
 sudo journalctl -u ssh --since "5 min ago" --no-pager
 sudo grep -E "Invalid user|Connection closed" /var/log/auth.log | tail     # solo si existe auth.log
 ```
 
+👀 **Qué deberías ver:** líneas `Invalid user noexiste from …` y `Invalid user admin from …`, con la IP de tu PC, y los intentos de `root`.
+
 Esto es lo que verías en cualquier servidor con SSH abierto a internet: **bots probando usuarios todo el día**. En la clase 15 lo blindarás.
 
-### 5. Escribir en el log del sistema
+**En resumen:** los logins, buenos y malos, están en `journalctl -u ssh`: es lo primero que se mira ante un posible ataque.
 
-```bash
-logger -p user.warning "Prueba de aviso desde la clase 13"
-journalctl -n 3 --no-pager
-journalctl -p warning --since "1 min ago" --no-pager
-```
+### Pieza 5 — Por dentro: cada línea del journal es un registro con campos
 
-👀 **Qué deberías ver:** tu mensaje `Prueba de aviso desde la clase 13` entre las últimas líneas, y también entre los avisos.
+El journal no guarda texto suelto: cada entrada es un registro con **campos** (`_PID`, `_SYSTEMD_UNIT`, `PRIORITY`, `MESSAGE`…). Por eso se puede filtrar tan rápido. Los sistemas de logs en la nube (CloudWatch Logs, fase 6) indexan esos campos igual.
 
-En un script, `logger` es la forma correcta de dejar rastro de lo que hace.
-
-### 6. JSON: logs estructurados
+**Pruébalo:**
 
 ```bash
 journalctl -u nginx -n 1 -o json-pretty --no-pager
 ```
 
-Cada entrada tiene campos (`_PID`, `_SYSTEMD_UNIT`, `PRIORITY`, `MESSAGE`…). Los sistemas de logs en la nube indexan esos campos para buscar rápido.
+👀 **Qué deberías ver:** una sola entrada en JSON, con muchos campos; entre ellos, `"_SYSTEMD_UNIT" : "nginx.service"`, `"PRIORITY"` y `"MESSAGE"`.
 
-### 7. Rotación
+**En resumen:** cada entrada del journal tiene campos; `-o json-pretty` los enseña, y así los leen las herramientas.
+
+### Pieza 6 — La rotación: que los logs no llenen el disco
+
+Los logs crecen sin parar. `logrotate`, cada día o cada semana, renombra `access.log` → `access.log.1`, comprime los viejos (`.gz`) y borra los más antiguos. Su configuración está en `/etc/logrotate.d/`. Para leer un log comprimido sin descomprimirlo: `zcat`, `zgrep` y `zless` (clase 03).
+
+**Pruébalo:** fuerza una rotación de los logs de nginx.
 
 ```bash
 cat /etc/logrotate.d/nginx
@@ -222,7 +230,29 @@ sudo logrotate -f /etc/logrotate.d/nginx
 ls -lh /var/log/nginx/
 ```
 
-Aparece `access.log.1`. La directiva `postrotate` avisa a nginx para que abra el archivo nuevo. Sin ese aviso seguiría escribiendo en el viejo (clase 14).
+👀 **Qué deberías ver:** la configuración (`daily`, `rotate 14`, `compress`, `postrotate`…) y, después de forzar la rotación, un `access.log.1` nuevo junto a un `access.log` vacío.
+
+La directiva `postrotate` avisa a nginx para que abra el archivo nuevo. Sin ese aviso seguiría escribiendo en el viejo (clase 14).
+
+**En resumen:** logrotate renombra, comprime y borra los logs viejos para que no llenen el disco.
+
+## Tu chuleta de la clase
+
+| Comando | Qué muestra |
+|---------|-------------|
+| `journalctl -u nginx` · `-f` | un servicio · en directo |
+| `journalctl -n 50` · `-e` | las últimas 50 líneas · salta al final |
+| `journalctl --since "10 min ago"` | desde hace 10 minutos |
+| `journalctl --since "2026-10-05 14:00" --until "2026-10-05 14:30"` | un intervalo (sin fecha, la hora es de hoy) |
+| `journalctl -p err -b` | errores desde el último arranque |
+| `journalctl -b -1` | el arranque **anterior** (útil tras un reinicio inesperado) |
+| `journalctl -k` | solo mensajes del kernel |
+| `journalctl _COMM=sudo` | por nombre de proceso (en Ubuntu 26.04, las sesiones SSH aparecen como `sshd-session`; es más fiable usar `-u ssh`) |
+| `journalctl -o json-pretty -n 1` | en JSON: así lo leen las herramientas |
+| `journalctl --no-pager` · `--disk-usage` | sin visor, para pipes · cuánto ocupa el journal |
+| `logger -p user.warning "texto"` | escribir tú en el journal |
+| `sudo tail -f /var/log/nginx/access.log` | seguir el log de nginx en directo |
+| `zcat` · `zgrep` · `zless` | leer y buscar en logs comprimidos (`.gz`) |
 
 ## Rómpelo
 

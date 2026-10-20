@@ -19,11 +19,11 @@ Es la rutina de la Ruta 2.0, adaptada a las clases:
 | Todos los días | Anki: tu mazo de DevOps y tu mazo de inglés | 10 min |
 | 4 días entre semana | Sesión corta: 5 min de calentamiento (escribe **sin mirar** lo que recuerdes de la última sesión y después compruébalo en tu nota), 35 min de clase y 5 min para anotar dónde te quedaste | 45 min |
 | Tu día libre | Bloque largo: la versión de Vigía que toca o, si no toca ninguna, la clase más pesada de la semana | 3 h |
-| Una vez al mes | Sumar tus horas, apuntarlas en la Ruta 2.0 y recalcular las fechas de los hitos (NOC y Cloud/DevOps) | 20 min |
+| Una vez al mes | `bash ~/my-devops-journey/recursos/sesion.sh mes` te da tus horas del mes: apúntalas en la Ruta 2.0 y recalcula las fechas de los hitos (NOC y Cloud/DevOps) | 20 min |
 
-**Una clase ocupa casi siempre dos sesiones cortas:**
-1. Sesión 1: Objetivo, Teoría y Práctica guiada.
-2. Sesión 2: Rómpelo, Reto, Cierre y Autocorrección.
+**Una clase ocupa casi siempre dos sesiones cortas.** Cada clase lo dice en «Cómo va esta clase», y un ⏸️ dentro de las piezas marca dónde termina el primer día:
+1. Sesión 1: las primeras piezas (cada una, su teoría y su práctica).
+2. Sesión 2: las piezas que faltan, el Rómpelo, el reto, el cierre y la autocorrección.
 
 Si una clase dura 90 minutos o más, o es de VM (arrancar la máquina y retomar el contexto cuesta tiempo), llévala al bloque largo. Si te quedas a mitad, anota el apartado exacto y empieza por ahí la próxima vez. Media clase bien hecha vale más que una clase entera a medias.
 
@@ -31,7 +31,12 @@ Si una clase dura 90 minutos o más, o es de VM (arrancar la máquina y retomar 
 
 ## Tu rutina en cada clase
 
-1. Abre [`PROGRESO.md`](PROGRESO.md): tu clase es la primera sin marcar.
+1. Abre [`PROGRESO.md`](PROGRESO.md): tu clase es la primera sin marcar. **Empieza a contar el tiempo**, en cada sesión, aunque la clase te lleve varias mañanas:
+   ```bash
+   bash ~/my-devops-journey/recursos/sesion.sh empezar 06     # al sentarte
+   bash ~/my-devops-journey/recursos/sesion.sh terminar       # al levantarte
+   ```
+   Si se te olvidó cerrarla, `sesion.sh terminar 40` la cierra con los minutos que estudiaste de verdad. `sesion.sh estado` te dice si hay una abierta y cuánto llevas hoy, en los últimos 7 días y en el mes.
 2. Haz la clase **con la terminal abierta al lado**, escribiendo tú cada comando. No los copies y pegues: escribirlos es parte del aprendizaje.
 3. Crea tus notas con las preguntas ya copiadas y responde en ese archivo:
    ```bash
@@ -39,8 +44,11 @@ Si una clase dura 90 minutos o más, o es de VM (arrancar la máquina y retomar 
    ```
 4. **Corrígete**: escríbeme `examíname clase-XX` (lo más dinámico) o abre tú la sección "Autocorrección" de la clase. En los dos casos, cada respuesta acaba calificada (✅ 🟡 ❌). Sin calificación, la clase no está cerrada: es lo que te dice qué repasar.
 5. Pasa a Anki: los términos de la sección Inglés y cada pregunta del cierre que tuviste en 🟡 o ❌. Etiquétalas por tema (`tema::Linux`, `tema::Redes`…) para poder suspender las fases que aún no empiezas.
-6. Marca la clase en `PROGRESO.md` con la fecha y anota el tiempo en el registro. Esa columna te da las horas del mes para la Ruta.
-7. Guarda en GitHub (ver más abajo).
+6. **Cierra la clase** con un comando:
+   ```bash
+   bash ~/my-devops-journey/recursos/cerrar-clase.sh 06 "una nota para el registro (opcional)"
+   ```
+   Comprueba que el cierre y el reto están calificados (si falta algo, te lo dice y no cierra nada), marca la clase en `PROGRESO.md` con la fecha, apunta en el registro y en tu nota el tiempo medido con `sesion.sh` y, si le dices que sí, hace commit y push. Antes te enseña `git status`: revisa que no sube ninguna llave ni contraseña.
 
 ## Cómo está hecha cada clase
 
@@ -51,10 +59,9 @@ Si una clase dura 90 minutos o más, o es de VM (arrancar la máquina y retomar 
 | 🔤 **Palabras nuevas** | Los términos nuevos de la clase, cada uno en una línea sencilla, para que la jerga no te frene |
 | **Objetivo** | Lo que sabrás hacer al terminar |
 | **Por qué importa** | Dónde lo usarás en Cloud/DevOps y en AWS |
-| **Teoría** | Lo justo para entender la práctica, en piezas cortas y en orden: cada una se apoya en la anterior y termina con un **En resumen** de una línea |
-| **✋ Antes de practicar** | Tres preguntas rápidas, sin mirar, para comprobar que tienes la base. Si fallas una, relee esa pieza |
-| **Tu chuleta** | Todos los comandos de la clase en una tabla. Para consultar mientras practicas, no para memorizarla de golpe |
-| **Práctica guiada** | Comandos paso a paso. Antes de los importantes verás 🔮 **Predice**: piensa (o escribe) qué crees que pasará *antes* de ejecutarlo. Detrás, 👀 **Qué deberías ver**, para saber que vas bien |
+| **Cómo va esta clase** | Cuántas piezas tiene, dónde partirla si la haces en dos mañanas y los comandos para preparar la carpeta o la VM |
+| **Las piezas** | La teoría y la práctica, **intercaladas**: cada pieza explica uno o dos conceptos y enseguida los pruebas en la terminal (**Pruébalo**). Antes de los comandos importantes verás 🔮 **Predice**: piensa qué pasará *antes* de ejecutarlo. Detrás, 👀 **Qué deberías ver**, para saber que vas bien. Muchas traen una pregunta ✋ **Sin mirar**, y todas terminan con un **En resumen** de una línea. No pases a la pieza siguiente sin haber ejecutado la anterior |
+| **Tu chuleta** | Todos los comandos de la clase en una tabla, después de las piezas. Para consultar mientras practicas, no para memorizarla de golpe |
 | **Rómpelo** | Provocas un fallo y lo diagnosticas. Es la parte que más enseña |
 | **Reto** | Un problema para comprobar que lo entendiste y no solo lo seguiste. Cada punto sube en tres escalones: 🧩 un **ejemplo resuelto** parecido, el mismo reto **con huecos** (`____`) y una **pista** escondida. Se hace **en la terminal**: en tus notas solo marcas cada punto con ✅ o ❌ |
 | **Cierre** | 3 preguntas de esta clase + 1 de repaso de una clase anterior. Cada una dice cuánto escribir y cómo empezar la frase. No hay que redactar textos largos: cuando haga falta uno (un resumen de incidente, un README), la clase trae un ejemplo para leer o adaptar |
@@ -102,7 +109,7 @@ Lo que puedes pedirme, tal cual:
 |--------|--------|
 | `examíname clase-XX` | califico tu cierre y te pregunto por lo que falla hasta que lo encuentres tú |
 | `revisa clase-XX` | reviso tu cierre y tus notas de esa clase |
-| `revisa la fase N` | **antes de empezar cada fase:** compruebo que sus versiones, precios y comandos siguen al día, corrijo lo que haya cambiado y le añado lo que ya tiene la fase 1 (la idea de hoy y los repasos de bloque) |
+| `revisa la fase N` | **antes de empezar cada fase:** compruebo que sus versiones, precios y comandos siguen al día y corrijo lo que haya cambiado |
 | `revisa examen …` | corrijo tu examen (fundamentos, fases 4 a 7 o fases 8 a 10) con su rúbrica |
 | `haz de entrevistador para <puesto>` | un simulacro de entrevista, técnica y de comportamiento |
 | `cierra la ruta` | al terminar la clase 125: revisamos tu progreso, tu CV y los próximos tres meses |
@@ -126,6 +133,8 @@ Una **deuda** es un 🟡 o ❌ sin corrección escrita, o una parte de la clase 
 - Las notas del curso siguen en español.
 
 ## Guardar en GitHub al terminar cada clase
+
+`cerrar-clase.sh` lo hace por ti (paso 6 de la rutina). Si prefieres hacerlo a mano, o para guardar algo que no es una clase:
 
 ```bash
 cd ~/my-devops-journey
@@ -158,7 +167,7 @@ Regla de oro: **si el comando empieza con `sudo` y cambia la configuración del 
 
 Lo que **no** se hace: buscar la solución del reto o pedirle a una IA que lo resuelva por ti. En la entrevista y en el trabajo estarás solo con el error.
 
-**Reglas para no soltar la ruta** (de la Ruta 2.0): nunca dejes pasar dos semanas sin tocar el proyecto; si pierdes una semana, no dupliques horas para recuperarla, retoma el ritmo normal y recalcula; cada 8 semanas, una semana liviana de solo Anki y lectura; lo difícil va en el bloque largo, y los días cansados son para Anki, lectura y Bandit.
+**Reglas para no soltar la ruta** (de la Ruta 2.0): nunca dejes pasar dos semanas sin tocar el proyecto; si pierdes una semana, no dupliques horas para recuperarla, retoma el ritmo normal y recalcula; cada 8 semanas, una semana liviana de solo Anki y lectura; lo difícil va en el bloque largo, y los días cansados son para Anki y lectura.
 
 ## Dónde va cada cosa
 
@@ -171,6 +180,6 @@ Lo que **no** se hace: buscar la solución del reto o pedirle a una IA que lo re
 | `notas/fase-N/` | **Tus** cierres, uno por clase |
 | `labs/` | Lo que creas al practicar en tu Ubuntu |
 | `projects/` | Los laboratorios integradores P1, P2 y P3 |
-| `recursos/` | Archivos que usan las clases (logs de ejemplo, scripts de averías…) y las pruebas de aceptación de Vigía, en `recursos/vigia/v1/` … `v7/` |
+| `recursos/` | Tus scripts del curso (`nueva-nota.sh`, `sesion.sh` y `cerrar-clase.sh`), los archivos que usan las clases (logs de ejemplo, scripts de averías…) y las pruebas de aceptación de Vigía, en `recursos/vigia/v1/` … `v7/` |
 | `~/vigia` | Tu proyecto de portafolio, en su propio repositorio |
 | Ruta Cloud & DevOps 2.0 | El registro mensual de horas y el recálculo de fechas |

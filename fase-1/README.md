@@ -36,7 +36,7 @@
 | | **D. Proyecto** | | |
 | 21 | [Vigía v0: Bash + cron](clase-21-vigia-v0.md) | Ubuntu | 2 bloques largos |
 
-**En paralelo desde la clase 05:** [Bandit](bandit.md), un juego de seguridad por SSH. 20 minutos los días cansados.
+**Al terminar la fase, como prueba:** [Bandit](bandit.md), un juego de seguridad por SSH en el que usas todo lo de las 21 clases.
 
 Las clases de 90 o 120 minutos y las de VM rinden más en tu bloque largo de la semana. Las demás caben en dos sesiones cortas (ver [`COMO-ESTUDIAR.md`](../COMO-ESTUDIAR.md)).
 

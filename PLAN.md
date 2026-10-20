@@ -97,7 +97,7 @@ Lo que más se usa en el trabajo diario: moverte por el sistema, administrar un 
 | C. Scripting con Bash | 16–20 | tu Ubuntu |
 | D. Proyecto: Vigía v0 | 21 | tu Ubuntu |
 
-**Práctica paralela:** OverTheWire Bandit, niveles 0–20, desde la clase 05.
+**La prueba de la fase, al terminarla:** OverTheWire Bandit, niveles 0–20, un juego por SSH en el que usas todo lo de las clases 01 a 21.
 
 **Criterios de salida:** script de backup con fecha y rotación escrito sin mirar · explicar `set -euo pipefail` y `$?` · encontrar con `journalctl` por qué no arrancó un servicio · entrar por SSH con llave a una VM · Vigía v0 corriendo con cron.
 

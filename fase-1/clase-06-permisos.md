@@ -27,21 +27,36 @@
 
 "Permission denied" es uno de los errores más comunes en producción: nginx no puede leer la web, una app no puede escribir su log, SSH rechaza tu llave porque los permisos son demasiado abiertos. Y los permisos son la base de la **seguridad**: el mismo principio de *mínimo privilegio* que aplicarás en IAM de AWS empieza aquí.
 
-## Teoría
+## Cómo va esta clase
 
-Seis piezas cortas. La 3 es la que más sorprende: léela despacio.
+🧪 **Formato en prueba.** Hasta la clase 05 la teoría iba toda junta y la práctica después. Aquí van mezcladas: son seis piezas, y en cada una lees **un** concepto y lo pruebas enseguida en la terminal. No pases a la pieza siguiente sin haber ejecutado la anterior. Al terminar, dime si así releíste menos: si funciona, el resto del curso pasa a este formato.
 
-### 1. Quién eres
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 4** (unos 35 min); el segundo, las **piezas 5 y 6**, el Rómpelo, el reto y el cierre.
 
-Cada programa que ejecutas corre **como un usuario** (normalmente, tú). Cada usuario pertenece a uno o varios **grupos**, como equipos de trabajo. Y cada archivo tiene **un dueño** y **un grupo**.
+Primero, la carpeta de hoy:
 
 ```bash
-id          # uid=1000(educo) gid=1000(educo) groups=1000(educo),27(sudo),...
+mkdir -p ~/my-devops-journey/labs/clase-06 && cd ~/my-devops-journey/labs/clase-06
 ```
+
+## Las piezas
+
+### Pieza 1 — Quién eres
+
+Cada programa que ejecutas corre **como un usuario** (normalmente, tú). Cada usuario pertenece a uno o varios **grupos**, y cada archivo tiene **un dueño** y **un grupo**.
+
+**Pruébalo:**
+
+```bash
+id
+ls -l /etc/passwd
+```
+
+👀 **Qué deberías ver:** `id` muestra tu usuario (`uid=1000(educo)`), tu grupo principal (`gid=1000(educo)`) y todos tus grupos, entre ellos `sudo`. En la línea de `ls -l`, la tercera columna es el dueño (`root`) y la cuarta, el grupo (`root`).
 
 **En resumen:** cada programa corre como un usuario, y cada archivo tiene un dueño y un grupo.
 
-### 2. Tres bloques de permisos
+### Pieza 2 — Tres bloques de permisos
 
 Las 9 letras que ves con `ls -l` son tres bloques de permisos, de tres letras cada uno:
 
@@ -62,28 +77,33 @@ El kernel mira **en orden** y te aplica **solo el primer bloque que te correspon
 
 (La excepción es **root**, el administrador, que se salta casi todas las comprobaciones.)
 
+**Pruébalo:**
+
+```bash
+ls -l /etc/passwd /etc/shadow
+```
+
+Para cada línea, di en voz alta quién es el dueño, quién es el grupo y qué permite cada bloque.
+
+🔮 **Predice:** tú no eres `root` ni estás en el grupo `shadow`. ¿Qué bloque de `/etc/shadow` te toca? ¿Podrás leerlo?
+
+```bash
+cat /etc/shadow
+```
+
+👀 **Qué deberías ver:** `cat: /etc/shadow: Permission denied` (en inglés: el `cat` de Ubuntu 26.04 aún no está traducido). El archivo es `rw-r-----`, de `root` y del grupo `shadow`, y tú caes en el bloque de otros (`---`). Guarda los *hashes* de las contraseñas (una versión cifrada de cada una), por eso solo root y el grupo `shadow` pueden leerlo.
+
+✋ **Sin mirar:** un archivo es `---rwxrwx` y tú eres su dueño. ¿Puedes leerlo?
+
+<details>
+<summary>Comprueba</summary>
+
+No: el kernel te aplica el bloque del dueño (`---`) y no sigue mirando, aunque el grupo y el resto tengan todo. Lo verás con tus propios ojos en el Rómpelo 1.
+</details>
+
 **En resumen:** tres bloques de permisos (dueño, grupo y otros), y el kernel te aplica solo el primero que te toca.
 
-### 3. En un directorio, los permisos significan otra cosa
-
-En un **archivo**, los permisos significan lo que esperas: `r` leerlo, `w` modificarlo y `x` ejecutarlo como programa.
-
-Un **directorio**, en cambio, es por dentro **una lista de nombres** de archivos, y sus permisos se aplican a esa lista:
-
-| Permiso | En un archivo | En un directorio |
-|---------|---------------|------------------|
-| `r` | leer el contenido | **listar** los nombres de dentro (`ls`) |
-| `w` | modificar el contenido | **crear, borrar y renombrar** archivos dentro |
-| `x` | ejecutarlo | **entrar** (`cd`) y acceder a los archivos de dentro |
-
-De ahí salen tres sorpresas que verás con tus ojos en la práctica:
-- Borrar un archivo depende de la `w` del **directorio**, no del archivo: borrar es quitar un nombre de la lista del directorio.
-- Con `r` pero sin `x`, ves los nombres pero no puedes abrir ningún archivo de dentro.
-- Para leer `/a/b/c.txt` necesitas `x` en los tres directorios del camino (`/`, `/a` y `/a/b`) y la `r` del archivo.
-
-**En resumen:** en un directorio, `r` es listar, `w` crear o borrar dentro y `x` entrar.
-
-### 4. Los permisos en números
+### Pieza 3 — Los permisos en números
 
 Cada permiso vale un número: **r = 4**, **w = 2**, **x = 1**. Se suman los de cada bloque, así que cada bloque queda en una cifra del 0 al 7:
 
@@ -95,11 +115,27 @@ Cada permiso vale un número: **r = 4**, **w = 2**, **x = 1**. Se suman los de c
 | `4` | `r--` | 4 |
 | `0` | `---` | nada |
 
-Tres cifras, una por bloque, en el mismo orden (dueño, grupo, otros). `640` se lee así: **6** el dueño lee y escribe, **4** el grupo solo lee y **0** los demás nada → `rw-r-----`.
+Tres cifras, una por bloque, en el mismo orden (dueño, grupo y otros). `640` se lee así: **6** el dueño lee y escribe, **4** el grupo solo lee y **0** los demás nada → `rw-r-----`.
 
-**En resumen:** r = 4, w = 2 y x = 1. Se suman por bloque, y salen tres cifras: dueño, grupo y resto.
+**Pruébalo:** `stat` muestra los permisos de las dos formas a la vez (`%a` en números, `%A` en letras y `%n` el nombre):
 
-### 5. Cambiar los permisos: `chmod`
+```bash
+stat -c '%a %A %n' /etc/passwd /etc/shadow
+```
+
+👀 **Qué deberías ver:** `644 -rw-r--r-- /etc/passwd` y `640 -rw-r----- /etc/shadow`. Comprueba cada cifra con la tabla: `6` = `rw-` (4 + 2), `4` = `r--` y `0` = `---`.
+
+✋ **Sin mirar:** traduce `rwxr-xr--` a números.
+
+<details>
+<summary>Comprueba</summary>
+
+`754`: `rwx` = 7, `r-x` = 5 y `r--` = 4.
+</details>
+
+**En resumen:** r = 4, w = 2 y x = 1. Se suman por bloque y salen tres cifras: dueño, grupo y otros.
+
+### Pieza 4 — Cambiar los permisos: `chmod`
 
 Hay dos formas de escribirlo:
 
@@ -113,74 +149,7 @@ Con letras: **u** = dueño (*user*), **g** = grupo, **o** = otros; **+** añade 
 
 `chown usuario:grupo archivo` cambia el dueño y el grupo. Solo lo puede hacer root: lo practicarás en el servidor (clase 09).
 
-**En resumen:** `chmod 640` lo fija todo con números; `chmod g-w` cambia un solo permiso con letras.
-
-### 6. `umask`: los permisos de los archivos nuevos
-
-Los archivos nuevos no nacen con permisos al azar: los decide una máscara, la **umask**. Con la de Ubuntu para tu usuario (`002`), un archivo nuevo nace `664` (`rw-rw-r--`) y un directorio nuevo, `775`. La idea: la máscara **quita** permisos; con `002`, le quita la `w` a los otros.
-
-`umask 077` cambia la máscara **solo en esa terminal**: al cerrarla, vuelve el de siempre.
-
-**En resumen:** la umask decide qué permisos les faltan a los archivos que nacen.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. Traduce `rwxr-xr--` a números.
-2. Un archivo es `---rwxrwx` y tú eres su dueño. ¿Puedes leerlo?
-3. Quieres poder borrar archivos de una carpeta. ¿Qué permiso necesitas, y dónde: en los archivos o en la carpeta?
-
-<details>
-<summary>Comprueba</summary>
-
-1. `754`: `rwx` = 7, `r-x` = 5, `r--` = 4. 2. No: el kernel te aplica el bloque del dueño (`---`) y no sigue mirando, aunque el resto tenga todo. Lo comprobarás en el Rómpelo 1. 3. La `w` de la **carpeta**: borrar es quitar un nombre de la lista del directorio.
-</details>
-
-### Tu chuleta de la clase
-
-| Números | Letras | Uso típico |
-|---------|--------|------------|
-| `755` | `rwxr-xr-x` | scripts, directorios públicos |
-| `644` | `rw-r--r--` | archivos de configuración o de una web |
-| `700` | `rwx------` | directorio privado (`~/.ssh`) |
-| `600` | `rw-------` | archivo privado (llave SSH, contraseñas) |
-| `750` | `rwxr-x---` | directorio de un equipo (dueño y grupo) |
-| `777` | `rwxrwxrwx` | ❌ cualquiera hace cualquier cosa: nunca es la solución |
-
-| Comando | Qué hace |
-|---------|----------|
-| `ls -l archivo` · `ls -ld carpeta` | ver los permisos (`-d`: de la carpeta, no de lo que hay dentro) |
-| `chmod 640 f` · `chmod u+x f` · `chmod -R 750 d` | cambiar permisos: números, letras, recursivo (¡cuidado!) |
-| `umask` · `umask 077` | ver la máscara · cambiarla en esta terminal |
-| `id` | quién eres y en qué grupos estás |
-
-**Para reconocerlos** (no hace falta más hoy): una `s` en lugar de la `x` del dueño es el **setuid**: el programa corre con los permisos de su dueño, no con los tuyos (`/usr/bin/passwd` lo tiene para poder escribir en `/etc/shadow`). Una `t` al final es el **sticky bit**: en `/tmp` todos pueden crear archivos, pero cada uno solo puede borrar los suyos.
-
-## Práctica guiada
-
-```bash
-mkdir -p ~/my-devops-journey/labs/clase-06 && cd ~/my-devops-journey/labs/clase-06
-id
-umask
-```
-
-### 1. Leer permisos del sistema
-
-```bash
-ls -l /etc/passwd /etc/shadow /usr/bin/passwd
-ls -ld /tmp /root ~
-```
-
-Para cada línea, di en voz alta quién es el dueño, el grupo y qué permisos tiene cada bloque.
-
-🔮 **Predice:** mirando los permisos de `/etc/shadow`, ¿podrás leerlo?
-
-```bash
-cat /etc/shadow
-```
-
-No: es `rw-r-----` de `root` y del grupo `shadow`, y tú caes en «el resto del mundo» (`---`). Guarda los *hashes* de las contraseñas (una versión cifrada de cada una), así que solo root y el grupo `shadow` pueden leerlo.
-
-### 2. Un script sin permiso de ejecución
+**Pruébalo con un script:**
 
 ```bash
 printf '#!/bin/bash\necho "hola desde el script"\n' > hola.sh
@@ -188,7 +157,7 @@ ls -l hola.sh
 ./hola.sh
 ```
 
-🔮 **Predice:** ¿funcionará? Mira la columna de permisos antes.
+🔮 **Predice:** ¿funcionará? Mira la columna de permisos antes de pulsar Enter.
 
 ```bash
 chmod u+x hola.sh
@@ -197,29 +166,56 @@ ls -l hola.sh
 bash hola.sh        # esto funciona incluso sin x: bash LEE el archivo (necesita r)
 ```
 
-👀 **Qué deberías ver:** después del `chmod`, la `x` en el bloque del dueño (`-rwxrw-r--`), y `hola desde el script` las dos veces.
+👀 **Qué deberías ver:** el primer `./hola.sh` falla con *Permiso denegado* (el mensaje es de bash, que está traducido). Después del `chmod`, aparece la `x` en el bloque del dueño (`-rwxrw-r--`) y sale `hola desde el script` las dos veces.
 
 `./hola.sh` pide al kernel **ejecutar** el archivo (hace falta `x`). `bash hola.sh` ejecuta `bash`, que solo **lee** el archivo (basta con `r`).
 
-### 3. Archivos privados
+**Y con un archivo privado:**
 
 ```bash
 echo "secreto" > privado.txt
-ls -l privado.txt          # 664 con tu umask
+ls -l privado.txt          # nace 664 con tu umask (pieza 6)
 chmod 600 privado.txt
 ls -l privado.txt
 ```
 
 👀 **Qué deberías ver:** primero `-rw-rw-r--` y, después del `chmod`, `-rw-------`: ahora solo tú puedes leerlo.
 
-### 4. Directorios: r, w y x por separado
+**En resumen:** `chmod 640` lo fija todo con números; `chmod g-w` cambia un solo permiso con letras.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+
+### Pieza 5 — En un directorio, los permisos significan otra cosa
+
+Esta es la pieza que más sorprende: léela despacio.
+
+En un **archivo**, los permisos significan lo que esperas: `r` leerlo, `w` modificarlo y `x` ejecutarlo como programa. Un **directorio**, en cambio, es por dentro **una lista de nombres** de archivos, y sus permisos se aplican a esa lista:
+
+| Permiso | En un archivo | En un directorio |
+|---------|---------------|------------------|
+| `r` | leer el contenido | **listar** los nombres de dentro (`ls`) |
+| `w` | modificar el contenido | **crear, borrar y renombrar** archivos dentro |
+| `x` | ejecutarlo | **entrar** (`cd`) y acceder a los archivos de dentro |
+
+De ahí salen tres sorpresas, que vas a ver ahora mismo:
+- Borrar un archivo depende de la `w` del **directorio**, no del archivo: borrar es quitar un nombre de la lista del directorio.
+- Con `r` pero sin `x`, ves los nombres pero no puedes abrir ningún archivo de dentro.
+- Para leer `/a/b/c.txt` necesitas la `x` de los tres directorios del camino (`/`, `/a` y `/a/b`) y la `r` del archivo.
+
+**Pruébalo, primero con dos directorios del sistema:**
+
+```bash
+ls -ld /root ~
+```
+
+👀 **Qué deberías ver:** `/root` es `drwx------` de `root`: tú caes en otros (`---`) y ni siquiera puedes entrar. Tu carpeta personal es tuya y tiene todo en el bloque del dueño.
+
+**Ahora con una carpeta de prueba.** Vas a quitarle permisos a `caja` y ver qué puedes hacer en cada caso. Antes de cada bloque, 🔮 **predice** qué funcionará y qué no, y apúntalo.
 
 ```bash
 mkdir caja && echo "dato" > caja/dato.txt
 ls -ld caja
 ```
-
-`caja` es un directorio de prueba. Vas a quitarle permisos y ver qué puedes hacer en cada caso. Antes de cada bloque, 🔮 **predice** qué funcionará y qué no, y apúntalo.
 
 **Sin ningún permiso (000):**
 ```bash
@@ -270,7 +266,23 @@ chmod 755 caja
 ¿Y `ls -ld caja` con `000`? Funciona: no entra en `caja`, lee su información (permisos, dueño) en el directorio padre, donde sí tienes permisos.
 </details>
 
-### 5. `umask` en acción
+✋ **Sin mirar:** quieres poder borrar archivos de una carpeta. ¿Qué permiso necesitas, y dónde: en los archivos o en la carpeta?
+
+<details>
+<summary>Comprueba</summary>
+
+La `w` de la **carpeta**: borrar es quitar un nombre de la lista del directorio. Lo acabas de ver con `500`: sin `w`, `rm` falló aunque el archivo era tuyo.
+</details>
+
+**En resumen:** en un directorio, `r` es listar, `w` crear o borrar dentro y `x` entrar.
+
+### Pieza 6 — `umask`: los permisos de los archivos nuevos
+
+Los archivos nuevos no nacen con permisos al azar: los decide una máscara, la **umask**. Con la de Ubuntu para tu usuario (`002`), un archivo nuevo nace `664` (`rw-rw-r--`) y un directorio nuevo, `775`. La máscara **quita** permisos: con `002`, le quita la `w` a los otros.
+
+`umask 077` cambia la máscara **solo en esa terminal**: al cerrarla, vuelve la de siempre.
+
+**Pruébalo:**
 
 ```bash
 umask
@@ -281,7 +293,30 @@ ls -ld con-umask-* dir-*
 umask 002             # restaura (o cierra la terminal)
 ```
 
-Compara: con la máscara normal, el archivo nace `rw-rw-r--` y la carpeta `rwxrwxr-x`. Con `077`, la máscara quita **todo** al grupo y al resto: nacen `rw-------` y `rwx------`, privados desde el primer momento.
+👀 **Qué deberías ver:** `umask` responde `0002`. Con la máscara normal, el archivo nace `rw-rw-r--` y la carpeta `rwxrwxr-x`. Con `077`, la máscara quita **todo** al grupo y al resto: nacen `rw-------` y `rwx------`, privados desde el primer momento.
+
+**En resumen:** la umask decide qué permisos les faltan a los archivos que nacen.
+
+## Tu chuleta de la clase
+
+| Números | Letras | Uso típico |
+|---------|--------|------------|
+| `755` | `rwxr-xr-x` | scripts, directorios públicos |
+| `644` | `rw-r--r--` | archivos de configuración o de una web |
+| `700` | `rwx------` | directorio privado (`~/.ssh`) |
+| `600` | `rw-------` | archivo privado (llave SSH, contraseñas) |
+| `750` | `rwxr-x---` | directorio de un equipo (dueño y grupo) |
+| `777` | `rwxrwxrwx` | ❌ cualquiera hace cualquier cosa: nunca es la solución |
+
+| Comando | Qué hace |
+|---------|----------|
+| `ls -l archivo` · `ls -ld carpeta` | ver los permisos (`-d`: de la carpeta, no de lo que hay dentro) |
+| `stat -c '%a %A %n' archivo` | los permisos en números y en letras a la vez |
+| `chmod 640 f` · `chmod u+x f` · `chmod -R 750 d` | cambiar permisos: números, letras, recursivo (¡cuidado!) |
+| `umask` · `umask 077` | ver la máscara · cambiarla en esta terminal |
+| `id` | quién eres y en qué grupos estás |
+
+**Para reconocerlos** (no hace falta más hoy): una `s` en lugar de la `x` del dueño es el **setuid**: el programa corre con los permisos de su dueño, no con los tuyos (`/usr/bin/passwd` lo tiene para poder escribir en `/etc/shadow`; `stat` lo muestra como un `4` delante: `4755`). Una `t` al final es el **sticky bit**: en `/tmp` todos pueden crear archivos, pero cada uno solo puede borrar los suyos (míralo con `ls -ld /tmp`).
 
 ## Rómpelo
 
@@ -392,7 +427,7 @@ En `notas/fase-1/clase-06.md`:
 3. Un compañero propone `chmod -R 777 /var/www` porque nginx da "Permission denied". ¿Qué le respondes y qué harías tú? *(3 líneas. Empieza así: «No, porque 777 deja que cualquiera… Yo miraría con qué usuario corre nginx y le daría solo…»)*
 4. **Repaso (clase 05, sin mirar):** ¿con qué pipeline sacarías las 5 IPs que más peticiones hacen en un log de nginx? *(una línea. Empieza así: `awk '{print $…}' access.log | …`)*
 
-Después, escríbeme `examíname clase-06`.
+Después, escríbeme `examíname clase-06` y dime en una línea si con las piezas intercaladas releíste menos que en la clase 05.
 
 ## Autocorrección
 

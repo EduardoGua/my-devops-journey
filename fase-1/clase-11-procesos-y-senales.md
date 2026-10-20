@@ -28,11 +28,21 @@
 
 "La CPU está al 100 %", "la app no responde", "hay que reiniciar el servicio sin cortar a los usuarios". Todo eso son procesos y señales. Cuando Kubernetes o ECS paran un contenedor, le envían `SIGTERM`, esperan un tiempo de gracia y después envían `SIGKILL`. Si tu app no gestiona `SIGTERM`, pierde peticiones en cada despliegue.
 
-## Teoría
+## Cómo va esta clase
 
-Cuatro piezas.
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida en el servidor; no pases a la siguiente sin haber ejecutado la anterior.
 
-### 1. Programa y proceso
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 30 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+
+Todo se hace dentro de la VM:
+
+```bash
+multipass shell servidor-01
+```
+
+## Las piezas
+
+### Pieza 1 — Programa y proceso
 
 - Un **programa** es un archivo guardado en el disco (`/usr/sbin/nginx`). Por sí solo no hace nada.
 - Un **proceso** es ese programa **mientras se ejecuta**: tiene su número (el **PID**), un dueño (el usuario que lo lanzó) y un **padre** (el proceso que lo lanzó, su PPID). Del mismo programa pueden estar corriendo muchos procesos a la vez.
@@ -47,11 +57,29 @@ systemd (1)
 └── cron
 ```
 
-> 🔁 **Vuelve a la clase 01.** El paso 4 de «Qué pasa cuando pulsas Enter» era «el kernel crea un proceso nuevo». Ese proceso es **hijo de tu shell**. Por dentro, el shell se **clona** (`fork`) y el clon se **convierte** en el programa que pediste (`exec`). Por eso el hijo hereda las variables de entorno de la clase 07. Lo verás en la práctica: `sleep 60 &` y `ps -o pid,ppid,cmd`. El PPID (el padre) del `sleep` es el PID de tu shell (`echo $$`).
+> 🔁 **Vuelve a la clase 01.** El paso 4 de «Qué pasa cuando pulsas Enter» era «el kernel crea un proceso nuevo». Ese proceso es **hijo de tu shell**. Por dentro, el shell se **clona** (`fork`) y el clon se **convierte** en el programa que pediste (`exec`). Por eso el hijo hereda las variables de entorno de la clase 07.
+
+**Pruébalo:**
+
+```bash
+echo "Mi shell es el PID $$"
+sleep 30 &
+ps -o pid,ppid,cmd
+```
+
+👀 **Qué deberías ver:** el PID de tu shell y, en la lista, el `sleep 30` con un **PPID igual a ese número**: el `sleep` es hijo de tu shell. (El `&` lo deja corriendo mientras sigues; lo verás en la pieza 4. En 30 segundos termina solo.)
+
+✋ **Sin mirar:** ¿cuántos procesos pueden estar ejecutando el mismo programa a la vez?
+
+<details>
+<summary>Comprueba</summary>
+
+Muchos: cada vez que se ejecuta el programa nace un proceso nuevo. nginx, por ejemplo, tiene un *master* y varios *workers*: lo verás en la pieza 2.
+</details>
 
 **En resumen:** un programa es el archivo; un proceso, ese programa ejecutándose, con su PID y su padre.
 
-### 2. Ver los procesos
+### Pieza 2 — Ver los procesos
 
 Tres formas de mirarlos:
 
@@ -63,9 +91,107 @@ top             # en directo, ordenado por lo que más CPU gasta (q para salir)
 
 En la columna `STAT` de `ps` verás sobre todo dos estados: **R** (*running*, ejecutándose ahora) y **S** (*sleeping*, esperando algo: que llegue una petición, que pulses una tecla). Lo normal es que casi todo esté en S. Los demás estados están en la chuleta.
 
+**Pruébalo:**
+
+```bash
+ps -f
+ps aux | head
+ps aux | wc -l
+pstree -p | head -20
+ps -ef --forest | grep -A3 [n]ginx
+```
+
+👀 **Qué deberías ver:** tus procesos; las primeras líneas de la lista completa; cuántos hay; el árbol que empieza en `systemd(1)`; y los procesos de nginx colgando de su master.
+
+(El truco `[n]ginx` evita que `grep` se encuentre a sí mismo en la lista.)
+
+🔮 **Predice:** ¿con qué usuario corre el proceso nginx *master* y con cuál los *workers*? ¿Por qué crees que es así?
+
+```bash
+ps -o user,pid,ppid,cmd -C nginx
+```
+
+El master corre como **root** porque necesita abrir el puerto 80 (los puertos < 1024 requieren privilegios). Los workers, que atienden a los clientes, corren como **www-data**. Si un atacante compromete un worker, no es root. Es mínimo privilegio aplicado a procesos.
+
 **En resumen:** `ps aux` es una foto fija, `pstree` el árbol de familia y `top` el directo.
 
-### 3. Señales
+### Pieza 3 — `/proc`: el proceso por dentro
+
+El kernel muestra cada proceso como una carpeta, `/proc/<PID>`, llena de archivos que no están en el disco: los genera al leerlos. Ahí están su estado, su programa, su carpeta de trabajo y mucho más. `/proc/loadavg` da la carga de todo el sistema.
+
+**Pruébalo:**
+
+```bash
+PID=$(pgrep -o nginx)          # -o: el más antiguo, el master
+sudo ls /proc/$PID
+sudo cat /proc/$PID/status | head -10
+sudo ls -l /proc/$PID/cwd /proc/$PID/exe
+cat /proc/loadavg
+```
+
+👀 **Qué deberías ver:** la carpeta del proceso en `/proc`; su estado (`State:`); su carpeta de trabajo y su programa (dos flechas `->`); y la carga del sistema: tres números y dos contadores.
+
+**En resumen:** cada proceso es una carpeta en `/proc/<PID>`: ahí lees su estado sin ninguna herramienta extra.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`.
+
+### Pieza 4 — Primer y segundo plano
+
+Normalmente, un comando ocupa tu terminal hasta que termina: está en **primer plano**. Puedes mandarlo a **segundo plano** para seguir usando la terminal mientras se ejecuta:
+
+```bash
+sleep 300 &       # el & lo lanza directamente en segundo plano
+jobs              # tus trabajos en esta terminal: [1], [2]...
+fg %1             # traer el trabajo 1 al primer plano
+```
+
+`Ctrl+Z` **pausa** el que está en primer plano (no lo mata) y `bg %1` lo deja seguir en segundo plano. `nohup comando &` hace que siga vivo aunque cierres la terminal.
+
+**Pruébalo con un proceso que devora CPU:**
+
+```bash
+yes > /dev/null &
+jobs
+top
+```
+
+En `top`: mira `%CPU` de `yes`, pulsa `P` (ordenar por CPU) y `q` para salir. Después termínalo (`kill`, lo verás a fondo en la pieza 5):
+
+```bash
+kill %1                 # %1 = el trabajo 1 de este shell
+jobs
+```
+
+👀 **Qué deberías ver:** en `top`, `yes` arriba del todo, cerca del 100 % de CPU; después del `kill`, un aviso `Terminated` y `jobs` vacío.
+
+**Ahora pausa y reanuda:**
+
+```bash
+sleep 300
+```
+
+Pulsa `Ctrl+Z` (lo **detienes**, no lo matas).
+
+```bash
+jobs                    # Stopped
+bg %1                   # sigue en segundo plano
+jobs                    # Running
+fg %1                   # vuelve al primer plano
+```
+
+👀 **Qué deberías ver:** primero `Stopped`, después `Running` y, con `fg`, el `sleep` vuelve a ocupar la terminal. `Ctrl+C` para terminarlo.
+
+✋ **Sin mirar:** ¿qué hace `Ctrl+Z`: termina el proceso o lo pausa?
+
+<details>
+<summary>Comprueba</summary>
+
+Lo **pausa**: sigue existiendo, en estado `T`.
+</details>
+
+**En resumen:** `&` lo manda al segundo plano, `jobs` los lista, `fg` trae uno de vuelta y `Ctrl+Z` pausa el que tienes delante.
+
+### Pieza 5 — Señales
 
 Una **señal** es un aviso que el kernel entrega a un proceso. Cuatro que usarás siempre:
 
@@ -78,118 +204,7 @@ Una **señal** es un aviso que el kernel entrega a un proceso. Cuatro que usará
 
 El proceso puede **atrapar** las señales y reaccionar (despedirse, guardar datos)… todas menos `SIGKILL`, que no se puede atrapar. Por eso el orden correcto es: **`kill PID` → esperar unos segundos → solo si sigue vivo, `kill -9 PID`**.
 
-**En resumen:** primero `kill PID` (SIGTERM); solo si no termina, `kill -9 PID` (SIGKILL).
-
-### 4. Primer y segundo plano
-
-Normalmente, un comando ocupa tu terminal hasta que termina: está en **primer plano**. Puedes mandarlo a **segundo plano** para seguir usando la terminal mientras se ejecuta:
-
-```bash
-sleep 300 &       # el & lo lanza directamente en segundo plano
-jobs              # tus trabajos en esta terminal: [1], [2]...
-fg %1             # traer el trabajo 1 al primer plano
-```
-
-`Ctrl+Z` **pausa** el que está en primer plano (no lo mata) y `bg %1` lo deja seguir en segundo plano. `nohup comando &` hace que siga vivo aunque cierres la terminal.
-
-**En resumen:** `&` lo manda al segundo plano, `jobs` los lista, `fg` trae uno de vuelta y `Ctrl+Z` pausa el que tienes delante.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. ¿Cuántos procesos pueden estar ejecutando el mismo programa a la vez?
-2. Una app no responde. ¿Qué señal envías primero y cuál solo como último recurso?
-3. ¿Qué hace `Ctrl+Z`: termina el proceso o lo pausa?
-
-<details>
-<summary>Comprueba</summary>
-
-1. Muchos: cada vez que se ejecuta el programa nace un proceso nuevo. nginx, por ejemplo, tiene un *master* y varios *workers*. 2. Primero `SIGTERM` (`kill PID`); `SIGKILL` (`kill -9`) solo si no hace caso. 3. Lo **pausa**: sigue existiendo, en estado `T`.
-</details>
-
-### Tu chuleta de la clase
-
-| Comando | Para qué |
-|---------|----------|
-| `ps aux` · `ps -ef --forest` | todos los procesos · con su padre (PPID) y en árbol |
-| `pstree -p` · `pgrep -a nombre` | el árbol con PIDs · buscar PIDs por nombre |
-| `top` / `htop` | monitor en vivo (`q` sale; en `top`, `P` ordena por CPU; en `htop`, `F9` envía señales) |
-| `kill PID` · `kill -9 PID` · `kill -HUP PID` | SIGTERM · SIGKILL · SIGHUP |
-| `pkill nombre` | envía la señal por nombre (¡mira antes con `pgrep -a` qué coincide!) |
-| `cmd &` · `jobs` · `fg %1` · `bg %1` | segundo plano · ver · traer · reanudar en segundo plano |
-| `nohup cmd &` | sobrevive al cierre de la terminal |
-| `nice -n 10 cmd` · `renice` | bajar o subir la prioridad de CPU |
-
-| Estado (`STAT`) | Significa |
-|-----------------|-----------|
-| `R` | *Running*: usando CPU o listo para usarla |
-| `S` | *Sleeping*: esperando algo. Lo más común |
-| `D` | Espera **ininterrumpible**, casi siempre de disco o red. Ni `kill -9` lo mata hasta que vuelve |
-| `T` | Detenido (`Ctrl+Z`, `SIGSTOP`) |
-| `Z` | Zombi: terminó, pero su padre no ha recogido su código de salida |
-
-`SIGSTOP` (19) y `SIGCONT` (18) pausan y reanudan un proceso, como `Ctrl+Z` y `bg`.
-
-## Práctica guiada
-
-```bash
-multipass shell servidor-01
-```
-
-### 1. Observar
-
-```bash
-echo "Mi shell es el PID $$"
-ps -f
-ps aux | head
-ps aux | wc -l
-pstree -p | head -20
-ps -ef --forest | grep -A3 [n]ginx
-```
-
-👀 **Qué deberías ver:** el PID de tu shell; las primeras líneas de la lista de procesos; cuántos hay; el árbol que empieza en `systemd(1)`; y los procesos de nginx colgando de su master.
-
-(El truco `[n]ginx` evita que `grep` se encuentre a sí mismo en la lista.)
-
-🔮 **Predice:** ¿con qué usuario corre el proceso nginx *master* y con cuál los *workers*? ¿Por qué crees que es así?
-
-```bash
-ps -o user,pid,ppid,cmd -C nginx
-```
-
-El master corre como **root** porque necesita abrir el puerto 80 (los puertos < 1024 requieren privilegios). Los workers, que atienden a los clientes, corren como **www-data**. Si un atacante compromete un worker, no es root. Es mínimo privilegio aplicado a procesos.
-
-### 2. `/proc`: el proceso por dentro
-
-```bash
-PID=$(pgrep -o nginx)          # -o: el más antiguo, el master
-sudo ls /proc/$PID
-sudo cat /proc/$PID/status | head -10
-sudo ls -l /proc/$PID/cwd /proc/$PID/exe
-cat /proc/loadavg
-```
-
-👀 **Qué deberías ver:** la carpeta del proceso en `/proc`; su estado (`State:`); su carpeta de trabajo y su programa (dos flechas `->`); y la carga del sistema: tres números y dos contadores.
-
-### 3. Un proceso que devora CPU
-
-```bash
-yes > /dev/null &
-jobs
-top
-```
-
-En `top`: mira `%CPU` de `yes`, pulsa `P` (ordenar por CPU) y `q` para salir. Después:
-
-```bash
-kill %1                 # %1 = el trabajo 1 de este shell
-jobs
-```
-
-👀 **Qué deberías ver:** en `top`, `yes` arriba del todo, cerca del 100 % de CPU; después del `kill`, un aviso `Terminated` y `jobs` vacío.
-
-### 4. TERM frente a KILL
-
-Crea un programa que se despide con educación:
+**Pruébalo: TERM frente a KILL.** Crea un programa que se despide con educación:
 
 ```bash
 cat > ~/educado.sh <<'EOF'
@@ -216,25 +231,9 @@ kill -9 %1              # SIGKILL
 jobs
 ```
 
-Con `SIGKILL` no hubo despedida: el kernel lo eliminó sin avisar. En una base de datos, eso puede significar datos a medio escribir.
+👀 **Qué deberías ver:** con `SIGTERM`, las dos líneas de despedida (`recibí SIGTERM…` y `listo, adiós`). Con `SIGKILL`, ninguna: el kernel lo eliminó sin avisar, y `jobs` dice `Killed`. En una base de datos, eso puede significar datos a medio escribir.
 
-### 5. Segundo plano y Ctrl+Z
-
-```bash
-sleep 300
-```
-Pulsa `Ctrl+Z` (lo **detienes**, no lo matas).
-```bash
-jobs                    # Stopped
-bg %1                   # sigue en segundo plano
-jobs                    # Running
-fg %1                   # vuelve al primer plano
-```
-
-👀 **Qué deberías ver:** primero `Stopped`, después `Running` y, con `fg`, el `sleep` vuelve a ocupar la terminal.
-`Ctrl+C` para terminarlo.
-
-### 6. SIGHUP para recargar: nginx
+**Y SIGHUP para recargar, con nginx:**
 
 ```bash
 ps -o pid,cmd -C nginx
@@ -245,6 +244,39 @@ ps -o pid,cmd -C nginx
 🔮 **Predice:** ¿cambiará el PID del master? ¿Y los de los workers?
 
 El master sigue con el mismo PID, pero los **workers son nuevos**: nginx releyó la configuración y renovó sus workers **sin cortar el servicio**. Eso es lo que hace por debajo `systemctl reload nginx` (clase 12).
+
+✋ **Sin mirar:** una app no responde. ¿Qué señal envías primero y cuál solo como último recurso?
+
+<details>
+<summary>Comprueba</summary>
+
+Primero `SIGTERM` (`kill PID`); `SIGKILL` (`kill -9`) solo si no hace caso.
+</details>
+
+**En resumen:** primero `kill PID` (SIGTERM); solo si no termina, `kill -9 PID` (SIGKILL). `kill -HUP` pide recargar la configuración.
+
+## Tu chuleta de la clase
+
+| Comando | Para qué |
+|---------|----------|
+| `ps aux` · `ps -ef --forest` | todos los procesos · con su padre (PPID) y en árbol |
+| `pstree -p` · `pgrep -a nombre` | el árbol con PIDs · buscar PIDs por nombre |
+| `top` / `htop` | monitor en vivo (`q` sale; en `top`, `P` ordena por CPU; en `htop`, `F9` envía señales) |
+| `kill PID` · `kill -9 PID` · `kill -HUP PID` | SIGTERM · SIGKILL · SIGHUP |
+| `pkill nombre` | envía la señal por nombre (¡mira antes con `pgrep -a` qué coincide!) |
+| `cmd &` · `jobs` · `fg %1` · `bg %1` | segundo plano · ver · traer · reanudar en segundo plano |
+| `nohup cmd &` | sobrevive al cierre de la terminal |
+| `nice -n 10 cmd` · `renice` | bajar o subir la prioridad de CPU |
+
+| Estado (`STAT`) | Significa |
+|-----------------|-----------|
+| `R` | *Running*: usando CPU o listo para usarla |
+| `S` | *Sleeping*: esperando algo. Lo más común |
+| `D` | Espera **ininterrumpible**, casi siempre de disco o red. Ni `kill -9` lo mata hasta que vuelve |
+| `T` | Detenido (`Ctrl+Z`, `SIGSTOP`) |
+| `Z` | Zombi: terminó, pero su padre no ha recogido su código de salida |
+
+`SIGSTOP` (19) y `SIGCONT` (18) pausan y reanudan un proceso, como `Ctrl+Z` y `bg`.
 
 ## Rómpelo
 

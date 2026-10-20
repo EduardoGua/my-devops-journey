@@ -30,11 +30,23 @@
 
 En un servidor real conviven personas (cada administrador con su cuenta) y servicios (`www-data` para nginx, `postgres` para la base de datos). Cada uno debe poder hacer **solo lo que necesita**. Es la misma idea que IAM en AWS: usuarios, grupos y políticas. Si la entiendes aquí, IAM será un cambio de interfaz, no un concepto nuevo.
 
-## Teoría
+## Cómo va esta clase
 
-Cuatro piezas.
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida en el servidor; no pases a la siguiente sin haber ejecutado la anterior.
 
-### 1. Dos preguntas distintas: ¿quién eres? y ¿qué puedes hacer?
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 30 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+
+Todo se hace dentro de la VM:
+
+```bash
+multipass shell servidor-01
+```
+
+Comprueba el prompt: debe decir `ubuntu@servidor-01`.
+
+## Las piezas
+
+### Pieza 1 — Dos preguntas distintas: ¿quién eres? y ¿qué puedes hacer?
 
 El sistema comprueba **quién eres** una vez y, a partir de ahí, solo te deja hacer **lo que te corresponde**:
 
@@ -45,9 +57,27 @@ El sistema comprueba **quién eres** una vez y, a partir de ahí, solo te deja h
 
 Primero se autentica y después se autoriza. Puedes haber entrado (autenticado) y aun así no tener permiso para leer un archivo concreto (no autorizado).
 
+**Pruébalo:**
+
+```bash
+id
+head -3 /etc/shadow
+sudo head -3 /etc/shadow
+```
+
+👀 **Qué deberías ver:** `id` dice quién eres: `ubuntu`, y en el grupo `sudo`. El primer `head` falla con *Permission denied*: estás autenticado, pero no autorizado a leer ese archivo. Con `sudo`, que te autoriza a actuar como root, ves las tres primeras líneas.
+
+✋ **Sin mirar:** Ana entra con su contraseña, pero no puede leer `/srv/proyecto`. ¿Falló la autenticación o la autorización?
+
+<details>
+<summary>Comprueba</summary>
+
+La autorización: entró (autenticada), pero no tiene permiso.
+</details>
+
 **En resumen:** autenticación = ¿quién eres?; autorización = ¿qué puedes hacer? Primero una y después la otra.
 
-### 2. Las cuentas de usuario: `/etc/passwd`
+### Pieza 2 — Las cuentas de usuario: `/etc/passwd`
 
 Linux apunta a cada usuario en una línea de `/etc/passwd`:
 
@@ -65,13 +95,23 @@ Linux apunta a cada usuario en una línea de `/etc/passwd`:
 /etc/group    →  devs:x:1003:ana,luis    (grupo:x:GID:miembros)
 ```
 
-Las contraseñas no están ahí, sino cifradas en `/etc/shadow`, que solo puede leer root (lo viste en la clase 06). Los **grupos** y sus miembros están en `/etc/group`.
+Las contraseñas no están ahí, sino cifradas en `/etc/shadow`, que solo puede leer root (lo viste en la clase 06 y en la pieza 1). Los **grupos** y sus miembros están en `/etc/group`.
 
 No todos los usuarios son personas. `www-data` (el de nginx) o `nobody` son **usuarios de servicio**: su shell es `/usr/sbin/nologin`, porque existen para ser **dueños de procesos y archivos**, no para que alguien entre con ellos. Ya lo viste en la clase 04: son la mayoría de las cuentas.
 
+**Pruébalo:**
+
+```bash
+tail -5 /etc/passwd
+grep -E '^(root|www-data|nobody|ubuntu):' /etc/passwd
+getent group sudo
+```
+
+👀 **Qué deberías ver:** las últimas cuentas del sistema; las líneas de root (UID 0), www-data y nobody (con `/usr/sbin/nologin`) y ubuntu (UID 1000, con `/bin/bash`); y el grupo `sudo` con `ubuntu` como miembro.
+
 **En resumen:** cada usuario es una línea de `/etc/passwd`; las contraseñas están en `/etc/shadow` y los grupos en `/etc/group`.
 
-### 3. Dar de alta y organizar en equipos
+### Pieza 3 — Dar de alta y organizar en equipos
 
 Los cuatro comandos que más usarás:
 
@@ -84,81 +124,7 @@ id ana                         # ver quién es Ana y en qué equipos está
 
 ⚠️ En `usermod -aG`, la `-a` significa **añadir**. Sin ella, `-G` **sustituye** todos los grupos de la persona por los que pongas, y la saca de los demás. Es uno de los errores más típicos (lo provocarás en el Rómpelo 2).
 
-**En resumen:** `adduser` da de alta, `groupadd` crea un equipo y `usermod -aG` añade a alguien a él (¡con la `-a`!).
-
-### 4. `sudo`: ejecutar como root, con registro
-
-`sudo comando` ejecuta ese comando **como root**, el administrador, pero solo si **`/etc/sudoers`** te lo permite. Ese archivo es la lista de quién puede usar `sudo` y para qué. Tres detalles:
-- Te pide **tu** contraseña, no la de root: demuestras que eres tú.
-- **Apunta cada uso** en el log del sistema: quién, cuándo y qué. Es una auditoría.
-- En Ubuntu, estar en el grupo `sudo` te deja ejecutar **cualquier** comando como root.
-
-Lo profesional es dar solo lo necesario. Una regla de sudoers se lee así:
-
-```
-ana  ALL=(root)  /usr/bin/journalctl, /usr/bin/systemctl restart nginx
-│    │    │      └─ SOLO estos comandos
-│    │    └─ como el usuario root
-│    └─ en cualquier máquina
-└─ quién
-```
-
-La lista se edita **siempre con `visudo`**, que revisa que lo que escribiste es correcto antes de guardar. Un error en sudoers puede dejar a **todo el mundo** sin `sudo`. Las reglas propias van en archivos aparte, dentro de `/etc/sudoers.d/`.
-
-**En resumen:** `sudo` deja ejecutar como root solo a quien está en sudoers, y apunta cada uso. La lista se edita con `visudo`.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. Ana entra con su contraseña, pero no puede leer `/srv/proyecto`. ¿Falló la autenticación o la autorización?
-2. ¿Qué pasa si escribes `sudo usermod -G devs luis`, sin la `-a`?
-3. ¿Por qué no se edita `/etc/sudoers` con `nano` directamente?
-
-<details>
-<summary>Comprueba</summary>
-
-1. La autorización: entró (autenticada), pero no tiene permiso. 2. Luis pasa a estar **solo** en `devs` y pierde los demás grupos. 3. Porque `visudo` revisa la sintaxis antes de guardar; con `nano`, un error dejaría a todos sin `sudo`.
-</details>
-
-### Tu chuleta de la clase
-
-| Comando | Para qué |
-|---------|----------|
-| `sudo adduser ana` | crear un usuario (interactivo, crea su casa). Recomendado en Ubuntu |
-| `sudo useradd -m -s /bin/bash ana` | lo mismo, sin preguntas: el que se usa en scripts |
-| `sudo passwd ana` | poner o cambiar su contraseña |
-| `sudo groupadd devs` | crear un grupo |
-| `sudo usermod -aG devs ana` | **añadir** a un grupo (⚠️ sin `-a`, sustituye) |
-| `sudo gpasswd -d ana devs` | sacar de un grupo |
-| `sudo usermod -L ana` / `-U ana` | bloquear / desbloquear su contraseña |
-| `sudo userdel -r ana` | borrar el usuario y su casa |
-| `id ana` · `groups ana` · `getent group devs` | ver usuario y grupos · ver los miembros de un grupo |
-| `sudo -u ana comando` | ejecutar un comando como Ana |
-| `su - ana` | abrir un shell como Ana (pide **su** contraseña) |
-| `sudo visudo -f /etc/sudoers.d/ana` · `sudo -l -U ana` | editar una regla de sudo con revisión · ver qué puede hacer Ana |
-
-## Práctica guiada
-
-```bash
-
-👀 **Qué deberías ver:** Ana y Luis con `devs` entre sus grupos, Carla sin él, y una línea `devs:x:…:ana,luis`.
-multipass shell servidor-01
-```
-
-Comprueba el prompt: debe decir `ubuntu@servidor-01`.
-
-### 1. Mira lo que hay
-
-```bash
-id
-tail -5 /etc/passwd
-grep -E '^(root|www-data|nobody|ubuntu):' /etc/passwd
-getent group sudo
-sudo head -3 /etc/shadow
-```
-
-👀 **Qué deberías ver:** tu usuario, `ubuntu`, que está en el grupo `sudo`; las últimas cuentas del sistema; las líneas de root, www-data, nobody y ubuntu; y, gracias a `sudo`, las tres primeras líneas de `/etc/shadow`.
-
-### 2. Crea un equipo
+**Pruébalo: crea un equipo.**
 
 ```bash
 sudo adduser ana          # pon una contraseña que recuerdes; el resto, Enter
@@ -171,9 +137,25 @@ id ana; id luis; id carla
 getent group devs
 ```
 
-### 3. Un directorio de equipo
+👀 **Qué deberías ver:** Ana y Luis con `devs` entre sus grupos, Carla sin él, y una línea `devs:x:…:ana,luis`.
 
-Queremos `/srv/proyecto`, donde los miembros de `devs` lean y escriban, y nadie más pueda ni mirar.
+✋ **Sin mirar:** ¿qué pasa si escribes `sudo usermod -G devs luis`, sin la `-a`?
+
+<details>
+<summary>Comprueba</summary>
+
+Luis pasa a estar **solo** en `devs` y pierde los demás grupos.
+</details>
+
+**En resumen:** `adduser` da de alta, `groupadd` crea un equipo y `usermod -aG` añade a alguien a él (¡con la `-a`!).
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`; mañana vuelves con `multipass shell servidor-01`.
+
+### Pieza 4 — Un directorio de equipo: setgid y umask
+
+Queremos `/srv/proyecto`, donde los miembros de `devs` lean y escriban, y nadie más pueda ni mirar. Hacen falta dos cosas que ya conoces de la clase 06 (el grupo del directorio y sus permisos) y una nueva, el **setgid**: un `2` delante de los permisos de un directorio hace que todo lo que se crea dentro sea del grupo del directorio, en vez del grupo personal de quien lo crea.
+
+**Pruébalo:**
 
 ```bash
 sudo mkdir -p /srv/proyecto
@@ -182,15 +164,15 @@ sudo chmod 2770 /srv/proyecto
 ls -ld /srv/proyecto
 ```
 
-👀 **Qué deberías ver:** `drwxrws---`, con dueño `root` y grupo `devs`. La `s` en el bloque del grupo es el setgid.
-
-El `2` inicial activa el **setgid** en el directorio (verás una `s` en el grupo). Con él, todo lo que se crea dentro es del grupo `devs`, en vez del grupo personal de quien lo crea. Sin él, los archivos de Ana serían del grupo `ana` y Luis no podría editarlos.
+👀 **Qué deberías ver:** `drwxrws---`, con dueño `root` y grupo `devs`. La `s` en el bloque del grupo es el setgid. Sin él, los archivos de Ana serían del grupo `ana` y Luis no podría editarlos.
 
 Antes de seguir, mira un detalle que va a importar:
+
 ```bash
 umask
 sudo -u ana bash -c 'umask'
 ```
+
 Probablemente tu sesión tiene `0002`, pero lo que ejecutas con `sudo -u` tiene `0022`: el `sudo` de Ubuntu 26.04 (*sudo-rs*) aplica su propia máscara. Los archivos los crea **el proceso**, y es **su** umask el que cuenta. Por eso en las pruebas siguientes la fijamos a mano: así el resultado no depende de la versión de sudo.
 
 🔮 **Predice** el resultado de cada línea:
@@ -215,16 +197,37 @@ sudo -u carla cat /srv/proyecto/plan.txt
 - Carla no puede ni leer: no está en `devs`.
 </details>
 
-En equipos reales, un directorio compartido necesita dos piezas: **setgid** (que el grupo sea el correcto) y **permisos de grupo correctos**: umask 002 en quien crea los archivos, o mejor, ACLs por defecto en el directorio (`setfacl -d -m g:devs:rwX /srv/proyecto`), que no dependen de nadie. Con una sola de las dos piezas falla. Arregla el borrador:
+En equipos reales, un directorio compartido necesita dos cosas: **setgid** (que el grupo sea el correcto) y **permisos de grupo correctos**: umask 002 en quien crea los archivos, o mejor, ACLs por defecto en el directorio (`setfacl -d -m g:devs:rwX /srv/proyecto`), que no dependen de nadie. Con una sola de las dos falla. Arregla el borrador:
 
 ```bash
 sudo chmod g+w /srv/proyecto/borrador.txt
 sudo -u luis bash -c 'echo "cambio" >> /srv/proyecto/borrador.txt' && echo "ahora sí"
 ```
 
-### 4. sudo con mínimo privilegio
+👀 **Qué deberías ver:** `ahora sí`.
 
-Ana es la responsable de revisar logs. Debe poder leer **todos** los logs del sistema, y nada más como root.
+**En resumen:** el setgid (`2770`) hace que lo creado dentro sea del grupo del directorio; además, cada archivo necesita la `w` del grupo, que depende del umask de quien lo crea.
+
+### Pieza 5 — `sudo`: ejecutar como root, solo lo necesario y con registro
+
+`sudo comando` ejecuta ese comando **como root**, el administrador, pero solo si **`/etc/sudoers`** te lo permite. Ese archivo es la lista de quién puede usar `sudo` y para qué. Tres detalles:
+- Te pide **tu** contraseña, no la de root: demuestras que eres tú.
+- **Apunta cada uso** en el log del sistema: quién, cuándo y qué. Es una auditoría.
+- En Ubuntu, estar en el grupo `sudo` te deja ejecutar **cualquier** comando como root.
+
+Lo profesional es dar solo lo necesario. Una regla de sudoers se lee así:
+
+```
+ana  ALL=(root)  /usr/bin/journalctl, /usr/bin/systemctl restart nginx
+│    │    │      └─ SOLO estos comandos
+│    │    └─ como el usuario root
+│    └─ en cualquier máquina
+└─ quién
+```
+
+La lista se edita **siempre con `visudo`**, que revisa que lo que escribiste es correcto antes de guardar. Un error en sudoers puede dejar a **todo el mundo** sin `sudo`. Las reglas propias van en archivos aparte, dentro de `/etc/sudoers.d/`.
+
+**Pruébalo.** Ana es la responsable de revisar logs. Debe poder leer **todos** los logs del sistema, y nada más como root.
 
 ```bash
 sudo -l -U ana                         # qué puede hacer con sudo ahora: nada
@@ -232,6 +235,7 @@ sudo visudo -f /etc/sudoers.d/ana
 ```
 
 Escribe esta línea, guarda (`Ctrl+O`, `Enter`) y sal (`Ctrl+X`):
+
 ```
 ana ALL=(root) /usr/bin/journalctl
 ```
@@ -243,7 +247,8 @@ sudo -l -U ana
 
 👀 **Qué deberías ver:** en la lista de Ana aparece la regla nueva: `(root) /usr/bin/journalctl`.
 
-Pruébalo **siendo** Ana. `su` pide la contraseña de Ana:
+Ahora compruébalo **siendo** Ana. `su` pide la contraseña de Ana:
+
 ```bash
 su - ana
 whoami
@@ -253,13 +258,42 @@ sudo apt update                 # denegado
 exit
 ```
 
-### 5. El rastro de sudo
+👀 **Qué deberías ver:** `ana`; las 5 últimas líneas del log; y los dos últimos, denegados.
+
+Y el rastro que deja cada uso:
 
 ```bash
 sudo journalctl _COMM=sudo -n 10
 ```
 
-Cada uso de sudo, permitido o no, queda registrado con usuario, directorio y comando. Es la base de una **auditoría**, como CloudTrail en AWS.
+👀 **Qué deberías ver:** cada uso de sudo, permitido o no, con usuario, directorio y comando, incluidos los dos intentos denegados de Ana. Es la base de una **auditoría**, como CloudTrail en AWS.
+
+✋ **Sin mirar:** ¿por qué no se edita `/etc/sudoers` con `nano` directamente?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque `visudo` revisa la sintaxis antes de guardar; con `nano`, un error dejaría a todos sin `sudo`.
+</details>
+
+**En resumen:** `sudo` deja ejecutar como root solo a quien está en sudoers, y apunta cada uso. La lista se edita con `visudo`, y se da solo lo necesario.
+
+## Tu chuleta de la clase
+
+| Comando | Para qué |
+|---------|----------|
+| `sudo adduser ana` | crear un usuario (interactivo, crea su casa). Recomendado en Ubuntu |
+| `sudo useradd -m -s /bin/bash ana` | lo mismo, sin preguntas: el que se usa en scripts |
+| `sudo passwd ana` | poner o cambiar su contraseña |
+| `sudo groupadd devs` | crear un grupo |
+| `sudo usermod -aG devs ana` | **añadir** a un grupo (⚠️ sin `-a`, sustituye) |
+| `sudo gpasswd -d ana devs` | sacar de un grupo |
+| `sudo usermod -L ana` / `-U ana` | bloquear / desbloquear su contraseña |
+| `sudo userdel -r ana` | borrar el usuario y su casa |
+| `id ana` · `groups ana` · `getent group devs` | ver usuario y grupos · ver los miembros de un grupo |
+| `sudo -u ana comando` | ejecutar un comando como Ana |
+| `su - ana` | abrir un shell como Ana (pide **su** contraseña) |
+| `sudo visudo -f /etc/sudoers.d/ana` · `sudo -l -U ana` | editar una regla de sudo con revisión · ver qué puede hacer Ana |
 
 ## Rómpelo
 
@@ -358,7 +392,7 @@ Dueña, leer y escribir: 6. Grupo, solo leer: 4. Los demás, nada: 0.
 
 **3.** Da a Luis permiso para ejecutar con sudo **solo** `apt update`, sin `apt install`. Pruébalo.
 
-> 🧩 **Ejemplo resuelto:** la regla de Ana de la práctica 4.
+> 🧩 **Ejemplo resuelto:** la regla de Ana de la pieza 5.
 > ```bash
 > sudo visudo -f /etc/sudoers.d/ana
 > # dentro:  ana ALL=(root) /usr/bin/journalctl

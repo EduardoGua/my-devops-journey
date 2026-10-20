@@ -28,3 +28,6 @@ __pycache__/
 *.swp
 *~
 .DS_Store
+
+# Sesión de estudio en marcha (sesion.sh)
+notas/.sesion-abierta

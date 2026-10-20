@@ -11,7 +11,7 @@
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **función**: un trozo de script con nombre, que llamas cuando lo necesitas.
-> - **modo estricto**: `set -euo pipefail`, los tres cinturones de seguridad.
+> - **modo estricto**: `set -euo pipefail`, la línea que hace que el script pare ante un error, una variable sin definir o un pipe que falla.
 > - **trap**: lo que se ejecuta siempre al salir del script.
 > - **archivo temporal**: uno que se crea para trabajar y se borra al terminar (`mktemp`).
 > - **linter** (`shellcheck`): un programa que revisa tu código sin ejecutarlo.
@@ -28,11 +28,23 @@
 
 Un script que sigue adelante después de un error es peor que no tener script: hace el 80 % del trabajo y deja el sistema a medias. `set -euo pipefail` es la primera línea de casi cualquier script profesional: la verás en Dockerfiles, en pipelines de CI y en Vigía. `shellcheck` es el analizador que muchos equipos ejecutan en cada pull request. En la clase 04 viste que un pipe esconde los fallos: hoy lo arreglas.
 
-## Teoría
+## Cómo va esta clase
 
-Seis piezas. Todas sirven para lo mismo: que tu script **falle de forma segura** en lugar de seguir a ciegas.
+Siete piezas, y todas sirven para lo mismo: que tu script **falle de forma segura** en lugar de seguir a ciegas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior.
 
-### 1. Funciones
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 40 min); el segundo, las **piezas 4 a 7**, el Rómpelo, el reto y el cierre.
+
+Primero, la carpeta de hoy y `shellcheck`, que usarás en la pieza 6 (es una herramienta de desarrollo, como `git`: va en tu Ubuntu):
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-19 && cd ~/my-devops-journey/labs/clase-19
+sudo apt install -y shellcheck
+shellcheck --version
+```
+
+## Las piezas
+
+### Pieza 1 — Funciones
 
 Una función es un trozo de script con nombre, que llamas cuando lo necesitas:
 
@@ -44,146 +56,11 @@ saludar() {
 saludar "Ana"
 ```
 
-- Dentro de la función, `$1`, `$2` y `"$@"` son **sus** ingredientes, no los del script.
+- Dentro de la función, `$1`, `$2` y `"$@"` son **sus** argumentos, no los del script.
 - `local` hace que la variable exista **solo** dentro de la función. Sin `local`, podría pisar otra variable del script con el mismo nombre.
 - Una función devuelve cosas por los mismos dos sitios que cualquier programa: **datos** por stdout (que capturas con `$(...)`) y un **código de salida** con `return N` (o el del último comando que ejecutó).
 
-**En resumen:** una función es un trozo de script con nombre; `local` guarda sus variables dentro de ella.
-
-### 2. El modo estricto: tres cinturones de seguridad
-
-Sin nada, un script sigue adelante aunque algo falle. Esta línea, justo debajo del shebang, le pone tres cinturones:
-
-```bash
-#!/bin/bash
-set -euo pipefail
-```
-
-| Opción | Qué hace | Lo que evita |
-|--------|----------|--------------|
-| `-e` (*errexit*) | el script sale en cuanto un comando falla | seguir trabajando después de un error |
-| `-u` (*nounset*) | usar una variable que no existe es un error | el `$DIRETORIO` vacío de la clase 16 |
-| `-o pipefail` | un pipe falla si falla **cualquiera** de sus comandos | el pipe "en verde" de la clase 04 |
-
-Con `-u`, una variable opcional se lee con valor por defecto (clase 16): `${APP_ENV:-}` vale vacío en lugar de dar error.
-
-**En resumen:** `-e` para al primer fallo, `-u` no deja usar variables que no existen y `pipefail` no deja que un pipe esconda fallos.
-
-### 3. Los fallos que esperas
-
-`set -e` **no** para el script cuando el comando que falla está:
-- en la pregunta de un `if` o de un `while`;
-- a la izquierda de `&&` o de `||`;
-- negado con `!`.
-
-Es a propósito: así tratas los fallos que **esperas**, los que no son errores de verdad.
-
-```bash
-if ! grep -q "^ana:" /etc/passwd; then echo "ana no existe"; fi   # fallo esperado y tratado
-N="$(grep -c "zzz" archivo || true)"                             # "no hay coincidencias" no es un error
-```
-
-Dos trampas que verás en el Rómpelo:
-- `(( contador++ ))` con `contador=0` deja código de salida 1 y **mata el script**. Usa `contador=$(( contador + 1 ))`.
-- `local x=$(comando)` esconde el fallo del comando: el código de salida que ve `set -e` es el de `local`, que siempre sale bien. Sepáralo en dos: `local x; x=$(comando)`.
-
-`set -e` es una red de seguridad, no un sustituto de comprobar tú los errores importantes.
-
-**En resumen:** en un `if`, con `||` o con `!`, el fallo es «esperado» y `set -e` no para el script.
-
-### 4. `trap`: recoger al salir, pase lo que pase
-
-Sirve para limpiar al salir, **termine como termine**:
-
-```bash
-TMP="$(mktemp -d)"                 # crea un directorio temporal con nombre único
-trap 'rm -rf "$TMP"' EXIT          # se ejecuta al salir: por éxito, por error o con Ctrl+C
-```
-
-`mktemp -d` crea una carpeta temporal con un nombre único. `trap '…' EXIT` apunta lo que hay que hacer **al salir del script**: tanto si termina bien como si falla o pulsas `Ctrl+C`.
-
-**En resumen:** `trap '…' EXIT` es la limpieza que se hace siempre, termine como termine el script.
-
-### 5. Dejar rastro: logs
-
-```bash
-log() { echo "$(date '+%F %T') [$1] ${*:2}" >&2; }   # log NIVEL mensaje…
-log INFO "empiezo"
-log ERROR "no encuentro el archivo"
-logger -t mi-script "copia terminada"               # al journal: journalctl -t mi-script
-```
-
-`log INFO "mensaje"` escribe una línea con fecha, hora y nivel por stderr. `${*:2}` son todos los argumentos desde el segundo, unidos en un texto. `logger` deja el mensaje en el journal (clase 13).
-
-**En resumen:** `log` deja una línea con fecha y nivel; `logger` la deja en el journal.
-
-### 6. `shellcheck`: el corrector ortográfico de Bash
-
-`shellcheck script.sh` lee tu script **sin ejecutarlo** y te avisa de los errores típicos: comillas que faltan, `cd` sin comprobar, `$(ls)` en un bucle… Cada aviso tiene un código (`SC2086`…) con su explicación en la wiki de shellcheck. Lo instalarás hoy.
-
-**En resumen:** pasa `shellcheck` a cada script antes de darlo por bueno.
-
-### Todo junto: la plantilla
-
-Así empezarán tus scripts a partir de ahora, Vigía incluido:
-
-```bash
-#!/bin/bash
-# nombre.sh — qué hace, en una línea
-# Uso: nombre.sh <argumento>
-set -euo pipefail
-
-log() { echo "$(date '+%F %T') [$1] ${*:2}" >&2; }
-die() { log ERROR "$*"; exit 1; }
-
-main() {
-  [[ $# -eq 1 ]] || { echo "Uso: $0 <argumento>" >&2; exit 2; }
-  log INFO "trabajando con $1"
-}
-
-main "$@"
-```
-
-`main "$@"` va en la **última** línea: bash lee primero todas las funciones, y la lógica del script (`main`) queda arriba, fácil de leer.
-
-**En resumen:** la plantilla junta todo: modo estricto, `log`, `die` y `main`.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. Un script con `set -e` hace `cd /no-existe` y después `rm -rf *`. ¿Llega a ejecutar el `rm`?
-2. Con `set -u`, escribes `$DIRETORIO` en lugar de `$DIRECTORIO`. ¿Qué pasa?
-3. ¿Cuándo se ejecuta lo que pones en `trap '…' EXIT`?
-
-<details>
-<summary>Comprueba</summary>
-
-1. No: el `cd` falla y `set -e` para el script ahí. Sin él, borraría lo que hubiera en la carpeta actual. 2. El script se para con `DIRETORIO: variable sin asignar` en lugar de seguir con un valor vacío. 3. Al salir del script, termine como termine: bien, con error o con `Ctrl+C`.
-</details>
-
-### Tu chuleta de la clase
-
-| Escribes | Qué es |
-|----------|--------|
-| `nombre() { …; }` · `nombre arg1 arg2` | definir una función · llamarla |
-| `local x="$1"` · `return 1` | variable solo de la función · terminar la función con código 1 |
-| `set -euo pipefail` | los tres cinturones: parar al fallar, variables sin definir, pipes |
-| `if ! cmd; then …` · `cmd \|\| true` | tratar un fallo esperado · ignorarlo a propósito |
-| `TMP="$(mktemp -d)"` · `trap '…' EXIT` | carpeta temporal · qué hacer al salir |
-| `logger -t nombre "mensaje"` | escribir en el journal (`journalctl -t nombre`) |
-| `shellcheck script.sh` | revisar el script sin ejecutarlo |
-| `bash -x script.sh` | ver cada línea según se ejecuta (clase 16) |
-
-## Práctica guiada
-
-```bash
-mkdir -p ~/my-devops-journey/labs/clase-19 && cd ~/my-devops-journey/labs/clase-19
-sudo apt install -y shellcheck
-shellcheck --version
-```
-
-`shellcheck` es una herramienta de desarrollo, como `git`: va en tu Ubuntu.
-
-### 1. Funciones
+**Pruébalo:**
 
 ```bash
 cat > funciones.sh <<'EOF'
@@ -208,9 +85,28 @@ chmod +x funciones.sh && ./funciones.sh
 
 👀 **Qué deberías ver:** `4 → 8`, `hola no es un número` y `21 → 42`.
 
-`es_numero` responde con su **estado** (se usa en un `if`) y `doble` con su **salida** (se captura con `$(...)`).
+`es_numero` responde con su **código de salida** (se usa en un `if`) y `doble` con su **salida** (se captura con `$(...)`).
 
-### 2. `set -e`: antes y después
+**En resumen:** una función es un trozo de script con nombre; `local` guarda sus variables dentro de ella.
+
+### Pieza 2 — El modo estricto: `set -euo pipefail`
+
+Sin nada, un script sigue adelante aunque algo falle. Esta línea, justo debajo del shebang, activa tres protecciones:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+```
+
+| Opción | Qué hace | Lo que evita |
+|--------|----------|--------------|
+| `-e` (*errexit*) | el script sale en cuanto un comando falla | seguir trabajando después de un error |
+| `-u` (*nounset*) | usar una variable que no existe es un error | el `$DIRETORIO` vacío de la clase 16 |
+| `-o pipefail` | un pipe falla si falla **cualquiera** de sus comandos | el pipe "en verde" de la clase 04 |
+
+Con `-u`, una variable opcional se lee con valor por defecto (clase 16): `${APP_ENV:-}` vale vacío en lugar de dar error.
+
+**Pruébalo, primero `-e`, antes y después:**
 
 ```bash
 cat > sin-estricto.sh <<'EOF'
@@ -245,22 +141,18 @@ rm marca-sin-estricto
 ls marca-sin-estricto
 ```
 
-👀 **Qué deberías ver:** las tres primeras líneas, con `set -euo pipefail` en la segunda; el error del `cd` y `código: 1`; y `ls` diciendo que `marca-sin-estricto` no existe.
+👀 **Qué deberías ver:** las tres primeras líneas, con `set -euo pipefail` en la segunda; el error del `cd` y `código: 1`; y `ls` diciendo que `marca-sin-estricto` no existe: se detuvo en el `cd` y no creó nada.
 
-Se detiene en el `cd`, con código 1, y no crea nada.
-
-### 3. `set -u`
+**Ahora `-u`:**
 
 ```bash
 bash -c 'set -u; DIRECTORIO=/tmp; echo "$DIRETORIO"' ; echo "código: $?"
 bash -c 'set -u; echo "modo: ${APP_ENV:-desarrollo}"'
 ```
 
-👀 **Qué deberías ver:** `DIRETORIO: variable sin asignar`, con un código distinto de 0; y `modo: desarrollo`.
+👀 **Qué deberías ver:** `DIRETORIO: variable sin asignar`, con un código distinto de 0 (la errata de la clase 16 ya no pasa en silencio); y `modo: desarrollo`.
 
-`DIRETORIO: variable sin asignar`: la errata de la clase 16 ya no pasa en silencio.
-
-### 4. `pipefail`: el arreglo de la clase 04
+**Y `pipefail`, el arreglo de la clase 04:**
 
 ```bash
 bash -c 'cat /no-existe | wc -l; echo "código: $?"'
@@ -269,7 +161,39 @@ bash -c 'set -o pipefail; cat /no-existe | wc -l; echo "código: $?"'
 
 👀 **Qué deberías ver:** en los dos, el error de `cat` y un `0`; pero `código: 0` en el primero y `código: 1` en el segundo.
 
-### 5. Fallos que esperas
+✋ **Sin mirar:**
+1. Un script con `set -e` hace `cd /no-existe` y después `rm -rf *`. ¿Llega a ejecutar el `rm`?
+2. Con `set -u`, escribes `$DIRETORIO` en lugar de `$DIRECTORIO`. ¿Qué pasa?
+
+<details>
+<summary>Comprueba</summary>
+
+1. No: el `cd` falla y `set -e` para el script ahí. Sin él, borraría lo que hubiera en la carpeta actual. 2. El script se para con `DIRETORIO: variable sin asignar` en lugar de seguir con un valor vacío.
+</details>
+
+**En resumen:** `-e` para al primer fallo, `-u` no deja usar variables que no existen y `pipefail` no deja que un pipe esconda fallos.
+
+### Pieza 3 — Los fallos que esperas
+
+`set -e` **no** para el script cuando el comando que falla está:
+- en la pregunta de un `if` o de un `while`;
+- a la izquierda de `&&` o de `||`;
+- negado con `!`.
+
+Es a propósito: así tratas los fallos que **esperas**, los que no son errores de verdad.
+
+```bash
+if ! grep -q "^ana:" /etc/passwd; then echo "ana no existe"; fi   # fallo esperado y tratado
+N="$(grep -c "zzz" archivo || true)"                             # "no hay coincidencias" no es un error
+```
+
+Dos trampas que verás en el Rómpelo:
+- `(( contador++ ))` con `contador=0` deja código de salida 1 y **mata el script**. Usa `contador=$(( contador + 1 ))`.
+- `local x=$(comando)` esconde el fallo del comando: el código de salida que ve `set -e` es el de `local`, que siempre sale bien. Sepáralo en dos: `local x; x=$(comando)`.
+
+`set -e` es una red de seguridad, no un sustituto de comprobar tú los errores importantes.
+
+**Pruébalo:**
 
 ```bash
 cat > esperado.sh <<'EOF'
@@ -291,7 +215,22 @@ chmod +x esperado.sh && ./esperado.sh
 
 🔮 **Predice:** ¿qué pasaría sin el `|| true`? Quítalo, ejecuta y vuelve a ponerlo. `grep -c` imprime `0` y devuelve 1 cuando no encuentra nada, y con `set -e` eso detiene el script antes del `echo`.
 
-### 6. `trap` y `mktemp`
+**En resumen:** en un `if`, con `||` o con `!`, el fallo es «esperado» y `set -e` no para el script.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+
+### Pieza 4 — `trap`: limpiar al salir, pase lo que pase
+
+Sirve para limpiar al salir, **termine como termine**:
+
+```bash
+TMP="$(mktemp -d)"                 # crea un directorio temporal con nombre único
+trap 'rm -rf "$TMP"' EXIT          # se ejecuta al salir: por éxito, por error o con Ctrl+C
+```
+
+`mktemp -d` crea una carpeta temporal con un nombre único. `trap '…' EXIT` apunta lo que hay que hacer **al salir del script**: tanto si termina bien como si falla o pulsas `Ctrl+C`.
+
+**Pruébalo:**
 
 ```bash
 cat > temporal.sh <<'EOF'
@@ -306,6 +245,11 @@ false                       # simula un fallo a mitad del trabajo
 echo "nunca llego aquí"
 EOF
 chmod +x temporal.sh
+```
+
+🔮 **Predice:** ¿se borra el temporal aunque el script falle? Compruébalo con `ls /tmp | grep tmp.` antes y después.
+
+```bash
 ./temporal.sh ; echo "código: $?"
 ```
 
@@ -315,9 +259,28 @@ chmod +x temporal.sh
 `trabajando en /tmp/tmp.…`, `datos.txt`, `limpieza: borré /tmp/tmp.…` y `código: 1`: el `false` paró el script, pero la limpieza se hizo.
 </details>
 
-🔮 **Predice:** ¿se borra el temporal aunque el script falle? Compruébalo con `ls /tmp | grep tmp.` antes y después.
+✋ **Sin mirar:** ¿cuándo se ejecuta lo que pones en `trap '…' EXIT`?
 
-### 7. Logs en pantalla y en el journal
+<details>
+<summary>Comprueba</summary>
+
+Al salir del script, termine como termine: bien, con error o con `Ctrl+C`.
+</details>
+
+**En resumen:** `trap '…' EXIT` es la limpieza que se hace siempre, termine como termine el script.
+
+### Pieza 5 — Dejar rastro: logs
+
+```bash
+log() { echo "$(date '+%F %T') [$1] ${*:2}" >&2; }   # log NIVEL mensaje…
+log INFO "empiezo"
+log ERROR "no encuentro el archivo"
+logger -t mi-script "copia terminada"               # al journal: journalctl -t mi-script
+```
+
+`log INFO "mensaje"` escribe una línea con fecha, hora y nivel por stderr. `${*:2}` son todos los argumentos desde el segundo, unidos en un texto. `logger` deja el mensaje en el journal (clase 13).
+
+**Pruébalo:**
 
 ```bash
 cat > con-log.sh <<'EOF'
@@ -336,7 +299,13 @@ journalctl -t clase19 -n 3 --no-pager
 
 Puedes leer el journal sin `sudo` porque tu usuario está en el grupo `adm`.
 
-### 8. `shellcheck` encuentra lo que tú no ves
+**En resumen:** `log` deja una línea con fecha y nivel; `logger` la deja en el journal.
+
+### Pieza 6 — `shellcheck`: el revisor de Bash
+
+`shellcheck script.sh` lee tu script **sin ejecutarlo** y te avisa de los errores típicos: comillas que faltan, `cd` sin comprobar, `$(ls)` en un bucle… Cada aviso tiene un código (`SC2086`…) con su explicación en la wiki de shellcheck.
+
+**Pruébalo con un script lleno de errores:**
 
 ```bash
 cat > malo.sh <<'EOF'
@@ -351,7 +320,9 @@ EOF
 shellcheck malo.sh
 ```
 
-Lee cada aviso. Fíjate en **SC2115**: `rm -rf $DIR/*` se convierte en `rm -rf /*` si `$DIR` está vacío. Es la errata de Steam de la clase 16, detectada antes de ejecutar nada. Arréglalo hasta que `shellcheck` no diga nada:
+👀 **Qué deberías ver:** varios avisos, cada uno con su línea y su código: comillas que faltan (`SC2086`), el `$(ls)` en el `for` (`SC2045`), el `cd` sin comprobar (`SC2164`) y **SC2115**.
+
+Fíjate en **SC2115**: `rm -rf $DIR/*` se convierte en `rm -rf /*` si `$DIR` está vacío. Es la errata de Steam de la clase 16, detectada antes de ejecutar nada. Arréglalo hasta que `shellcheck` no diga nada:
 
 ```bash
 cat > bueno.sh <<'EOF'
@@ -367,9 +338,60 @@ EOF
 shellcheck bueno.sh && echo "shellcheck: sin avisos"
 ```
 
-(No lo ejecutes contra una carpeta que te importe: vacía su contenido.)
+👀 **Qué deberías ver:** `shellcheck: sin avisos`. (No lo ejecutes contra una carpeta que te importe: vacía su contenido.)
 
 ¿Y el `cd "$DIR"` de `malo.sh`? Sobraba, y además era un error que shellcheck no ve: después de `cd prueba`, la ruta relativa `prueba/*` apunta a `prueba/prueba/*`. Con una ruta relativa, el `rm` no habría borrado nada… o habría borrado otra cosa. Un analizador encuentra erratas, no errores de lógica.
+
+**En resumen:** pasa `shellcheck` a cada script antes de darlo por bueno.
+
+### Pieza 7 — Todo junto: la plantilla
+
+Así empezarán tus scripts a partir de ahora, Vigía incluido:
+
+```bash
+#!/bin/bash
+# nombre.sh — qué hace, en una línea
+# Uso: nombre.sh <argumento>
+set -euo pipefail
+
+log() { echo "$(date '+%F %T') [$1] ${*:2}" >&2; }
+die() { log ERROR "$*"; exit 1; }
+
+main() {
+  [[ $# -eq 1 ]] || { echo "Uso: $0 <argumento>" >&2; exit 2; }
+  log INFO "trabajando con $1"
+}
+
+main "$@"
+```
+
+`main "$@"` va en la **última** línea: bash lee primero todas las funciones, y la lógica del script (`main`) queda arriba, fácil de leer.
+
+**Pruébalo:** guarda la plantilla como `plantilla.sh` (copia el bloque de arriba dentro de un `cat > plantilla.sh <<'EOF'` … `EOF`, como en las piezas anteriores) y después:
+
+```bash
+chmod +x plantilla.sh
+shellcheck plantilla.sh && echo "shellcheck: sin avisos"
+./plantilla.sh ; echo "código: $?"
+./plantilla.sh hola ; echo "código: $?"
+```
+
+👀 **Qué deberías ver:** `shellcheck: sin avisos`; sin argumento, `Uso: ./plantilla.sh <argumento>` y `código: 2`; con `hola`, una línea `… [INFO] trabajando con hola` y `código: 0`.
+
+**En resumen:** la plantilla junta todo: modo estricto, `log`, `die` y `main`.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué es |
+|----------|--------|
+| `nombre() { …; }` · `nombre arg1 arg2` | definir una función · llamarla |
+| `local x="$1"` · `return 1` | variable solo de la función · terminar la función con código 1 |
+| `set -euo pipefail` | el modo estricto: parar al fallar, variables sin definir, pipes |
+| `if ! cmd; then …` · `cmd \|\| true` | tratar un fallo esperado · ignorarlo a propósito |
+| `TMP="$(mktemp -d)"` · `trap '…' EXIT` | carpeta temporal · qué hacer al salir |
+| `logger -t nombre "mensaje"` | escribir en el journal (`journalctl -t nombre`) |
+| `shellcheck script.sh` | revisar el script sin ejecutarlo |
+| `bash -x script.sh` | ver cada línea según se ejecuta (clase 16) |
 
 ## Rómpelo
 
@@ -425,7 +447,7 @@ En `labs/clase-19/`. Cada punto sube en tres escalones: un **ejemplo resuelto** 
 
 **1.** Pasa `shellcheck` a tus scripts de las clases 16 a 18. Arregla al menos tres avisos y apunta en tus notas qué significaba cada código.
 
-> 🧩 **Ejemplo resuelto:** leer los avisos de `malo.sh`, de la práctica 8.
+> 🧩 **Ejemplo resuelto:** leer los avisos de `malo.sh`, de la pieza 6.
 > ```bash
 > shellcheck malo.sh
 > ```
@@ -436,7 +458,7 @@ En `labs/clase-19/`. Cada punto sube en tres escalones: un **ejemplo resuelto** 
 <details>
 <summary>Pista</summary>
 
-Repite con las carpetas 16, 17 y 18. Empieza por los avisos que ya conoces de la práctica, como las comillas que faltan.
+Repite con las carpetas 16, 17 y 18. Empieza por los avisos que ya conoces de la pieza 6, como las comillas que faltan.
 </details>
 
 **2.** Reescribe `esperar-url.sh` (clase 18) con la plantilla: `set -euo pipefail`, funciones `log`, `die` y `main`, y que `shellcheck` no dé ningún aviso.

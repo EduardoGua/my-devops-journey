@@ -81,6 +81,7 @@ main() {
 
   echo "Creado: ${nota#"$REPO"/}"
   echo "Ábrelo con:  code $nota"
+  echo "Cuando esté calificado:  bash $REPO/recursos/cerrar-clase.sh ${nombre#clase-}"
 }
 
 main "$@"

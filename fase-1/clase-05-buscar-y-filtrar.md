@@ -380,9 +380,9 @@ En vez de sumar 1 en cada línea, suma el trozo que guarda los bytes.
 Las mismas dos letras del ejemplo: `r` y `l`.
 </details>
 
-## Bandit: empieza la práctica paralela
+## Bandit, al final de la fase
 
-Desde hoy, los días que te sobren 20–30 minutos: [Bandit](bandit.md).
+Cuando termines la fase 1 harás [Bandit](bandit.md) como prueba: un juego por SSH en el que vas a usar `find`, `grep` y todo lo de estas 21 clases. Hasta entonces, no hace falta.
 
 ## Cierre
 

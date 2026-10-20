@@ -28,11 +28,21 @@
 
 La configuración de las aplicaciones modernas llega por **variables de entorno**: `DATABASE_URL`, `AWS_REGION`, `PORT`. Así lo hacen Docker, Kubernetes, GitHub Actions y AWS. La AWS CLI lee tus credenciales de `AWS_ACCESS_KEY_ID`, por ejemplo. Y "command not found" en un script que funciona en tu terminal es casi siempre un problema de `PATH`.
 
-## Teoría
+## Cómo va esta clase
 
-Cinco piezas. La 2 (las variables de entorno) es la idea que más usarás en todo el curso: en Docker, en Kubernetes y en GitHub Actions.
+Seis piezas. En cada una lees **un** concepto y lo pruebas enseguida en la terminal; no pases a la siguiente sin haber ejecutado la anterior. La pieza 3 (las variables de entorno) es la idea que más usarás en todo el curso: en Docker, en Kubernetes y en GitHub Actions.
 
-### 1. Una variable es una etiqueta con un valor
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 25 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
+
+Primero, la carpeta de hoy:
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-07 && cd ~/my-devops-journey/labs/clase-07
+```
+
+## Las piezas
+
+### Pieza 1 — Una variable es una etiqueta con un valor
 
 ```bash
 NOMBRE=valor        # crear: sin espacios alrededor del =
@@ -40,9 +50,50 @@ echo $NOMBRE        # usar: con $ delante
 echo "${NOMBRE}s"   # las llaves marcan dónde acaba el nombre: imprime «valors»
 ```
 
+**Pruébalo:**
+
+```bash
+REGION=us-east-1
+echo $REGION
+echo "${REGION}-a"
+REGION = us-east-1
+```
+
+👀 **Qué deberías ver:** `us-east-1` y `us-east-1-a`. La última línea falla (`REGION: no se encontró la orden`): con espacios alrededor del `=`, el shell cree que `REGION` es un comando y que `=` y `us-east-1` son sus argumentos.
+
 **En resumen:** `NOMBRE=valor` crea la variable (sin espacios) y `$NOMBRE` la usa.
 
-### 2. Variables del shell y variables de entorno
+### Pieza 2 — Comillas: tres formas de escribir un texto
+
+| Escribes | El shell… | `USER` vale `educo` → resultado |
+|----------|-----------|---------------------------------|
+| `"Hola $USER"` | sustituye las variables | `Hola educo` |
+| `'Hola $USER'` | no toca nada: lo deja tal cual | `Hola $USER` |
+| `Hola $USER`, sin comillas | sustituye **y además parte** el resultado por los espacios | funciona aquí, pero rompe rutas con espacios |
+
+Regla práctica: **pon siempre comillas dobles alrededor de las variables**: `"$ARCHIVO"`. Lo verás romperse en el Rómpelo 3.
+
+**Pruébalo:**
+
+```bash
+echo "La región es $REGION"
+echo 'La región es $REGION'
+echo "Hoy: $(date +%F), usuario: $USER"
+```
+
+👀 **Qué deberías ver:** `La región es us-east-1`; después `La región es $REGION` tal cual, por las comillas simples; y la fecha de hoy con tu usuario: dentro de las dobles también funciona `$(…)`.
+
+✋ **Sin mirar:** ¿qué imprime `echo 'Soy $USER'`?
+
+<details>
+<summary>Comprueba</summary>
+
+`Soy $USER`, tal cual: las comillas simples no sustituyen nada.
+</details>
+
+**En resumen:** las dobles sustituyen las variables; las simples lo dejan tal cual. Y siempre comillas alrededor de una variable.
+
+### Pieza 3 — Variables del shell y variables de entorno
 
 Cada programa nace con un conjunto de variables, su *entorno*, que es una **copia** del entorno de quien lo lanzó (su padre).
 
@@ -57,97 +108,8 @@ Cada programa nace con un conjunto de variables, su *entorno*, que es una **copi
 
 - Una variable recién creada es una **variable del shell**: solo la ve tu shell.
 - `export` la convierte en **variable de entorno**: desde ese momento, cada programa que lances recibe una copia.
-- El hijo recibe una **copia**: puede cambiar la suya, pero nunca la de su padre. Cuando termina, sus cambios desaparecen con él.
 
-**En resumen:** una variable sin `export` solo la ve tu shell; con `export` la heredan tus procesos hijos, como copia.
-
-### 3. El `PATH`: las carpetas donde el shell busca los comandos
-
-`PATH` es una variable de entorno con una lista de carpetas separadas por `:`. Cuando escribes `python3`, el shell mira esas carpetas **en orden** y ejecuta el **primer** `python3` que encuentra.
-
-```
-PATH=/usr/local/bin:/usr/bin:/bin:...
-       1.ª carpeta   2.ª      3.ª
-```
-
-Si no está en ninguna de esas carpetas, ves `no se encontró la orden`, aunque el programa exista en otro sitio. Por eso tus propios scripts se ejecutan con `./script.sh`: la carpeta actual (`.`) **no** está en el `PATH`, a propósito, por seguridad.
-
-> 🔁 **Vuelve a la clase 01.** En «Qué pasa cuando pulsas Enter», el paso 3 era «el shell busca el programa en las carpetas del PATH». Ahora conoces esa lista: el shell la recorre **en orden** y se queda con el **primer** programa que encuentra. Si dos carpetas tienen un programa con el mismo nombre, gana la que va antes. Lo comprobarás en el Rómpelo 2.
-
-**En resumen:** el shell busca cada comando en las carpetas del PATH, en orden, y usa el primero que encuentra.
-
-### 4. Comillas: tres formas de escribir un texto
-
-| Escribes | El shell… | `USER` vale `educo` → resultado |
-|----------|-----------|---------------------------------|
-| `"Hola $USER"` | sustituye las variables | `Hola educo` |
-| `'Hola $USER'` | no toca nada: lo deja tal cual | `Hola $USER` |
-| `Hola $USER`, sin comillas | sustituye **y además parte** el resultado por los espacios | funciona aquí, pero rompe rutas con espacios |
-
-Regla práctica: **pon siempre comillas dobles alrededor de las variables**: `"$ARCHIVO"`. Lo verás romperse en el Rómpelo 3.
-
-**En resumen:** las dobles sustituyen las variables; las simples lo dejan tal cual. Y siempre comillas alrededor de una variable.
-
-### 5. Los archivos que preparan tu shell
-
-| Archivo | Se lee cuando… |
-|---------|----------------|
-| `~/.bashrc` | abres una terminal nueva (un shell interactivo) |
-| `~/.profile` | inicias sesión en el equipo (también al entrar por SSH) |
-
-Si cambias `~/.bashrc`, las terminales que ya estaban abiertas no se enteran hasta que ejecutas `source ~/.bashrc`, que lo vuelve a leer en el shell actual.
-
-**En resumen:** `~/.bashrc` se lee en cada terminal nueva; `~/.profile`, al iniciar sesión.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. Escribes `COLOR=azul` y lanzas un script que hace `echo $COLOR`. ¿Qué imprime? ¿Y si antes hubieras hecho `export COLOR`?
-2. Instalas un programa en `/opt/app/bin`. Escribes su nombre y sale `no se encontró la orden`. ¿Por qué?
-3. ¿Qué imprime `echo 'Soy $USER'`?
-
-<details>
-<summary>Comprueba</summary>
-
-1. Una línea vacía: `COLOR` era una variable del shell, no de entorno. Con `export`, el script recibe la copia e imprime `azul`. 2. `/opt/app/bin` no está en el `PATH`. 3. `Soy $USER`, tal cual: las comillas simples no sustituyen nada.
-</details>
-
-### Tu chuleta de la clase
-
-| Comando | Qué hace |
-|---------|----------|
-| `VAR=valor` · `echo "$VAR"` | crear · usar |
-| `export VAR=valor` | crearla como variable de entorno |
-| `VAR=valor comando` | darle la variable solo a ese comando |
-| `unset VAR` | borrarla |
-| `env` · `printenv VAR` | ver todas las variables de entorno · ver una |
-| `echo "$PATH" \| tr ':' '\n'` | las carpetas del PATH, una por línea |
-| `type -a cmd` · `which cmd` | en qué carpeta del PATH está un comando |
-| `source archivo` | ejecutar un archivo en tu shell, no en un hijo |
-| `alias ll='ls -lah'` | crear un atajo |
-
-Variables que ya existen: `HOME` (tu carpeta personal), `USER` (tu usuario), `PWD` (dónde estás), `SHELL` (tu shell), `PATH` (dónde se buscan los comandos) y `?` (el código de salida del último comando, `$?`).
-
-## Práctica guiada
-
-```bash
-mkdir -p ~/my-devops-journey/labs/clase-07 && cd ~/my-devops-journey/labs/clase-07
-```
-
-### 1. Variables y comillas
-
-```bash
-REGION=us-east-1
-echo $REGION
-echo "La región es $REGION"
-echo 'La región es $REGION'
-echo "Hoy: $(date +%F), usuario: $USER"
-```
-
-👀 **Qué deberías ver:** `us-east-1`; `La región es us-east-1`; `La región es $REGION` tal cual, por las comillas simples; y la fecha con tu usuario.
-
-### 2. Variable del shell frente a variable de entorno
-
-`bash -c '...'` lanza un shell **hijo** que ejecuta lo que hay entre comillas y termina. Es la forma más rápida de ver qué variables recibe un hijo.
+**Pruébalo:** `bash -c '...'` lanza un shell **hijo** que ejecuta lo que hay entre comillas y termina. Es la forma más rápida de ver qué variables recibe un hijo.
 
 🔮 **Predice:** ¿qué imprimirá el `bash -c`?
 
@@ -169,7 +131,10 @@ env | grep COLOR          # no aparece: no es de entorno
 printenv HOME
 ```
 
+👀 **Qué deberías ver:** `ENTORNO=produccion`; nada para `COLOR`; y tu carpeta personal, `/home/educo`.
+
 Una variable solo para un comando, sin dejarla en tu shell:
+
 ```bash
 ENTORNO=staging bash -c 'echo $ENTORNO'
 echo $ENTORNO             # sigue siendo produccion
@@ -177,9 +142,23 @@ echo $ENTORNO             # sigue siendo produccion
 
 Así se pasan configuraciones en Docker y en CI: `PORT=8080 python3 app.py`.
 
-### 3. El hijo no cambia al padre
+✋ **Sin mirar:** escribes `COLOR=azul` y lanzas un script que hace `echo $COLOR`. ¿Qué imprime? ¿Y si antes hubieras hecho `export COLOR`?
 
-Primero, un truco para crear archivos de varias líneas sin abrir un editor: el *heredoc*. `cat > archivo <<'EOF'` escribe en `archivo` todo lo que pongas debajo, hasta la línea que dice `EOF`. Crea un script pequeño:
+<details>
+<summary>Comprueba</summary>
+
+Una línea vacía: `COLOR` era una variable del shell, no de entorno. Con `export`, el script recibe la copia e imprime `azul`.
+</details>
+
+**En resumen:** una variable sin `export` solo la ve tu shell; con `export` la heredan tus procesos hijos.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+
+### Pieza 4 — El hijo recibe una copia: no cambia al padre
+
+El hijo recibe una **copia** del entorno: puede cambiar la suya, pero nunca la de su padre. Cuando termina, sus cambios desaparecen con él. La excepción es `source archivo`: ejecuta el archivo **en tu propio shell**, no en un hijo.
+
+**Pruébalo.** Primero, un truco para crear archivos de varias líneas sin abrir un editor: el *heredoc*. `cat > archivo <<'EOF'` escribe en `archivo` todo lo que pongas debajo, hasta la línea que dice `EOF`. Crea un script pequeño:
 
 ```bash
 cat > cambia.sh <<'EOF'
@@ -205,7 +184,22 @@ echo "Tras source: $ENTORNO"
 `./cambia.sh` corre en un hijo: cambia **su copia** de la variable, y el cambio desaparece con él. Tu shell sigue con `produccion`. `source` ejecuta el archivo **en tu propio shell**, así que ahí sí cambia: `modificado-por-el-script`.
 </details>
 
-### 4. El PATH
+**En resumen:** un script cambia su copia del entorno, no el tuyo; `source` lo ejecuta en tu shell.
+
+### Pieza 5 — El `PATH`: las carpetas donde el shell busca los comandos
+
+`PATH` es una variable de entorno con una lista de carpetas separadas por `:`. Cuando escribes `python3`, el shell mira esas carpetas **en orden** y ejecuta el **primer** `python3` que encuentra.
+
+```
+PATH=/usr/local/bin:/usr/bin:/bin:...
+       1.ª carpeta   2.ª      3.ª
+```
+
+Si no está en ninguna de esas carpetas, ves `no se encontró la orden`, aunque el programa exista en otro sitio. Por eso tus propios scripts se ejecutan con `./script.sh`: la carpeta actual (`.`) **no** está en el `PATH`, a propósito, por seguridad.
+
+> 🔁 **Vuelve a la clase 01.** En «Qué pasa cuando pulsas Enter», el paso 3 era «el shell busca el programa en las carpetas del PATH». Ahora conoces esa lista: el shell la recorre **en orden** y se queda con el **primer** programa que encuentra. Si dos carpetas tienen un programa con el mismo nombre, gana la que va antes. Lo comprobarás en el Rómpelo 2.
+
+**Pruébalo:**
 
 ```bash
 echo $PATH
@@ -216,7 +210,8 @@ type -a python3
 
 👀 **Qué deberías ver:** tu PATH entero (largo y con repeticiones: lo verás en el Reto 5); después, una carpeta por línea; y dónde están `python3` y `ls`.
 
-Crea tu propio comando:
+**Ahora crea tu propio comando:**
+
 ```bash
 mkdir -p ~/bin
 cat > ~/bin/saludo <<'EOF'
@@ -230,6 +225,7 @@ saludo
 🔮 **Predice:** ¿funcionó? Si no, ¿por qué?
 
 En Ubuntu, `~/.profile` añade `~/bin` al PATH **al iniciar sesión**, pero solo si la carpeta ya existía en ese momento. Así que aún no está:
+
 ```bash
 export PATH="$HOME/bin:$PATH"
 saludo
@@ -238,7 +234,27 @@ which saludo
 
 👀 **Qué deberías ver:** `Hola, educo. Son las …` con la hora, y la ruta `/home/educo/bin/saludo`.
 
-Para hacerlo permanente **no tienes que tocar nada**: ahora que `~/bin` existe, `~/.profile` lo añadirá la próxima vez que inicies sesión. Compruébalo después de cerrar sesión y volver a entrar:
+✋ **Sin mirar:** instalas un programa en `/opt/app/bin`. Escribes su nombre y sale `no se encontró la orden`. ¿Por qué?
+
+<details>
+<summary>Comprueba</summary>
+
+`/opt/app/bin` no está en el `PATH`: el shell solo busca en esas carpetas.
+</details>
+
+**En resumen:** el shell busca cada comando en las carpetas del PATH, en orden, y usa el primero que encuentra.
+
+### Pieza 6 — Los archivos que preparan tu shell, y los alias
+
+| Archivo | Se lee cuando… |
+|---------|----------------|
+| `~/.bashrc` | abres una terminal nueva (un shell interactivo) |
+| `~/.profile` | inicias sesión en el equipo (también al entrar por SSH) |
+
+Si cambias `~/.bashrc`, las terminales que ya estaban abiertas no se enteran hasta que ejecutas `source ~/.bashrc`, que lo vuelve a leer en el shell actual. Un **alias** es un atajo para un comando largo, y su sitio para que dure es `~/.bashrc`.
+
+**Pruébalo.** Lo de `~/bin` de la pieza 5 ya es permanente **sin tocar nada**: ahora que la carpeta existe, `~/.profile` la añadirá la próxima vez que inicies sesión. Mira el bloque que lo hace (y, cuando vuelvas a iniciar sesión, comprueba el PATH):
+
 ```bash
 grep -A3 'private bin' ~/.profile     # el bloque que lo añade
 echo $PATH | tr ':' '\n' | head -3
@@ -246,7 +262,7 @@ echo $PATH | tr ':' '\n' | head -3
 
 Evita la receta que verás en muchos tutoriales, `echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc`. `~/.bashrc` se ejecuta en **cada** shell nuevo, también en los que abres dentro de otro, y cada vez añade otra copia al PATH. En el Reto 5 verás un caso real.
 
-### 5. Alias
+Ahora, dos alias:
 
 ```bash
 alias ll='ls -lah'
@@ -259,6 +275,24 @@ alias                         # lista todos
 👀 **Qué deberías ver:** la lista de `ls -lah`; después, `/home/educo/my-devops-journey`; y todos tus alias, con los dos nuevos entre ellos.
 
 Para que duren, añádelos a `~/.bashrc` con `nano ~/.bashrc` y después `source ~/.bashrc`.
+
+**En resumen:** `~/.bashrc` se lee en cada terminal nueva; `~/.profile`, al iniciar sesión. Los alias duran si los pones en `~/.bashrc`.
+
+## Tu chuleta de la clase
+
+| Comando | Qué hace |
+|---------|----------|
+| `VAR=valor` · `echo "$VAR"` | crear · usar |
+| `export VAR=valor` | crearla como variable de entorno |
+| `VAR=valor comando` | darle la variable solo a ese comando |
+| `unset VAR` | borrarla |
+| `env` · `printenv VAR` | ver todas las variables de entorno · ver una |
+| `echo "$PATH" \| tr ':' '\n'` | las carpetas del PATH, una por línea |
+| `type -a cmd` · `which cmd` | en qué carpeta del PATH está un comando |
+| `source archivo` | ejecutar un archivo en tu shell, no en un hijo |
+| `alias ll='ls -lah'` | crear un atajo |
+
+Variables que ya existen: `HOME` (tu carpeta personal), `USER` (tu usuario), `PWD` (dónde estás), `SHELL` (tu shell), `PATH` (dónde se buscan los comandos) y `?` (el código de salida del último comando, `$?`).
 
 ## Rómpelo
 
@@ -369,7 +403,7 @@ ____ APP_ENV; ./entorno.sh
 <details>
 <summary>Pista</summary>
 
-Es el alias de la práctica 5. Añádelo con `nano` al final de `~/.bashrc` y pruébalo en una terminal **nueva**.
+Es el alias de la pieza 6. Añádelo con `nano` al final de `~/.bashrc` y pruébalo en una terminal **nueva**.
 </details>
 
 **4.** ¿En qué carpeta del PATH está `git`? ¿Y `docker`?

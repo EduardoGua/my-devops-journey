@@ -30,16 +30,26 @@ En DevOps, lo que haces a mano dos veces se escribe en un script: preparar un se
 
 Las clases 16 a 20 forman el bloque de scripting. Cada una añade una pieza: hoy, la estructura de un script; después, decisiones, bucles, robustez y tareas programadas.
 
-## Teoría
+## Cómo va esta clase
 
-Seis piezas. La 5 (la expansión de parámetros) es la más nueva: tómatela con calma.
+Seis piezas. En cada una lees **una** idea y la pruebas enseguida escribiendo un script pequeño; no pases a la siguiente sin haber ejecutado la anterior. La pieza 4 (la expansión de parámetros) es la más nueva: tómatela con calma.
 
-### 1. Cómo es un script
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 35 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
+
+Primero, la carpeta de hoy:
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-16 && cd ~/my-devops-journey/labs/clase-16
+```
+
+## Las piezas
+
+### Pieza 1 — Cómo es un script, y cómo se lanza
 
 ```bash
 #!/bin/bash                       # shebang: qué programa interpreta el archivo
 # Uso: ./hola.sh [nombre]         # comentario: qué hace y cómo se usa
-NOMBRE="${1:-mundo}"              # variable con valor por defecto
+NOMBRE="${1:-mundo}"              # variable con valor por defecto (pieza 3)
 echo "Hola, $NOMBRE"              # la lógica
 exit 0                            # código de salida (0 = éxito)
 ```
@@ -48,9 +58,7 @@ El **shebang** (`#!`) tiene que ser la **primera línea**, desde el primer cará
 
 > 🔁 **Vuelve a la clase 01.** En el paso 4 de «Qué pasa cuando pulsas Enter», el kernel ejecuta un programa. Un programa compilado, como `ls`, sabe ejecutarlo directamente. Un script, en cambio, es solo texto: el `#!` es la línea que le dice al kernel a qué programa pasárselo. Y si el archivo no tiene `x` (clase 06), el kernel se niega justo en ese paso: `Permiso denegado`.
 
-**En resumen:** un script es un archivo de texto con `#!/bin/bash` en la primera línea y permiso `x`.
-
-### 2. Tres formas de lanzarlo
+Hay tres formas de lanzarlo:
 
 | Forma | ¿Necesita `x`? | ¿Usa el shebang? | ¿Dónde corre? |
 |-------|----------------|------------------|---------------|
@@ -58,108 +66,9 @@ El **shebang** (`#!`) tiene que ser la **primera línea**, desde el primer cará
 | `bash hola.sh` | no | no: eliges tú el intérprete | en un proceso hijo |
 | `source hola.sh` | no | no | **en tu shell actual** (clase 07) |
 
-Lo normal es `./hola.sh`. `source` solo se usa para cargar variables o funciones en tu propio shell, como viste en la clase 07.
+Lo normal es `./hola.sh`. `source` solo se usa para cargar variables o funciones en tu propio shell.
 
-**En resumen:** `./script` y `bash script` corren en un hijo; `source script`, en tu propio shell.
-
-### 3. Los argumentos
-
-Lo que escribes detrás del nombre del script le llega numerado:
-
-```
-./copia.sh  informe.txt  /backups
-   $0           $1          $2          $# = 2 (cuántos llegaron)
-```
-
-| Variable | Contiene |
-|----------|----------|
-| `$1`, `$2`… | cada argumento, por su posición |
-| `$#` | cuántos argumentos llegaron |
-| `"$@"` | todos, **cada uno por separado**, aunque tengan espacios. Siempre entre comillas |
-| `$0` | el nombre con el que se llamó al script |
-
-**En resumen:** `$1`, `$2`… son los argumentos; `$#`, cuántos llegaron; `"$@"`, todos.
-
-### 4. Valores por defecto y argumentos obligatorios
-
-Dos formas de escribir una variable que usarás en casi todos tus scripts:
-
-```bash
-NOMBRE="${1:-mundo}"              # si no me das $1, uso "mundo"
-RUTA="${1:?Uso: $0 <ruta>}"       # si no me das $1, me quejo y termino con error
-```
-
-`:-` significa «**o, si no hay**»; `:?`, «**y si no hay, error**». La segunda es la forma más corta de declarar un argumento obligatorio: el script se para antes de hacer nada.
-
-**En resumen:** `${1:-defecto}` pone un valor si falta; `${1:?mensaje}` para el script si falta.
-
-### 5. Expansión de parámetros: recortar texto sin otros programas
-
-Bash puede recortar el texto de una variable por delante o por detrás. Con `URL="https://ejemplo.com/salud"`:
-
-| Escribes | Corta… | Resultado |
-|----------|--------|-----------|
-| `${URL#*://}` | por **delante**, hasta el primer `://` | `ejemplo.com/salud` |
-| `${URL%/*}` | por **detrás**, desde la última `/` | `https://ejemplo.com` |
-
-Y con `ARCHIVO="backup-2026-10-12.tar.gz"`, la diferencia entre uno y dos símbolos:
-
-| Escribes | Corta… | Resultado |
-|----------|--------|-----------|
-| `${ARCHIVO%.tar.gz}` | ese final exacto | `backup-2026-10-12` |
-| `${ARCHIVO#*.}` | por delante, **lo mínimo** (hasta el primer punto) | `tar.gz` |
-| `${ARCHIVO##*.}` | por delante, **lo máximo** (hasta el último punto) | `gz` |
-
-Cómo recordarlo: en el teclado, `#` está a la **izquierda** de `$` (corta por delante) y `%` a la **derecha** (corta por detrás). **Un** símbolo corta lo mínimo; **dos**, lo máximo. Y `${#ARCHIVO}`, con el `#` delante del nombre, no recorta: cuenta las letras (`24`).
-
-**En resumen:** `#` corta por delante y `%` por detrás; uno corta lo mínimo y dos, lo máximo.
-
-### 6. stdout, stderr y el código de salida
-
-Tu script tiene las mismas dos salidas y el mismo código de salida que cualquier programa (clase 04):
-
-```bash
-echo "resultado"                 # stdout: los datos que otro programa puede usar
-echo "Error: falta X" >&2        # stderr: mensajes para humanos y errores
-exit 2                           # código de salida: 0 = bien, 1 = fallo, 2 = uso incorrecto
-```
-
-`>&2` significa «manda esto por stderr». Así, si alguien hace `./script.sh > datos.txt`, los errores siguen saliendo en pantalla y no ensucian los datos.
-
-**En resumen:** datos por stdout, mensajes por stderr (`>&2`) y un código de salida al terminar (`exit N`).
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. Ejecutas `./saluda.sh Ana Luis`. ¿Qué valen `$1`, `$2` y `$#`?
-2. ¿Qué hace `NOMBRE="${1:-mundo}"` si no le das ningún argumento?
-3. Con `F=foto.png`, ¿qué da `${F%.png}`?
-
-<details>
-<summary>Comprueba</summary>
-
-1. `$1` = `Ana`, `$2` = `Luis`, `$#` = `2`. 2. `NOMBRE` vale `mundo`. 3. `foto`: `%` corta ese final exacto.
-</details>
-
-### Tu chuleta de la clase
-
-| Escribes | Qué es |
-|----------|--------|
-| `#!/bin/bash` | el shebang: primera línea, desde el primer carácter |
-| `chmod +x s.sh` · `./s.sh` | darle permiso de ejecución · lanzarlo |
-| `$1` `$2`… · `$#` · `"$@"` · `$0` | argumentos · cuántos · todos por separado · el nombre del script |
-| `${VAR:-defecto}` · `${1:?mensaje}` | valor por defecto · obligatorio (si falta, error y salida) |
-| `${V#…}` `${V##…}` · `${V%…}` `${V%%…}` | cortar por delante (mínimo · máximo) · por detrás (mínimo · máximo) |
-| `${#V}` | la longitud |
-| `echo "…" >&2` · `exit N` | mensaje por stderr · terminar con el código de salida N |
-| `bash -x s.sh` | ejecutarlo enseñando cada línea ya expandida |
-
-## Práctica guiada
-
-```bash
-mkdir -p ~/my-devops-journey/labs/clase-16 && cd ~/my-devops-journey/labs/clase-16
-```
-
-### 1. El primer script
+**Pruébalo:**
 
 ```bash
 cat > hola.sh <<'EOF'
@@ -183,12 +92,28 @@ bash hola.sh Ana
 <details>
 <summary>Qué deberías ver</summary>
 
-`Permiso denegado` en el primer intento; después del `chmod`, `Hola, mundo…`, `Hola, Eduardo…` y `Hola, Ana…`, con la fecha y el nombre de tu equipo.
+`Permiso denegado` en el primer intento: el archivo aún no tenía `x`. Después del `chmod`, `Hola, mundo…`, `Hola, Eduardo…` y `Hola, Ana…`, con la fecha y el nombre de tu equipo. El último funcionaría incluso sin `x`: `bash` solo lee el archivo.
 </details>
 
-El primer intento da `Permiso denegado`: el archivo aún no tenía `x` (clase 06).
+**En resumen:** un script es un archivo de texto con `#!/bin/bash` en la primera línea y permiso `x`. `./script` y `bash script` corren en un hijo; `source script`, en tu propio shell.
 
-### 2. Argumentos y `"$@"`
+### Pieza 2 — Los argumentos
+
+Lo que escribes detrás del nombre del script le llega numerado:
+
+```
+./copia.sh  informe.txt  /backups
+   $0           $1          $2          $# = 2 (cuántos llegaron)
+```
+
+| Variable | Contiene |
+|----------|----------|
+| `$1`, `$2`… | cada argumento, por su posición |
+| `$#` | cuántos argumentos llegaron |
+| `"$@"` | todos, **cada uno por separado**, aunque tengan espacios. Siempre entre comillas |
+| `$0` | el nombre con el que se llamó al script |
+
+**Pruébalo:**
 
 ```bash
 cat > args.sh <<'EOF'
@@ -219,9 +144,86 @@ chmod +x args.sh
 
 Las comillas al llamar al script deciden qué es **un** argumento: `"mi informe.txt"` llega como uno solo. Sin argumentos, `printf` usa su formato una vez con el hueco vacío, y por eso ves `→ []`.
 
-### 3. Recortar texto con la expansión de parámetros
+✋ **Sin mirar:** ejecutas `./saluda.sh Ana Luis`. ¿Qué valen `$1`, `$2` y `$#`?
 
-🔮 **Predice** cada resultado antes de ejecutarlo. Usa la tabla de la teoría.
+<details>
+<summary>Comprueba</summary>
+
+`$1` = `Ana`, `$2` = `Luis`, `$#` = `2`.
+</details>
+
+**En resumen:** `$1`, `$2`… son los argumentos; `$#`, cuántos llegaron; `"$@"`, todos.
+
+### Pieza 3 — Valores por defecto y argumentos obligatorios
+
+Dos formas de escribir una variable que usarás en casi todos tus scripts:
+
+```bash
+NOMBRE="${1:-mundo}"              # si no me das $1, uso "mundo"
+RUTA="${1:?Uso: $0 <ruta>}"       # si no me das $1, me quejo y termino con error
+```
+
+`:-` significa «**o, si no hay**»; `:?`, «**y si no hay, error**». La segunda es la forma más corta de declarar un argumento obligatorio: el script se para antes de hacer nada.
+
+**Pruébalo:**
+
+```bash
+cat > tamano.sh <<'EOF'
+#!/bin/bash
+# Uso: ./tamano.sh <ruta>
+# Imprime cuánto ocupa una ruta.
+RUTA="${1:?Uso: $0 <ruta>}"
+TAMANO="$(du -sh "$RUTA" 2>/dev/null | cut -f1)"
+echo "$RUTA ocupa ${TAMANO:-?}"
+EOF
+chmod +x tamano.sh
+```
+
+🔮 **Predice** el código de salida de cada llamada:
+
+```bash
+./tamano.sh ~/my-devops-journey ; echo "código: $?"
+./tamano.sh ; echo "código: $?"
+./tamano.sh /no-existe ; echo "código: $?"
+```
+
+👀 **Qué deberías ver:**
+- Con una ruta buena, su tamaño y `código: 0`.
+- Sin argumento, `${1:?...}` imprime `./tamano.sh: línea 4: 1: Uso: ./tamano.sh <ruta>` y el script **sale con 1** antes de hacer nada. Así se declara un argumento obligatorio.
+- Con `/no-existe`, el script dice `/no-existe ocupa ?` y **devuelve 0**. Miente: falló, pero informa de éxito. Un pipeline de CI lo daría por bueno. Lo arreglas en la clase 17 con `if`.
+
+✋ **Sin mirar:** ¿qué hace `NOMBRE="${1:-mundo}"` si no le das ningún argumento?
+
+<details>
+<summary>Comprueba</summary>
+
+`NOMBRE` vale `mundo`.
+</details>
+
+**En resumen:** `${1:-defecto}` pone un valor si falta; `${1:?mensaje}` para el script si falta.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+
+### Pieza 4 — Expansión de parámetros: recortar texto sin otros programas
+
+Bash puede recortar el texto de una variable por delante o por detrás. Con `URL="https://ejemplo.com/salud"`:
+
+| Escribes | Corta… | Resultado |
+|----------|--------|-----------|
+| `${URL#*://}` | por **delante**, hasta el primer `://` | `ejemplo.com/salud` |
+| `${URL%/*}` | por **detrás**, desde la última `/` | `https://ejemplo.com` |
+
+Y con `ARCHIVO="backup-2026-10-12.tar.gz"`, la diferencia entre uno y dos símbolos:
+
+| Escribes | Corta… | Resultado |
+|----------|--------|-----------|
+| `${ARCHIVO%.tar.gz}` | ese final exacto | `backup-2026-10-12` |
+| `${ARCHIVO#*.}` | por delante, **lo mínimo** (hasta el primer punto) | `tar.gz` |
+| `${ARCHIVO##*.}` | por delante, **lo máximo** (hasta el último punto) | `gz` |
+
+Cómo recordarlo: en el teclado, `#` está a la **izquierda** de `$` (corta por delante) y `%` a la **derecha** (corta por detrás). **Un** símbolo corta lo mínimo; **dos**, lo máximo. Y `${#ARCHIVO}`, con el `#` delante del nombre, no recorta: cuenta las letras (`24`).
+
+**Pruébalo.** 🔮 **Predice** cada resultado antes de ejecutarlo, con las tablas de arriba:
 
 ```bash
 URL="https://ejemplo.com/salud"
@@ -244,32 +246,29 @@ echo "${#ARCHIVO}"
 
 Sacar el host de una URL en dos pasos es justo lo que hará Vigía para medir el DNS (clase 35).
 
-### 4. Un script con argumento obligatorio
+✋ **Sin mirar:** con `F=foto.png`, ¿qué da `${F%.png}`?
+
+<details>
+<summary>Comprueba</summary>
+
+`foto`: `%` corta ese final exacto.
+</details>
+
+**En resumen:** `#` corta por delante y `%` por detrás; uno corta lo mínimo y dos, lo máximo.
+
+### Pieza 5 — stdout, stderr y el código de salida
+
+Tu script tiene las mismas dos salidas y el mismo código de salida que cualquier programa (clase 04):
 
 ```bash
-cat > tamano.sh <<'EOF'
-#!/bin/bash
-# Uso: ./tamano.sh <ruta>
-# Imprime cuánto ocupa una ruta.
-RUTA="${1:?Uso: $0 <ruta>}"
-TAMANO="$(du -sh "$RUTA" 2>/dev/null | cut -f1)"
-echo "$RUTA ocupa ${TAMANO:-?}"
-EOF
-chmod +x tamano.sh
+echo "resultado"                 # stdout: los datos que otro programa puede usar
+echo "Error: falta X" >&2        # stderr: mensajes para humanos y errores
+exit 2                           # código de salida: 0 = bien, 1 = fallo, 2 = uso incorrecto
 ```
 
-🔮 **Predice** el código de salida de cada llamada:
+`>&2` significa «manda esto por stderr». Así, si alguien hace `./script.sh > datos.txt`, los errores siguen saliendo en pantalla y no ensucian los datos.
 
-```bash
-./tamano.sh ~/my-devops-journey ; echo "código: $?"
-./tamano.sh ; echo "código: $?"
-./tamano.sh /no-existe ; echo "código: $?"
-```
-
-- Sin argumento, `${1:?...}` imprime `./tamano.sh: línea 4: 1: Uso: ./tamano.sh <ruta>` y el script **sale con 1** antes de hacer nada. Así se declara un argumento obligatorio.
-- Con `/no-existe`, el script dice `/no-existe ocupa ?` y **devuelve 0**. Miente: falló, pero informa de éxito. Un pipeline de CI lo daría por bueno. Lo arreglas en la clase 17 con `if`.
-
-### 5. Separar datos y mensajes
+**Pruébalo:**
 
 ```bash
 cat > avisa.sh <<'EOF'
@@ -295,13 +294,34 @@ cat datos.txt
 En el primero, solo el aviso en pantalla y `código: 3`; en `datos.txt`, `dato útil`; y en el último, solo `dato útil`.
 </details>
 
-### 6. Ver el script por dentro con `bash -x`
+**En resumen:** datos por stdout, mensajes por stderr (`>&2`) y un código de salida al terminar (`exit N`).
+
+### Pieza 6 — Ver el script por dentro con `bash -x`
+
+Cuando un script "hace algo raro", lo primero es ver qué ejecuta **de verdad**: `bash -x` imprime cada línea **ya expandida**, con el valor real de cada variable, antes de ejecutarla. Dentro de un script, `set -x` activa lo mismo a partir de esa línea y `set +x` lo desactiva.
+
+**Pruébalo:**
 
 ```bash
 bash -x tamano.sh ~/my-devops-journey/labs
 ```
 
-Cada línea que empieza por `+` es un comando **ya expandido**, tal como lo ejecuta bash: ves el valor real de cada variable. Es la primera herramienta cuando un script "hace algo raro". Dentro de un script, `set -x` activa lo mismo a partir de esa línea y `set +x` lo desactiva.
+👀 **Qué deberías ver:** líneas que empiezan por `+`, como `+ RUTA=/home/educo/my-devops-journey/labs` y `+ du -sh /home/educo/my-devops-journey/labs`, y al final la línea normal del script con el tamaño.
+
+**En resumen:** `bash -x script` te enseña cada comando tal como lo ejecuta bash: es la primera herramienta para depurar.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué es |
+|----------|--------|
+| `#!/bin/bash` | el shebang: primera línea, desde el primer carácter |
+| `chmod +x s.sh` · `./s.sh` | darle permiso de ejecución · lanzarlo |
+| `$1` `$2`… · `$#` · `"$@"` · `$0` | argumentos · cuántos · todos por separado · el nombre del script |
+| `${VAR:-defecto}` · `${1:?mensaje}` | valor por defecto · obligatorio (si falta, error y salida) |
+| `${V#…}` `${V##…}` · `${V%…}` `${V%%…}` | cortar por delante (mínimo · máximo) · por detrás (mínimo · máximo) |
+| `${#V}` | la longitud |
+| `echo "…" >&2` · `exit N` | mensaje por stderr · terminar con el código de salida N |
+| `bash -x s.sh` | ejecutarlo enseñando cada línea ya expandida |
 
 ## Rómpelo
 

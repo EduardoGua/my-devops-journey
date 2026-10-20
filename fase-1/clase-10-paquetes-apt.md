@@ -27,11 +27,21 @@
 
 Cada servidor se aprovisiona instalando paquetes: en el *user-data* de una EC2, en un `Dockerfile` (`RUN apt-get install …`) o en un pipeline. Mantenerlos actualizados es la defensa número uno contra vulnerabilidades conocidas. Y saber **qué versión** tienes y **de dónde** vino es básico cuando algo deja de funcionar tras una actualización.
 
-## Teoría
+## Cómo va esta clase
 
-Cuatro piezas.
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida en el servidor; no pases a la siguiente sin haber ejecutado la anterior.
 
-### 1. El repositorio y el índice
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 30 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+
+Todo se hace dentro de la VM:
+
+```bash
+multipass shell servidor-01
+```
+
+## Las piezas
+
+### Pieza 1 — El repositorio y el índice
 
 ```
  Repositorio de Ubuntu (internet)          Tu servidor
@@ -51,18 +61,82 @@ Cuatro piezas.
 - `apt update` descarga el **índice** nuevo. **No instala nada.**
 - `apt install` mira el índice, descarga el programa y lo instala.
 
+**Pruébalo:**
+
+```bash
+ls /etc/apt/sources.list.d/
+cat /etc/apt/sources.list.d/ubuntu.sources
+sudo apt update
+apt list --upgradable | head
+```
+
+👀 **Qué deberías ver:** los archivos de repositorios; el de Ubuntu por dentro (líneas `URIs:` y `Suites:`); `apt update` descargando índices (`Hit`, `Get`); y los paquetes que tienen versión nueva. Nada se instaló: solo se actualizó el índice.
+
+✋ **Sin mirar:**
+1. Acabas de crear un servidor y `apt install curl` dice `Unable to locate package`. ¿Qué te faltó hacer?
+2. ¿`apt update` instala las versiones nuevas de tus programas?
+
+<details>
+<summary>Comprueba</summary>
+
+1. `sudo apt update`: el índice local estaba vacío o viejo. 2. No: solo actualiza el **índice**. Instalar las versiones nuevas es `apt upgrade` (pieza 4).
+</details>
+
 **En resumen:** `apt update` actualiza el índice; `apt install` trae el programa.
 
-### 2. Paquetes, dependencias y firmas
+### Pieza 2 — Paquetes y dependencias: instalar nginx
 
 - Un **paquete** (`.deb`) es un archivo con el programa, su configuración por defecto y unos datos con su versión y lo que necesita.
 - Lo que necesita son sus **dependencias**: otros paquetes sin los que no funciona. `apt` las trae solas.
 - Cada paquete viene **firmado**: `apt` comprueba la firma y rechaza lo que no venga del repositorio oficial o haya sido manipulado.
-- Por debajo, quien instala de verdad los paquetes es `dpkg`. `apt` organiza todo lo demás: busca, descarga y resuelve dependencias.
 
-**En resumen:** un paquete lleva el programa y sus datos: su versión, sus dependencias y su firma.
+**Pruébalo.** Primero, los datos del paquete; mira su línea `Depends`:
 
-### 3. Los cinco del día a día
+```bash
+apt show nginx | head -20
+```
+
+🔮 **Predice:** después de instalarlo, ¿estará nginx ya funcionando o tendrás que arrancarlo tú?
+
+```bash
+sudo apt install -y nginx
+curl -s localhost | head -5
+systemctl status nginx --no-pager
+```
+
+<details>
+<summary>Qué deberías ver</summary>
+
+La información del paquete nginx (versión, dependencias como `nginx-common`, descripción), la instalación, el principio de su página de bienvenida (`<!DOCTYPE html>`…) y nginx en `active (running)`: ya funciona solo.
+</details>
+
+En Ubuntu, instalar un servicio suele **arrancarlo y activarlo** automáticamente. (En otras distribuciones, como Amazon Linux, no.)
+
+**En resumen:** un paquete lleva el programa y sus datos: su versión, sus dependencias y su firma. `apt` trae las dependencias solas.
+
+### Pieza 3 — `dpkg`, el que instala por debajo
+
+Quien instala de verdad los paquetes es `dpkg`. `apt` organiza todo lo demás: busca, descarga y resuelve dependencias. Por eso, para saber **qué archivos** puso un paquete, o **qué paquete** puso un archivo, le preguntas a `dpkg`.
+
+**Pruébalo:**
+
+```bash
+apt policy nginx
+dpkg -L nginx-common | grep etc | head
+dpkg -S /usr/sbin/nginx
+dpkg -S "$(which curl)"
+ls /etc/nginx/
+```
+
+👀 **Qué deberías ver:** la versión instalada y de qué repositorio viene; varios archivos de `/etc/nginx` que instaló `nginx-common`; el nombre del paquete que instaló cada archivo (`nginx` y `curl`); y las carpetas de configuración de nginx.
+
+`nginx` es un paquete pequeño que **depende** de otros: los archivos de configuración los trae `nginx-common`.
+
+**En resumen:** `apt` busca y descarga; `dpkg` instala y sabe qué archivo es de qué paquete.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`.
+
+### Pieza 4 — Los cinco del día a día
 
 ```bash
 sudo apt update              # 1. actualizar el índice (siempre lo primero)
@@ -74,31 +148,60 @@ sudo apt purge nginx         # 5. desinstalar y BORRAR también su configuració
 
 La diferencia entre `remove` y `purge` es la configuración: con `remove`, si lo reinstalas, recupera tu configuración; con `purge`, empieza de cero. Lo verás en el Rómpelo 1.
 
-**En resumen:** update, install, upgrade, remove y purge: con esos cinco haces casi todo.
-
-### 4. `apt` para ti, `apt-get` para los scripts
-
-`apt` es para usarlo a mano: tiene colores y barras de progreso. En **scripts** y **Dockerfiles** se usa `apt-get`, porque su salida no cambia entre versiones, con `-y` para que no pregunte nada:
+**Pruébalo: las herramientas que usarás en el curso.**
 
 ```bash
-sudo apt-get update && sudo apt-get install -y nginx
+sudo apt install -y htop jq net-tools dnsutils traceroute tcpdump netcat-openbsd ufw rsync acl
 ```
 
-**En resumen:** a mano, `apt`; en scripts, `apt-get … -y`, y siempre después de un `update`.
+`dnsutils` trae `dig`; `net-tools`, el antiguo `netstat`; `tcpdump` captura tráfico; `netcat-openbsd` es `nc`. Muchos ya vienen instalados: `apt` simplemente te dirá que ya están en la versión más reciente.
 
-### ✋ Antes de practicar: tres preguntas, sin mirar
+Ahora, actualiza todo el sistema:
 
-1. Acabas de crear un servidor y `apt install curl` dice `Unable to locate package`. ¿Qué te faltó hacer?
-2. ¿`apt update` instala las versiones nuevas de tus programas?
-3. Quieres desinstalar nginx y que no quede ni rastro de su configuración. ¿`remove` o `purge`?
+```bash
+sudo apt upgrade -y
+cat /var/run/reboot-required 2>/dev/null || echo "no hace falta reiniciar"
+```
+
+👀 **Qué deberías ver:** la lista de paquetes que se actualizaron y, al final, `no hace falta reiniciar` o `*** System restart required ***`.
+
+Si se actualizó el kernel, el nuevo **no se usa hasta reiniciar**. En producción, reiniciar se planifica.
+
+✋ **Sin mirar:** quieres desinstalar nginx y que no quede ni rastro de su configuración. ¿`remove` o `purge`?
 
 <details>
 <summary>Comprueba</summary>
 
-1. `sudo apt update`: el índice local estaba vacío o viejo. 2. No: solo actualiza el **índice**. Instalar las versiones nuevas es `apt upgrade`. 3. `purge`.
+`purge`.
 </details>
 
-### Tu chuleta de la clase
+**En resumen:** update, install, upgrade, remove y purge: con esos cinco haces casi todo.
+
+### Pieza 5 — Sin preguntas: `apt-get` en scripts y las actualizaciones automáticas
+
+`apt` es para usarlo a mano: tiene colores y barras de progreso. En **scripts** y **Dockerfiles** se usa `apt-get`, porque su salida no cambia entre versiones, con `-y` para que no pregunte nada. Y en los servidores, Ubuntu instala solo los **parches de seguridad** cada día con `unattended-upgrades`.
+
+**Pruébalo** como lo haría un script:
+
+```bash
+sudo apt-get update && sudo apt-get install -y tree
+tree -L 1 /etc/nginx
+```
+
+👀 **Qué deberías ver:** el `update` y la instalación sin ninguna pregunta, y el árbol de carpetas de `/etc/nginx`.
+
+Y las actualizaciones automáticas:
+
+```bash
+systemctl status unattended-upgrades --no-pager
+cat /etc/apt/apt.conf.d/20auto-upgrades
+```
+
+👀 **Qué deberías ver:** el servicio en `active (running)`, y en el archivo dos líneas con `"1"`: actualizar el índice y aplicar los parches de seguridad, una vez al día. Es buena práctica en servidores, combinada con un control de cuándo se reinicia.
+
+**En resumen:** a mano, `apt`; en scripts, `apt-get … -y`, y siempre después de un `update`. Los parches de seguridad se instalan solos.
+
+## Tu chuleta de la clase
 
 | Comando | Qué hace |
 |---------|----------|
@@ -110,85 +213,8 @@ sudo apt-get update && sudo apt-get install -y nginx
 | `apt policy pkg` | versión instalada, versión candidata y de qué repositorio viene |
 | `apt list --installed` | lo que tienes instalado |
 | `dpkg -L pkg` · `dpkg -S /ruta/archivo` | qué archivos instaló un paquete · qué paquete instaló un archivo |
+| `sudo apt-get update && sudo apt-get install -y pkg` | lo mismo, para scripts y Dockerfiles |
 | `sudo apt-mark hold pkg` / `unhold` | congela su versión / la descongela |
-
-## Práctica guiada
-
-```bash
-multipass shell servidor-01
-```
-
-### 1. El índice
-
-```bash
-ls /etc/apt/sources.list.d/
-cat /etc/apt/sources.list.d/ubuntu.sources
-sudo apt update
-apt list --upgradable | head
-```
-
-👀 **Qué deberías ver:** los archivos de repositorios; el de Ubuntu por dentro (líneas `URIs:` y `Suites:`); `apt update` descargando índices (`Hit`, `Get`); y los paquetes que tienen versión nueva.
-
-### 2. Instalar nginx
-
-🔮 **Predice:** después de instalarlo, ¿estará nginx ya funcionando o tendrás que arrancarlo tú?
-
-```bash
-apt show nginx | head -20
-sudo apt install -y nginx
-curl -s localhost | head -5
-systemctl status nginx --no-pager
-```
-
-<details>
-<summary>Qué deberías ver</summary>
-
-La información del paquete nginx (versión, dependencias, descripción), la instalación, el principio de su página de bienvenida (`<!DOCTYPE html>`…) y nginx en `active (running)`: ya funciona solo.
-</details>
-
-En Ubuntu, instalar un servicio suele **arrancarlo y activarlo** automáticamente. (En otras distribuciones, como Amazon Linux, no.)
-
-### 3. Investigar un paquete
-
-```bash
-apt policy nginx
-dpkg -L nginx-common | grep etc | head
-dpkg -S /usr/sbin/nginx
-dpkg -S "$(which curl)"
-ls /etc/nginx/
-```
-
-👀 **Qué deberías ver:** la versión instalada y de qué repositorio viene, varios archivos de `/etc/nginx`, el nombre del paquete que instaló cada archivo y las carpetas de configuración de nginx.
-
-`nginx` es un paquete pequeño que **depende** de otros (`nginx-common`…). Mira la línea `Depends` de `apt show nginx`.
-
-### 4. Herramientas que usarás
-
-```bash
-sudo apt install -y htop tree jq net-tools dnsutils traceroute tcpdump netcat-openbsd ufw rsync acl
-```
-
-`dnsutils` trae `dig`; `net-tools`, el antiguo `netstat`; `tcpdump` captura tráfico; `netcat-openbsd` es `nc`. Muchos ya vienen instalados: `apt` simplemente te dirá que ya están en la versión más reciente. Los usarás en el resto del curso.
-
-### 5. Actualizar el sistema
-
-```bash
-sudo apt upgrade -y
-cat /var/run/reboot-required 2>/dev/null || echo "no hace falta reiniciar"
-```
-
-👀 **Qué deberías ver:** la lista de paquetes que se actualizaron y, al final, `no hace falta reiniciar` o `*** System restart required ***`.
-
-Si se actualizó el kernel, el nuevo **no se usa hasta reiniciar**. En producción, reiniciar se planifica.
-
-### 6. Actualizaciones de seguridad automáticas
-
-```bash
-systemctl status unattended-upgrades --no-pager
-cat /etc/apt/apt.conf.d/20auto-upgrades
-```
-
-Ubuntu instala solo los **parches de seguridad** cada día. Es buena práctica en servidores, combinada con un control de cuándo se reinicia.
 
 ## Rómpelo
 

@@ -11,7 +11,7 @@
 
 ---
 
-Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando el cierre está escrito y **calificado** (✅ 🟡 ❌, con la corrección de cada 🟡 y ❌). Anota el tiempo en el registro de abajo.
+Una clase se cierra cuando el cierre está escrito y **calificado** (✅ 🟡 ❌, con la corrección de cada 🟡 y ❌). Entonces, `bash ~/my-devops-journey/recursos/cerrar-clase.sh 06` marca aquí `[x]` con la fecha y apunta el tiempo en el registro de abajo. El tiempo lo mide `sesion.sh` (ver [`COMO-ESTUDIAR.md`](COMO-ESTUDIAR.md#tu-rutina-en-cada-clase)).
 
 ## Fase 1 — Linux y Bash
 
@@ -54,7 +54,7 @@ Marca `[x]` y escribe la fecha al cerrar cada clase. Una clase se cierra cuando 
 - [ ] Entro por SSH con llave, sin contraseña, a una VM
 - [ ] Vigía v0 corre con cron y deja log
 
-### En paralelo (desde la clase 05)
+### La prueba de la fase (al terminar la clase 21)
 - Bandit, niveles 0–20: [`fase-1/bandit.md`](fase-1/bandit.md) · Nivel actual: 0
 
 ---
@@ -392,7 +392,7 @@ Las diez fases están escritas. La fase NOC tiene su plan y sus entregables; sus
 
 ## Registro
 
-La columna *Tiempo* es tiempo enfocado (clase, proyecto, Anki). Súmala cada mes para el registro de horas de la Ruta 2.0.
+La columna *Tiempo* es tiempo enfocado. Desde la clase 06 sale de las sesiones medidas con `sesion.sh` (se guardan en `notas/horas.csv`), y `bash ~/my-devops-journey/recursos/sesion.sh mes` te da el total del mes, Anki y Vigía incluidos, para el registro de horas de la Ruta 2.0.
 
 | Fecha | Clase | Tiempo | Notas |
 |-------|-------|--------|-------|

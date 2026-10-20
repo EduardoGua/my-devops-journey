@@ -28,11 +28,25 @@
 
 Las alarmas más comunes en CloudWatch son de CPU alta, memoria alta y disco lleno. Un disco lleno tumba bases de datos, impide escribir logs y rompe despliegues. Un proceso que agota la memoria muere sin dejar rastro en sus propios logs. Saber cuál de los tres recursos es el cuello de botella decide si **arreglas la app** o **cambias el tipo de instancia**.
 
-## Teoría
+## Cómo va esta clase
 
-Cuatro piezas: la CPU, la memoria, el disco y dos trampas del disco.
+Siete piezas: la CPU, la memoria, el disco y sus trampas. En cada una lees **una** idea y la pruebas enseguida en el servidor; no pases a la siguiente sin haber ejecutado la anterior.
 
-### 1. La CPU
+Es una clase larga: hazla en dos mañanas. El primer día, las **piezas 1 a 3** (unos 50 min); el segundo, las **piezas 4 a 7**, el Rómpelo, el reto y el cierre.
+
+Prepara la VM: entra, instala las herramientas de hoy y, desde tu PC, haz un snapshot por si algo sale mal:
+
+```bash
+multipass shell servidor-01
+sudo apt install -y stress-ng sysstat lsof
+exit
+multipass stop servidor-01 && multipass snapshot servidor-01 --name pre-recursos && multipass start servidor-01
+multipass shell servidor-01
+```
+
+## Las piezas
+
+### Pieza 1 — La CPU
 
 Cada **núcleo** de CPU ejecuta un proceso a la vez (`nproc` te dice cuántos hay). La **carga** (*load average*) es cuántos procesos, de media, quieren CPU o están esperando al disco:
 
@@ -52,88 +66,7 @@ Las tres cifras son la media del último minuto, de los últimos 5 y de los últ
 
 Ojo: la carga cuenta también los procesos que esperan al disco (estado `D`). Por eso una carga alta con la CPU tranquila suele significar **disco lento**.
 
-**En resumen:** compara la carga con el número de núcleos: por encima de 1 por núcleo, hay cola.
-
-### 2. La memoria
-
-```bash
-free -h
-#        total   used   free   shared  buff/cache  available
-# Mem:   962Mi   310Mi  120Mi  1Mi     532Mi       500Mi
-```
-
-- **free**: memoria sin usar. Linux procura que haya poca: memoria vacía es memoria desperdiciada.
-- **buff/cache**: Linux usa la memoria libre para guardar datos del disco que quizá vuelvas a pedir (una *caché* del disco), y los **libera** en cuanto un programa necesita sitio.
-- **available**: lo que de verdad pueden usar los programas, contando lo que se puede retirar de la caché. **Esta es la columna que importa.**
-- **swap**: cuando la memoria se llena, el kernel usa una parte del disco como memoria. Funciona, pero es lentísimo.
-
-Si aun así la memoria se llena, el kernel llama al **OOM killer** (*Out Of Memory*): elige un proceso, normalmente el que más memoria usa, y lo **mata** con `SIGKILL` (clase 11). Ese proceso no llega a escribir nada en su log: la única pista queda en el **log del kernel**.
-
-**En resumen:** mira `available`, no `free`; y si una app muere sin dejar rastro, piensa en el OOM killer.
-
-### 3. El disco
-
-Dos preguntas, dos comandos:
-
-```bash
-df -h            # ¿cuánto sitio QUEDA en cada disco?
-du -sh carpeta   # ¿cuánto OCUPA esta carpeta?
-```
-
-`df` pregunta al sistema de archivos cuánto espacio libre le queda, y `du` suma lo que ocupan los archivos de cada carpeta. Normalmente cuadran. Cuando no cuadran, hay una de las dos trampas de la pieza 4.
-
-**En resumen:** `df` = cuánto queda; `du` = cuánto ocupa cada cosa.
-
-### 4. Dos trampas del disco
-
-**Trampa 1: se acaban los inodos.** Cada archivo necesita un **inodo**, un registro con sus permisos, su dueño y dónde están sus datos. El número de inodos es fijo. Con millones de archivos diminutos se acaban los inodos aunque quede espacio: `No space left on device` con `df -h` al 60 %. Se mira con `df -i`.
-
-**Trampa 2: un archivo borrado que un proceso sigue usando.** Si borras un archivo que un proceso tiene **abierto**, desaparece su nombre, pero el espacio no se libera hasta que ese proceso lo cierra. `df` dice «lleno» y `du` no encuentra nada. Pasa constantemente con logs borrados a mano. Se mira con `lsof +L1`.
-
-Relacionado con los inodos: un mismo inodo puede tener **varios nombres**, que se llaman **enlaces duros** (`ln original otro-nombre`; `ls -li` muestra el número de inodo y cuántos nombres tiene). El espacio solo se libera cuando desaparece el **último nombre** y **nadie** tiene el archivo abierto. Un enlace simbólico (`ln -s`, clase 02) es otra cosa: un archivo pequeño que contiene una ruta, como un acceso directo.
-
-**En resumen:** si `df` y `du` no cuadran, o se acabaron los inodos (`df -i`) o alguien sigue usando un archivo borrado (`lsof +L1`).
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. Una VM de 2 núcleos tiene una carga de 4. ¿Qué significa?
-2. `free -h` dice `free 80Mi` y `available 600Mi`. ¿Falta memoria?
-3. Una app se reinicia sola y su log no dice nada. ¿Qué sospechas?
-
-<details>
-<summary>Comprueba</summary>
-
-1. Que hay el doble de trabajo del que caben en los núcleos: la mitad de los procesos espera turno (o espera al disco). 2. No: lo que cuenta es `available`, y 600 MiB está bien. 3. El OOM killer: busca en el log del kernel.
-</details>
-
-### Tu chuleta de la clase
-
-| Recurso | Comandos |
-|---------|----------|
-| CPU | `nproc` (núcleos) · `uptime` (carga) · `top` (en vivo; `P` ordena por CPU) · `vmstat 1` (cada segundo) |
-| Memoria | `free -h` · `ps aux --sort=-%mem \| head` (quién más usa) · `journalctl -k \| grep -i "killed process"` (el OOM killer) |
-| Disco | `df -h` (lo que queda) · `df -i` (inodos que quedan) · `du -sh dir` (lo que ocupa) · `du -xh / --max-depth=1 \| sort -h` (dónde está el espacio; `-x`: sin cruzar a otros discos) · `lsblk` (discos y particiones) · `lsof +L1` (borrados pero abiertos) |
-
-La línea `%Cpu(s)` de `top`:
-
-| Campo | Significado |
-|-------|-------------|
-| `us` | CPU ocupada con tus programas |
-| `sy` | CPU ocupada con el kernel |
-| `wa` | CPU esperando al disco (*I/O wait*) |
-| `id` | CPU libre |
-| `st` | **steal**: el hipervisor (clase 08) dio tu tiempo de CPU a otra VM. En la nube, un `st` alto indica una instancia sin créditos de CPU (familia `t3`) o un servidor físico saturado |
-
-## Práctica guiada
-
-```bash
-multipass shell servidor-01
-sudo apt install -y stress-ng sysstat lsof
-```
-
-Snapshot antes (desde tu PC): `multipass stop servidor-01 && multipass snapshot servidor-01 --name pre-recursos && multipass start servidor-01`.
-
-### 1. CPU
+**Pruébalo:**
 
 ```bash
 nproc
@@ -151,9 +84,34 @@ uptime
 vmstat 1 5          # columnas r (en cola), us, sy, id, wa, st
 ```
 
-👀 **Qué deberías ver:** la carga del primer minuto todavía alta (cerca de 2) aunque `stress-ng` ya terminó: es una media. En `vmstat`, la columna `id` (CPU libre) cerca de 100.
+👀 **Qué deberías ver:** en `top`, `us` cerca de 100 e `id` cerca de 0. Después, la carga del primer minuto todavía alta (cerca de 2) aunque `stress-ng` ya terminó: es una media. En `vmstat`, la columna `id` (CPU libre) cerca de 100.
 
-### 2. Memoria
+✋ **Sin mirar:** una VM de 2 núcleos tiene una carga de 4. ¿Qué significa?
+
+<details>
+<summary>Comprueba</summary>
+
+Que hay el doble de trabajo del que cabe en los núcleos: la mitad de los procesos espera turno (o espera al disco).
+</details>
+
+**En resumen:** compara la carga con el número de núcleos: por encima de 1 por núcleo, hay cola.
+
+### Pieza 2 — La memoria
+
+```bash
+free -h
+#        total   used   free   shared  buff/cache  available
+# Mem:   962Mi   310Mi  120Mi  1Mi     532Mi       500Mi
+```
+
+- **free**: memoria sin usar. Linux procura que haya poca: memoria vacía es memoria desperdiciada.
+- **buff/cache**: Linux usa la memoria libre para guardar datos del disco que quizá vuelvas a pedir (una *caché* del disco), y los **libera** en cuanto un programa necesita sitio.
+- **available**: lo que de verdad pueden usar los programas, contando lo que se puede retirar de la caché. **Esta es la columna que importa.**
+- **swap**: cuando la memoria se llena, el kernel usa una parte del disco como memoria. Funciona, pero es lentísimo.
+
+Si aun así la memoria se llena, el kernel llama al **OOM killer** (*Out Of Memory*): elige un proceso, normalmente el que más memoria usa, y lo **mata** con `SIGKILL` (clase 11). Ese proceso no llega a escribir nada en su log: la única pista queda en el **log del kernel**.
+
+**Pruébalo:**
 
 ```bash
 free -h
@@ -163,6 +121,7 @@ ps aux --sort=-%mem | head -5
 👀 **Qué deberías ver:** cerca de 1 GB de memoria total, con `available` bastante mayor que `free`, y los 4 procesos que más memoria usan.
 
 Consume memoria poco a poco y observa:
+
 ```bash
 stress-ng --vm 1 --vm-bytes 400M --timeout 30s &
 watch -n1 free -h
@@ -187,9 +146,32 @@ El programa muestra cifras hasta que termina con `Killed`. No hay ningún error 
 sudo journalctl -k --since "5 min ago" --no-pager | grep -iE "out of memory|killed process"
 ```
 
-Esa línea dice **qué proceso** murió y **cuánta memoria** usaba. Cuando una app "se reinicia sola sin errores en su log", lo primero que hay que mirar es esto.
+👀 **Qué deberías ver:** una línea `Out of memory: Killed process … (python3)` que dice **qué proceso** murió y **cuánta memoria** usaba. Cuando una app "se reinicia sola sin errores en su log", lo primero que hay que mirar es esto.
 
-### 3. Disco: ¿dónde está el espacio?
+✋ **Sin mirar:**
+1. `free -h` dice `free 80Mi` y `available 600Mi`. ¿Falta memoria?
+2. Una app se reinicia sola y su log no dice nada. ¿Qué sospechas?
+
+<details>
+<summary>Comprueba</summary>
+
+1. No: lo que cuenta es `available`, y 600 MiB está bien. 2. El OOM killer: busca en el log del kernel.
+</details>
+
+**En resumen:** mira `available`, no `free`; y si una app muere sin dejar rastro, piensa en el OOM killer.
+
+### Pieza 3 — El disco: cuánto queda y cuánto ocupa cada cosa
+
+Dos preguntas, dos comandos:
+
+```bash
+df -h            # ¿cuánto sitio QUEDA en cada disco?
+du -sh carpeta   # ¿cuánto OCUPA esta carpeta?
+```
+
+`df` pregunta al sistema de archivos cuánto espacio libre le queda, y `du` suma lo que ocupan los archivos de cada carpeta. Normalmente cuadran. Cuando no cuadran, hay una de las trampas de las piezas 5 y 6.
+
+**Pruébalo:**
 
 ```bash
 lsblk
@@ -199,9 +181,17 @@ sudo du -xh / --max-depth=1 2>/dev/null | sort -h
 sudo du -sh /var/* 2>/dev/null | sort -h | tail -5
 ```
 
-👀 **Qué deberías ver:** tu disco (por ejemplo `sda` o `vda`); el uso de `/` en espacio y en inodos; y qué carpetas de `/` y de `/var` ocupan más (las más grandes, al final).
+👀 **Qué deberías ver:** tu disco (por ejemplo `sda` o `vda`); el uso de `/` en espacio y en inodos (los verás en la pieza 6); y qué carpetas de `/` y de `/var` ocupan más (las más grandes, al final).
 
-### 4. Llenar el disco
+**En resumen:** `df` = cuánto queda; `du` = cuánto ocupa cada cosa.
+
+> ⏸️ Fin del primer día. Para salir de la VM, `exit`.
+
+### Pieza 4 — El disco lleno, y la reserva de root
+
+Con el disco al 100 %, todo lo que necesita **escribir** falla. Pero ext4 guarda en reserva una parte del disco (un 5 % por defecto) que solo puede usar root, y `df` calcula el espacio disponible para usuarios normales. Así el sistema sigue en pie y tú puedes entrar a arreglarlo.
+
+**Pruébalo:** llena el disco.
 
 ```bash
 df -h /
@@ -209,6 +199,8 @@ sudo fallocate -l 50G /relleno 2>&1      # más de lo que hay
 sudo fallocate -l $(( $(df --output=avail -B1 / | tail -1) - 1000000 )) /relleno
 df -h /
 ```
+
+👀 **Qué deberías ver:** el primer `fallocate` falla (no hay 50 GB); el segundo crea un archivo con casi todo el espacio libre, y `df -h /` marca el 100 %.
 
 🔮 **Predice:** con el disco al 100 %, ¿qué fallará?
 
@@ -221,7 +213,11 @@ curl -s -o /dev/null -w "%{http_code}\n" localhost
 
 Lee cada error. nginx quizá siga respondiendo, porque leer no necesita espacio, pero no podrá escribir sus logs. Una base de datos, en cambio, dejaría de aceptar escrituras.
 
-¿Algo de lo que corre como **root** (el `sudo apt`, el journal) sigue funcionando? No es un fallo del ejercicio. `df` calcula el espacio disponible para usuarios normales, y ext4 guarda en reserva una parte del disco (un 5 % por defecto) que solo puede usar root. Así el sistema sigue en pie y tú puedes entrar a arreglarlo. Míralo con `sudo tune2fs -l $(findmnt -no SOURCE /) | grep -i reserved`.
+¿Algo de lo que corre como **root** (el `sudo apt`, el journal) sigue funcionando? No es un fallo del ejercicio: es la reserva de root. Mírala:
+
+```bash
+sudo tune2fs -l $(findmnt -no SOURCE /) | grep -i reserved
+```
 
 Libera:
 
@@ -230,7 +226,15 @@ sudo rm /relleno
 df -h /
 ```
 
-### 5. El archivo fantasma
+👀 **Qué deberías ver:** `Reserved block count` con un número de bloques (el 5 % del disco) y, después del `rm`, `/` otra vez con su espacio libre.
+
+**En resumen:** con el disco lleno falla todo lo que escribe; la reserva de root deja que el sistema y tú sigáis funcionando para arreglarlo.
+
+### Pieza 5 — Trampa 1: un archivo borrado que un proceso sigue usando
+
+Si borras un archivo que un proceso tiene **abierto**, desaparece su nombre, pero el espacio no se libera hasta que ese proceso lo cierra. `df` dice «lleno» y `du` no encuentra nada. Pasa constantemente con logs borrados a mano. Se mira con `lsof +L1`.
+
+**Pruébalo:**
 
 ```bash
 sudo fallocate -l 2G /var/log/enorme.log
@@ -247,9 +251,10 @@ sudo du -sh /var/log
 sudo lsof +L1
 ```
 
-`df` sigue contando los 2 GB y `du` no los encuentra. `lsof +L1` muestra el proceso que retiene el archivo borrado (`tail`). Para liberarlo, ese proceso tiene que cerrarlo: reiniciarlo, matarlo o, en servicios como nginx, enviarle la señal de reabrir logs.
+👀 **Qué deberías ver:** `df` sigue contando los 2 GB y `du` no los encuentra. `lsof +L1` muestra el proceso que retiene el archivo borrado (`tail`), con `(deleted)` al final de la línea.
 
-Mata **ese** proceso por su PID, el de la columna `PID` de `lsof`:
+Para liberarlo, ese proceso tiene que cerrarlo: reiniciarlo, matarlo o, en servicios como nginx, enviarle la señal de reabrir logs. Mata **ese** proceso por su PID, el de la columna `PID` de `lsof`:
+
 ```bash
 sudo kill <PID>
 df -h /
@@ -259,9 +264,16 @@ df -h /
 
 **Lección:** para vaciar un log que está en uso no se borra: se **trunca**, con `sudo truncate -s 0 archivo` o `: | sudo tee archivo`. El proceso sigue escribiendo en el mismo archivo, que ahora está vacío.
 
-### 6. Inodos agotados
+**En resumen:** si `df` y `du` no cuadran, mira con `lsof +L1` si alguien sigue usando un archivo borrado. Los logs en uso se truncan, no se borran.
 
-Un sistema de archivos diminuto en memoria, con solo 500 inodos:
+### Pieza 6 — Trampa 2: se acaban los inodos (y los enlaces duros)
+
+Cada archivo necesita un **inodo**, un registro con sus permisos, su dueño y dónde están sus datos. El número de inodos es fijo. Con millones de archivos diminutos se acaban los inodos aunque quede espacio: `No space left on device` con `df -h` al 60 %. Se mira con `df -i`.
+
+Relacionado con los inodos: un mismo inodo puede tener **varios nombres**, que se llaman **enlaces duros** (`ln original otro-nombre`; `ls -li` muestra el número de inodo y cuántos nombres tiene). El espacio solo se libera cuando desaparece el **último nombre** y **nadie** tiene el archivo abierto. Un enlace simbólico (`ln -s`, clase 02) es otra cosa: un archivo pequeño que contiene una ruta, como un acceso directo.
+
+**Pruébalo:** un sistema de archivos diminuto en memoria, con solo 500 inodos.
+
 ```bash
 sudo mkdir -p /mnt/mini
 sudo mount -t tmpfs -o size=50M,nr_inodes=500 tmpfs /mnt/mini
@@ -276,11 +288,15 @@ cd ~ && sudo umount /mnt/mini
 
 "No space left on device" con casi todo el espacio libre: se acabaron los inodos. Pasa con colas de correo, sesiones de PHP, cachés con millones de archivos o `node_modules` gigantes.
 
-### 7. Un disco nuevo: lo mismo que un volumen EBS
+**En resumen:** si dice "No space left" con espacio libre, mira `df -i`: se acabaron los inodos.
 
-> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
+### Pieza 7 — Un disco nuevo: lo mismo que un volumen EBS
 
-En AWS, para añadir espacio a una instancia creas un **volumen EBS** y lo conectas: aparece como un disco **vacío** (`/dev/nvme1n1`). Antes de usarlo hay que darle formato, montarlo y hacer el montaje permanente. En la VM simulamos ese disco con un archivo (un *loop device*):
+> Si se te atraganta, sáltala y vuelve a ella después del cierre: no hace falta entenderla a la primera.
+
+En AWS, para añadir espacio a una instancia creas un **volumen EBS** y lo conectas: aparece como un disco **vacío** (`/dev/nvme1n1`). Antes de usarlo hay que darle formato, montarlo y hacer el montaje permanente. En la VM simulamos ese disco con un archivo (un *loop device*).
+
+**Pruébalo:**
 
 ```bash
 sudo truncate -s 1G /var/tmp/volumen-ebs.img                        # el "volumen" de 1 GB
@@ -291,6 +307,7 @@ lsblk
 🔮 **Predice:** ¿puedes guardar algo ya en ese disco?
 
 No: está en crudo, sin **sistema de archivos**. Dale formato y móntalo:
+
 ```bash
 sudo mkfs.ext4 -L datos $DEV
 sudo mkdir -p /datos
@@ -300,9 +317,12 @@ df -h /datos
 ls /datos
 ```
 
+👀 **Qué deberías ver:** `/datos` con cerca de 1 GB, y en `ls` solo `lost+found`.
+
 ¿Dónde está `oculto.txt`? El disco montado **tapa** lo que había en esa carpeta. El archivo sigue ocupando sitio en `/`, pero nadie lo ve mientras el montaje esté encima: es otra causa de "`df` y `du` no cuadran". Reaparecerá al desmontar.
 
 Haz el montaje **permanente** en `/etc/fstab`, usando el **UUID**: los nombres de dispositivo pueden cambiar entre arranques, el UUID no.
+
 ```bash
 sudo blkid $DEV
 UUID=$(sudo blkid -s UUID -o value $DEV)
@@ -317,19 +337,26 @@ sudo findmnt --verify      # revisa fstab entero
 `nofail` significa "si este disco no está, arranca igualmente". Sin él, un volumen que falta o una línea mal escrita dejan al servidor **sin arrancar**, y en una EC2 no puedes entrar a arreglarlo (la consola del sistema de la clase 12 te dirá por qué). **Regla:** después de tocar `fstab`, siempre `sudo mount -a` y `sudo findmnt --verify` **antes** de reiniciar.
 
 **Ampliar** el volumen (en AWS: *Modify volume* y después ampliar el sistema de archivos):
+
 ```bash
 sudo truncate -s 2G /var/tmp/volumen-ebs.img   # el volumen crece
 sudo losetup -c $DEV                           # el sistema se entera del nuevo tamaño
 df -h /datos
 ```
+
 🔮 ¿Muestra ya 2 GB? No: el **disco** creció, pero el **sistema de archivos** sigue igual.
+
 ```bash
 sudo resize2fs $DEV
 df -h /datos
 ```
+
+👀 **Qué deberías ver:** ahora sí, `/datos` con cerca de 2 GB.
+
 En una EC2 con particiones, el orden es `growpart` (ampliar la partición) y después `resize2fs` (ext4) o `xfs_growfs` (XFS, el de Amazon Linux). Es una tarea real habitual y una pregunta de entrevista.
 
 Limpia, en este orden:
+
 ```bash
 sudo umount /datos
 ls /datos                               # oculto.txt reaparece
@@ -338,6 +365,27 @@ sudo losetup -d $DEV
 sudo rm /var/tmp/volumen-ebs.img /datos/oculto.txt
 sudo findmnt --verify
 ```
+
+**En resumen:** un disco nuevo necesita formato (`mkfs`), montaje (`mount`) y una línea en `fstab` con su UUID y `nofail`; al ampliarlo, crece el disco y después el sistema de archivos.
+
+## Tu chuleta de la clase
+
+| Recurso | Comandos |
+|---------|----------|
+| CPU | `nproc` (núcleos) · `uptime` (carga) · `top` (en vivo; `P` ordena por CPU) · `vmstat 1` (cada segundo) |
+| Memoria | `free -h` · `ps aux --sort=-%mem \| head` (quién más usa) · `journalctl -k \| grep -i "killed process"` (el OOM killer) |
+| Disco | `df -h` (lo que queda) · `df -i` (inodos que quedan) · `du -sh dir` (lo que ocupa) · `du -xh / --max-depth=1 \| sort -h` (dónde está el espacio; `-x`: sin cruzar a otros discos) · `lsblk` (discos y particiones) · `lsof +L1` (borrados pero abiertos) |
+| Disco nuevo | `mkfs.ext4` (formato) · `mount` / `umount` · `blkid` (UUID) · `/etc/fstab` + `mount -a` + `findmnt --verify` · `resize2fs` (ampliar) |
+
+La línea `%Cpu(s)` de `top`:
+
+| Campo | Significado |
+|-------|-------------|
+| `us` | CPU ocupada con tus programas |
+| `sy` | CPU ocupada con el kernel |
+| `wa` | CPU esperando al disco (*I/O wait*) |
+| `id` | CPU libre |
+| `st` | **steal**: el hipervisor (clase 08) dio tu tiempo de CPU a otra VM. En la nube, un `st` alto indica una instancia sin créditos de CPU (familia `t3`) o un servidor físico saturado |
 
 ## Rómpelo
 
@@ -383,7 +431,7 @@ ls -li
 <details>
 <summary>Pista</summary>
 
-El hueco es la opción de `ln` que crea un enlace **simbólico** (está en la pieza 4).
+El hueco es la opción de `ln` que crea un enlace **simbólico** (está en la pieza 6).
 </details>
 
 **2.** ¿Cuánto swap tiene la VM? Mira también el valor de `vm.swappiness` con `cat /proc/sys/vm/swappiness`.
@@ -406,7 +454,7 @@ cat /proc/sys/vm/swappiness
 Busca la fila del swap por su nombre. `swappiness` va de 0 a 100: cuanto más alto, antes empieza Linux a usar el swap.
 </details>
 
-**3.** ¿Qué pasaría si en el `fstab` del paso 7 no hubieras puesto `nofail` y el disco no estuviera al arrancar?
+**3.** ¿Qué pasaría si en el `fstab` de la pieza 7 no hubieras puesto `nofail` y el disco no estuviera al arrancar?
 
 > 🧩 **Ejemplo resuelto:** mirar qué discos monta tu VM al encender.
 > ```bash
@@ -419,7 +467,7 @@ Busca la fila del swap por su nombre. `swappiness` va de 0 a 100: cuanto más al
 <details>
 <summary>Pista</summary>
 
-Relee el párrafo de `nofail` del paso 7.
+Relee el párrafo de `nofail` de la pieza 7.
 </details>
 
 **4.** Escribe una línea que imprima la carga del último minuto, la memoria `available` en MB y el % de uso del disco `/`. Lo convertirás en un script de verdad en el bloque C.

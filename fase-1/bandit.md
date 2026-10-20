@@ -1,7 +1,7 @@
-# Bandit — práctica paralela
+# Bandit — la prueba de la fase 1
 
-**Cuándo:** desde la clase 05, los días que te sobren 20–30 minutos. **Nunca en lugar de la clase del día.**
-**Objetivo:** niveles 0–20 antes del examen de fundamentos (clase 38).
+**Cuándo:** al terminar la fase 1 (después de la clase 21 y del repaso del bloque C), en sesiones de 20–30 minutos. Puedes seguir con la fase 2 a la vez: **nunca en lugar de la clase del día.**
+**Objetivo:** niveles 0–20 antes del examen de fundamentos (clase 38). Cada nivel pone a prueba algo de las clases 01 a 21, sin pistas de la clase: es tu examen práctico de Linux.
 
 ## Qué es
 

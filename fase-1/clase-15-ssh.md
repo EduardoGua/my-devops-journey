@@ -30,11 +30,21 @@
 
 SSH es la puerta de cada servidor Linux. En AWS, una EC2 se crea con un *key pair*, el *security group* decide quién llega al puerto 22 y un bastión con túneles da acceso a bases de datos en subredes privadas. Un SSH mal configurado (contraseñas activadas, root permitido, abierto a todo internet) es una de las vías de entrada más explotadas por los bots que viste en la clase 13.
 
-## Teoría
+## Cómo va esta clase
 
-Cuatro piezas.
+Siete piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. Hoy trabajas sobre todo desde **tu PC**, conectándote a la VM: mira el prompt para saber dónde estás.
 
-### 1. La llave privada y la pública
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 4** (unos 45 min); el segundo, las **piezas 5 a 7**, el Rómpelo, el reto y el cierre.
+
+Primero, en **tu PC**, guarda la IP de la VM en una variable (si partes la clase, repítelo el segundo día):
+
+```bash
+IP=$(multipass info servidor-01 | awk '/IPv4/ {print $2}'); echo $IP
+```
+
+## Las piezas
+
+### Pieza 1 — La llave privada y la pública
 
 Cuando creas un par de llaves, obtienes dos archivos que van juntos:
 - la **privada** (`lab_ed25519`): la que **firma**. Solo la tienes tú;
@@ -44,17 +54,47 @@ Al conectarte, el servidor te pone delante un documento único (un *reto*); tu P
 
 Por eso la pública no es peligrosa (con ella no se puede firmar) y la privada sí: quien la tenga **es** tú para todos esos servidores. Una *passphrase* la protege en el disco: si te la roban, no sirve sin la frase.
 
+**Pruébalo: una llave solo para el laboratorio.**
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/lab_ed25519 -C "lab-servidor-01"
+```
+
+Pon una **passphrase**. Después:
+
+```bash
+ls -l ~/.ssh/lab_ed25519*
+cat ~/.ssh/lab_ed25519.pub
+```
+
+👀 **Qué deberías ver:** dos archivos, la privada (`-rw-------`) y la `.pub` (`-rw-r--r--`), y una sola línea que empieza por `ssh-ed25519` y termina en `lab-servidor-01`: el tipo, la llave y el comentario. Eso es lo único que viaja al servidor.
+
+**Ahora instala la pública en la VM.** La imagen de Multipass no permite contraseñas, así que usamos `multipass exec` (en AWS, este paso lo hace el *key pair* al crear la instancia):
+
+```bash
+multipass exec servidor-01 -- bash -c "echo '$(cat ~/.ssh/lab_ed25519.pub)' >> ~/.ssh/authorized_keys"
+multipass exec servidor-01 -- cat /home/ubuntu/.ssh/authorized_keys
+```
+
+👀 **Qué deberías ver:** dos líneas: la llave de Multipass y la tuya, que acaba en `lab-servidor-01`.
+
+✋ **Sin mirar:** ¿qué archivo pegas en el servidor: la llave pública o la privada?
+
+<details>
+<summary>Comprueba</summary>
+
+La **pública** (`.pub`). La privada nunca sale de tu PC.
+</details>
+
 **En resumen:** la privada firma y nunca sale de tu PC; la pública, que dejas en los servidores, comprueba la firma.
 
-### 2. El servidor también se identifica
+### Pieza 2 — El servidor también se identifica: la *host key*
 
 El servidor tiene su propio par de llaves, su **host key**. La primera vez que te conectas, tu PC te enseña la **huella** (*fingerprint*) de esa llave y te pregunta si te fías. Si dices que sí, la apunta en `~/.ssh/known_hosts`.
 
 Las siguientes veces la compara. Si un día la huella **cambia**, SSH se niega a conectar y avisa a gritos: podría ser un impostor en medio (un ataque *man-in-the-middle*) o, simplemente, un servidor reinstalado. Nunca se acepta sin averiguar cuál de las dos es.
 
-**En resumen:** la primera vez apuntas la host key del servidor; si un día cambia, no aceptes sin averiguar por qué.
-
-Las dos piezas juntas:
+Las llaves de las piezas 1 y 2, juntas:
 
 ```
    TU PC (cliente)                                   SERVIDOR
@@ -63,7 +103,37 @@ Las dos piezas juntas:
    ~/.ssh/known_hosts ◄──── recuerda ─────────────── /etc/ssh/ssh_host_ed25519_key.pub (pública del servidor)
 ```
 
-### 3. SSH es estricto con los permisos
+**Pruébalo: la primera conexión.** 🔮 **Predice:** ¿qué te preguntará SSH la primera vez?
+
+```bash
+ssh -i ~/.ssh/lab_ed25519 ubuntu@$IP
+```
+
+Te muestra la **huella** del servidor. Compárala **antes de aceptar**. Desde otra terminal:
+
+```bash
+multipass exec servidor-01 -- ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+Si coinciden, escribe `yes`. Después te pedirá la passphrase de tu llave. Sal con `exit` y mira lo que se guardó:
+
+```bash
+grep "$IP" ~/.ssh/known_hosts || ssh-keygen -F $IP
+```
+
+👀 **Qué deberías ver:** la misma huella (`SHA256:…`) en las dos terminales y, al final, la línea de `known_hosts` con la IP de la VM.
+
+✋ **Sin mirar:** SSH te avisa de que la huella del servidor ha cambiado. ¿Qué haces?
+
+<details>
+<summary>Comprueba</summary>
+
+No aceptar a ciegas: averiguar si el servidor se reinstaló, comprobando la huella por otra vía, y solo entonces borrar la vieja (`ssh-keygen -R IP`).
+</details>
+
+**En resumen:** la primera vez apuntas la host key del servidor; si un día cambia, no aceptes sin averiguar por qué.
+
+### Pieza 3 — SSH es estricto con los permisos
 
 Si alguien más pudiera leer tu llave privada o cambiar la lista de llaves públicas autorizadas (`authorized_keys`), SSH no se fía y se niega a funcionar. Exige (clase 06):
 
@@ -74,9 +144,97 @@ Si alguien más pudiera leer tu llave privada o cambiar la lista de llaves públ
 | `authorized_keys` | `600` (o `644`) |
 | la casa del usuario | sin escritura para grupo ni otros |
 
+**Pruébalo**, en tu PC y en la VM:
+
+```bash
+ls -ld ~/.ssh
+ls -l ~/.ssh
+multipass exec servidor-01 -- ls -la /home/ubuntu/.ssh
+```
+
+👀 **Qué deberías ver:** `~/.ssh` en `drwx------` (700), las llaves privadas en `-rw-------` (600) y las `.pub` en `-rw-r--r--`; en la VM, `authorized_keys` en `-rw-------`.
+
 **En resumen:** `~/.ssh` en `700` y la llave privada en `600`: si no, SSH no se fía.
 
-### 4. Cerrar la puerta a los demás
+### Pieza 4 — El agente y los alias: menos que escribir
+
+Dos ayudas que usarás a diario:
+- **`ssh-agent`** guarda tu llave ya desbloqueada mientras dura la sesión: escribes la passphrase **una sola vez**.
+- **`~/.ssh/config`** guarda alias: en vez de `ssh -i ~/.ssh/lab_ed25519 ubuntu@10.x.x.x`, escribes `ssh servidor-01`.
+
+**Pruébalo, primero el agente:**
+
+```bash
+eval "$(ssh-agent -s)"     # en el escritorio de Ubuntu normalmente ya hay uno
+ssh-add ~/.ssh/lab_ed25519
+ssh-add -l
+ssh -i ~/.ssh/lab_ed25519 ubuntu@$IP hostname
+```
+
+👀 **Qué deberías ver:** `Identity added…`, tu llave en la lista del agente, y `servidor-01` sin que te pida la passphrase.
+
+**Ahora el alias:**
+
+```bash
+nano ~/.ssh/config
+```
+
+Añade (con la IP real):
+
+```
+Host servidor-01
+    HostName 10.x.x.x
+    User ubuntu
+    IdentityFile ~/.ssh/lab_ed25519
+    IdentitiesOnly yes
+```
+
+```bash
+chmod 600 ~/.ssh/config
+ssh servidor-01
+```
+
+👀 **Qué deberías ver:** el prompt `ubuntu@servidor-01`, sin escribir ni el usuario, ni la IP, ni la llave. Sal con `exit`.
+
+Desde ahora, en todo el curso: `ssh servidor-01`.
+
+**En resumen:** `ssh-add` te ahorra la passphrase y `~/.ssh/config` te ahorra escribir usuario, IP y llave.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+
+### Pieza 5 — Copiar archivos y abrir un túnel
+
+SSH no solo abre un shell remoto: también **copia archivos** (`scp`, y `rsync`, que solo copia lo que cambió) y **lleva un puerto** de tu PC hasta el servidor, cifrado (un **túnel**, `ssh -L`).
+
+**Pruébalo, primero copiando:**
+
+```bash
+echo "informe local" > /tmp/informe.txt
+scp /tmp/informe.txt servidor-01:/tmp/
+ssh servidor-01 cat /tmp/informe.txt
+scp servidor-01:/etc/nginx/nginx.conf /tmp/nginx-de-la-vm.conf
+mkdir -p /tmp/web && echo "<h1>Desplegado con rsync</h1>" > /tmp/web/index.html
+rsync -avz /tmp/web/ servidor-01:/tmp/web/
+rsync -avz /tmp/web/ servidor-01:/tmp/web/      # la 2.ª vez no copia nada: solo transfiere diferencias
+```
+
+👀 **Qué deberías ver:** `informe local`; la copia de `nginx.conf` en tu `/tmp`; y, en el segundo `rsync`, ningún archivo en la lista: no había nada nuevo que copiar.
+
+**Ahora un túnel.** `miapp` (clase 12) escucha en el puerto 8080 de la VM. Imagina que el firewall no deja llegar a él desde fuera:
+
+```bash
+ssh -N -L 9090:localhost:8080 servidor-01 &
+curl -s localhost:9090
+kill %1
+```
+
+👀 **Qué deberías ver:** `<h1>Mi app en servidor-01</h1>`: tu PC llegó al puerto 8080 de la VM por el túnel.
+
+Tu PC abrió su puerto **9090** y lo envió, cifrado, por SSH hasta el **8080** de la VM. Así se accede en AWS a una base de datos en una subred privada a través de un **bastión**: `ssh -L 5432:mi-db.xxxx.rds.amazonaws.com:5432 bastion`.
+
+**En resumen:** `scp` copia, `rsync` sincroniza (solo lo que cambia) y `ssh -L` lleva un puerto de tu PC hasta el servidor.
+
+### Pieza 6 — Endurecer el servidor SSH
 
 La configuración del servidor SSH está en `/etc/ssh/sshd_config`. Cuatro ajustes la hacen mucho más segura:
 
@@ -91,147 +249,7 @@ Ubuntu lee también los archivos de `/etc/ssh/sshd_config.d/*.conf`, y **la prim
 
 **Regla de supervivencia:** al cambiar la configuración de SSH, **deja abierta una sesión** y prueba desde **otra**. Si te equivocas, aún tienes la primera para arreglarlo. En una EC2 sin otra forma de entrar, un error aquí significa perder la instancia.
 
-**En resumen:** sin contraseñas, sin root y solo los usuarios de la lista. Y siempre con una sesión de seguridad abierta.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. ¿Qué archivo pegas en el servidor: la llave pública o la privada?
-2. SSH te avisa de que la huella del servidor ha cambiado. ¿Qué haces?
-3. Vas a desactivar las contraseñas en el servidor SSH. ¿Qué haces antes de reiniciar el servicio?
-
-<details>
-<summary>Comprueba</summary>
-
-1. La **pública** (`.pub`). La privada nunca sale de tu PC. 2. No aceptar a ciegas: averiguar si el servidor se reinstaló, comprobando la huella por otra vía, y solo entonces borrar la vieja. 3. Dejar abierta una sesión de seguridad y probar desde otra (y revisar la sintaxis con `sudo sshd -t`).
-</details>
-
-### Tu chuleta de la clase
-
-| Comando | Para qué |
-|---------|----------|
-| `ssh-keygen -t ed25519 -f ~/.ssh/nombre -C "comentario"` | crear un par de llaves |
-| `ssh -i ~/.ssh/llave usuario@IP` | entrar con una llave concreta |
-| `ssh-add ~/.ssh/llave` · `ssh-add -l` | darle la llave al agente (la passphrase, una sola vez) · ver cuáles tiene |
-| `~/.ssh/config` (`Host`, `HostName`, `User`, `IdentityFile`) | alias: `ssh servidor-01` |
-| `scp archivo servidor:/ruta/` · `rsync -avz dir/ servidor:/ruta/` | copiar archivos · sincronizar carpetas (solo copia lo que cambia) |
-| `ssh -N -L 9090:localhost:8080 servidor` | túnel: tu puerto 9090 llega al 8080 del servidor |
-| `ssh-keygen -lf archivo.pub` · `ssh-keygen -R IP` | ver una huella · olvidar la huella guardada de un servidor |
-| `sudo sshd -t` · `sudo sshd -T` | revisar la sintaxis de la configuración · ver la configuración efectiva |
-
-## Práctica guiada
-
-En **tu PC**:
-```bash
-IP=$(multipass info servidor-01 | awk '/IPv4/ {print $2}'); echo $IP
-```
-
-### 1. Una llave solo para el laboratorio
-
-```bash
-ssh-keygen -t ed25519 -f ~/.ssh/lab_ed25519 -C "lab-servidor-01"
-```
-
-Pon una **passphrase**. Después:
-```bash
-ls -l ~/.ssh/lab_ed25519*
-cat ~/.ssh/lab_ed25519.pub
-```
-
-👀 **Qué deberías ver:** dos archivos, la privada (`-rw-------`) y la `.pub` (`-rw-r--r--`), y una sola línea que empieza por `ssh-ed25519` y termina en `lab-servidor-01`.
-
-Una línea: tipo, la llave y el comentario. Eso es lo único que viaja al servidor.
-
-### 2. Instalar la pública en la VM
-
-La imagen de Multipass no permite contraseñas, así que usamos `multipass exec` (en AWS, este paso lo hace el *key pair* al crear la instancia):
-
-```bash
-multipass exec servidor-01 -- bash -c "echo '$(cat ~/.ssh/lab_ed25519.pub)' >> ~/.ssh/authorized_keys"
-multipass exec servidor-01 -- cat /home/ubuntu/.ssh/authorized_keys
-```
-
-👀 **Qué deberías ver:** dos líneas: la llave de Multipass y la tuya, que acaba en `lab-servidor-01`.
-
-Verás dos llaves: la de Multipass y la tuya.
-
-### 3. Primera conexión
-
-🔮 **Predice:** ¿qué te preguntará SSH la primera vez?
-
-```bash
-ssh -i ~/.ssh/lab_ed25519 ubuntu@$IP
-```
-
-Te muestra la **huella** del servidor. Compárala **antes de aceptar**. Desde otra terminal:
-```bash
-multipass exec servidor-01 -- ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
-```
-Si coinciden, escribe `yes`. Después te pedirá la passphrase de tu llave. Sal con `exit` y mira lo que se guardó:
-```bash
-grep "$IP" ~/.ssh/known_hosts || ssh-keygen -F $IP
-```
-
-### 4. ssh-agent: la passphrase una sola vez
-
-```bash
-eval "$(ssh-agent -s)"     # en el escritorio de Ubuntu normalmente ya hay uno
-ssh-add ~/.ssh/lab_ed25519
-ssh-add -l
-ssh -i ~/.ssh/lab_ed25519 ubuntu@$IP hostname
-```
-
-👀 **Qué deberías ver:** `Identity added…`, tu llave en la lista del agente, y `servidor-01` sin que te pida la passphrase.
-
-### 5. `~/.ssh/config`: alias
-
-```bash
-nano ~/.ssh/config
-```
-Añade (con la IP real):
-```
-Host servidor-01
-    HostName 10.x.x.x
-    User ubuntu
-    IdentityFile ~/.ssh/lab_ed25519
-    IdentitiesOnly yes
-```
-```bash
-chmod 600 ~/.ssh/config
-ssh servidor-01
-```
-
-Desde ahora, en todo el curso: `ssh servidor-01`.
-
-### 6. Copiar archivos
-
-```bash
-echo "informe local" > /tmp/informe.txt
-scp /tmp/informe.txt servidor-01:/tmp/
-ssh servidor-01 cat /tmp/informe.txt
-scp servidor-01:/etc/nginx/nginx.conf /tmp/nginx-de-la-vm.conf
-mkdir -p /tmp/web && echo "<h1>Desplegado con rsync</h1>" > /tmp/web/index.html
-rsync -avz /tmp/web/ servidor-01:/tmp/web/
-rsync -avz /tmp/web/ servidor-01:/tmp/web/      # la 2.ª vez no copia nada: solo transfiere diferencias
-```
-
-👀 **Qué deberías ver:** `informe local`; la copia de `nginx.conf` en tu `/tmp`; y, en el segundo `rsync`, ningún archivo en la lista: no había nada nuevo que copiar.
-
-### 7. Un túnel
-
-`miapp` (clase 12) escucha en el puerto 8080 de la VM. Imagina que el firewall no deja llegar a él desde fuera:
-```bash
-ssh -N -L 9090:localhost:8080 servidor-01 &
-curl -s localhost:9090
-kill %1
-```
-
-👀 **Qué deberías ver:** `<h1>Mi app en servidor-01</h1>`: tu PC llegó al puerto 8080 de la VM por el túnel.
-
-Tu PC abrió su puerto **9090** y lo envió, cifrado, por SSH hasta el **8080** de la VM. Así se accede en AWS a una base de datos en una subred privada a través de un **bastión**: `ssh -L 5432:mi-db.xxxx.rds.amazonaws.com:5432 bastion`.
-
-### 8. Endurecer el servidor
-
-Abre **dos** terminales con `ssh servidor-01`. Trabaja en la primera; la segunda es tu red de seguridad.
+**Pruébalo.** Abre **dos** terminales con `ssh servidor-01`. Trabaja en la primera; la segunda es tu sesión de seguridad.
 
 ```bash
 sudo sshd -T | grep -Ei "^(passwordauthentication|permitrootlogin|pubkeyauthentication|maxauthtries)"
@@ -239,6 +257,7 @@ ls /etc/ssh/sshd_config.d/
 ```
 
 Crea tu configuración:
+
 ```bash
 sudo tee /etc/ssh/sshd_config.d/00-endurecido.conf <<'EOF'
 PasswordAuthentication no
@@ -251,6 +270,7 @@ sudo systemctl restart ssh
 ```
 
 Desde **tu PC**, en una terminal nueva:
+
 ```bash
 ssh servidor-01 whoami                                      # debe funcionar
 ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no ubuntu@$IP   # debe rechazar
@@ -258,22 +278,56 @@ ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no ubuntu@$IP  
 
 👀 **Qué deberías ver:** `ubuntu` en el primero, y `Permission denied (publickey)` en el segundo.
 
-### 9. Acceso para Ana
+✋ **Sin mirar:** vas a desactivar las contraseñas en el servidor SSH. ¿Qué haces antes de reiniciar el servicio?
 
-Ana (clase 09) necesita entrar. Genera **su** llave (en la vida real la genera ella y te manda **solo la pública**):
+<details>
+<summary>Comprueba</summary>
+
+Dejar abierta una sesión de seguridad y probar desde otra (y revisar la sintaxis con `sudo sshd -t`).
+</details>
+
+**En resumen:** sin contraseñas, sin root y solo los usuarios de la lista. Y siempre con una sesión de seguridad abierta.
+
+### Pieza 7 — Acceso para otra persona: la llave de Ana
+
+Para dar acceso a alguien, **esa persona** crea su par de llaves y te manda **solo la pública**. Tú la pones en el `authorized_keys` de **su** usuario, con los permisos de la pieza 3.
+
+**Pruébalo.** Ana (clase 09) necesita entrar. Genera **su** llave (en la vida real la genera ella):
+
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/ana_lab -N "" -C "ana"
 ```
+
 En la VM:
+
 ```bash
 sudo install -d -m 700 -o ana -g ana /home/ana/.ssh
 echo "<pega aquí el contenido de ana_lab.pub>" | sudo tee /home/ana/.ssh/authorized_keys
 sudo chown ana:ana /home/ana/.ssh/authorized_keys && sudo chmod 600 /home/ana/.ssh/authorized_keys
 ```
+
 Desde tu PC:
+
 ```bash
 ssh -i ~/.ssh/ana_lab -o IdentitiesOnly=yes ana@$IP whoami
 ```
+
+👀 **Qué deberías ver:** `ana`: entró con su llave, y la pieza 6 la deja pasar porque está en `AllowUsers`.
+
+**En resumen:** cada persona, su llave; tú solo recibes la pública y la pones en su `authorized_keys` con `700` y `600`.
+
+## Tu chuleta de la clase
+
+| Comando | Para qué |
+|---------|----------|
+| `ssh-keygen -t ed25519 -f ~/.ssh/nombre -C "comentario"` | crear un par de llaves |
+| `ssh -i ~/.ssh/llave usuario@IP` | entrar con una llave concreta |
+| `ssh-add ~/.ssh/llave` · `ssh-add -l` | darle la llave al agente (la passphrase, una sola vez) · ver cuáles tiene |
+| `~/.ssh/config` (`Host`, `HostName`, `User`, `IdentityFile`) | alias: `ssh servidor-01` |
+| `scp archivo servidor:/ruta/` · `rsync -avz dir/ servidor:/ruta/` | copiar archivos · sincronizar carpetas (solo copia lo que cambia) |
+| `ssh -N -L 9090:localhost:8080 servidor` | túnel: tu puerto 9090 llega al 8080 del servidor |
+| `ssh-keygen -lf archivo.pub` · `ssh-keygen -R IP` | ver una huella · olvidar la huella guardada de un servidor |
+| `sudo sshd -t` · `sudo sshd -T` | revisar la sintaxis de la configuración · ver la configuración efectiva |
 
 ## Rómpelo
 
@@ -316,7 +370,7 @@ En tu PC y en la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** 
 
 **1.** Añade a `~/.ssh/config` una entrada `ana-lab` para entrar como Ana con `ssh ana-lab`.
 
-> 🧩 **Ejemplo resuelto:** la entrada `servidor-01` de la práctica 5.
+> 🧩 **Ejemplo resuelto:** la entrada `servidor-01` de la pieza 4.
 > ```bash
 > Host servidor-01
 >     HostName 10.x.x.x
@@ -338,12 +392,12 @@ Host ____
 <details>
 <summary>Pista</summary>
 
-Tres cambios respecto al ejemplo: el nombre del alias, el usuario y la llave de Ana (la que creaste en la práctica 9).
+Tres cambios respecto al ejemplo: el nombre del alias, el usuario y la llave de Ana (la que creaste en la pieza 7).
 </details>
 
 **2.** Usa `rsync` para «desplegar» una carpeta local `web/` en `/var/www/html/` de la VM, y comprueba el resultado en el navegador con `http://IP`.
 
-> 🧩 **Ejemplo resuelto:** el `rsync` de la práctica 6.
+> 🧩 **Ejemplo resuelto:** el `rsync` de la pieza 5.
 > ```bash
 > rsync -avz /tmp/web/ servidor-01:/tmp/web/
 > ssh servidor-01 ls /tmp/web
@@ -381,7 +435,7 @@ sudo cp -r /tmp/web/* /var/www/____/
 <details>
 <summary>Pista</summary>
 
-Tres verbos, en este orden: **revocar** (quitar del servidor la llave pública de la llave filtrada), **reemplazar** (una llave nueva, como en la práctica 9) y **revisar** (si alguien la usó).
+Tres verbos, en este orden: **revocar** (quitar del servidor la llave pública de la llave filtrada), **reemplazar** (una llave nueva, como en la pieza 7) y **revisar** (si alguien la usó).
 </details>
 
 ## Cierre
