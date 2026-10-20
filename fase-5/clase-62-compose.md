@@ -2,6 +2,23 @@
 
 **Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** A. Contenedores
 
+> 💡 **La idea de hoy:** con `docker run` y diez opciones por contenedor no se puede mantener una aplicación de tres servicios. **Compose** la describe en un archivo, `compose.yaml`: qué servicios hay, de qué imagen salen, con qué variables, volúmenes y puertos, y en qué orden arrancan. `docker compose up` la levanta entera; `docker compose down` la quita (y `down -v`, también sus datos).
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - YAML y su sangría estricta (clase 47); `${VAR:?mensaje}` para exigir una variable (clase 19).
+> - `sqlite3` con parámetros (clase 51): `psycopg` se usa casi igual.
+> - El Dockerfile en dos etapas con el usuario 10001 (clase 59) y el `HEALTHCHECK` (clase 58, reto 1).
+> - Los volúmenes con nombre y la ruta de `postgres:18` (clase 60); las redes con DNS interno y `-p 127.0.0.1:…` (clase 61).
+> - `.gitignore` y que un secreto en un commit publicado ya no se puede retirar (clase 22).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **servicio**: cada contenedor (o grupo de contenedores iguales) que describe el `compose.yaml`.
+> - **proyecto**: el conjunto de servicios de un `compose.yaml`; se llama como su carpeta.
+> - ***healthcheck*** / ***healthy***: la comprobación de que un servicio funciona / el estado "sano".
+> - **`depends_on` con `condition: service_healthy`**: no arrancar un servicio hasta que otro esté sano.
+> - **política de reinicio** (*restart policy*): qué hace Docker si el proceso se cae.
+> - **`.env` / `.env.example`**: el archivo con los valores reales de las variables (fuera de Git) / la plantilla con valores de mentira (en Git).
+
 ## Objetivo
 
 - Describir una aplicación de varios contenedores en un archivo `compose.yaml`: servicios, imágenes, puertos, variables, volúmenes y redes.
@@ -14,70 +31,23 @@
 
 Con `docker run` y diez opciones por contenedor no se puede mantener una aplicación de tres servicios. Compose la describe en un archivo legible y versionado: cualquiera la levanta con `docker compose up`, igual en tu portátil que en una EC2 (fase 6). Es el criterio de salida de esta fase para Vigía: *`docker compose up` levanta todo desde un clon limpio*. Y la idea (declarar lo que quieres en YAML y que una herramienta lo haga realidad) es la misma de Kubernetes (fase 9).
 
-## Teoría
+## Cómo va esta clase
 
-### Anatomía de un `compose.yaml`
+Seis piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. Todas usan la misma aplicación: un contador de visitas en PostgreSQL.
 
-```yaml
-services:                          # cada servicio es un contenedor (o varios iguales)
-  db:
-    image: postgres:18             # una imagen de un registro…
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD en .env}
-    volumes:
-      - datos:/var/lib/postgresql  # volumen con nombre (clase 60)
-    healthcheck:                   # cómo saber si está sano
-      test: ["CMD-SHELL", "pg_isready -U contador -d contador"]
-      interval: 5s
-
-  web:
-    build: .                       # …o una imagen que construye con tu Dockerfile
-    environment:
-      DATABASE_URL: postgresql://contador:${POSTGRES_PASSWORD}@db:5432/contador
-    ports:
-      - "127.0.0.1:8000:8000"      # solo para tu máquina (clase 61)
-    depends_on:
-      db:
-        condition: service_healthy # no arranques hasta que db esté sano
-    restart: unless-stopped        # si se cae, levántalo
-
-volumes:
-  datos:                           # los volúmenes con nombre se declaran aquí
-```
-
-- Compose crea una **red** para el proyecto: los servicios se encuentran por su nombre (`db`).
-- El proyecto se llama como la carpeta, y los contenedores, `carpeta-servicio-1`.
-- Ya no hace falta la línea `version:` que verás en tutoriales antiguos.
-
-### Variables y secretos con `.env`
-
-Compose lee automáticamente un archivo `.env` junto al `compose.yaml` y sustituye cada `${VARIABLE}`. `${VAR:?mensaje}` hace que Compose se niegue a arrancar si falta. Así, el `compose.yaml` va a Git sin secretos; el `.env` real **no** (al `.gitignore`), y en su lugar se sube un `.env.example` con valores de mentira que explica qué variables hay que definir.
-
-### `depends_on` no es "espera a que funcione"
-
-Sin condición, `depends_on: [db]` solo garantiza que el contenedor de `db` **arranca** antes. PostgreSQL tarda unos segundos en aceptar conexiones, y una aplicación que conecta al arrancar falla en ese hueco (Rómpelo 2). Con `condition: service_healthy`, Compose espera a que el `healthcheck` de `db` dé verde. Y `restart: unless-stopped` es la red de seguridad para cuando la base de datos se cae más tarde.
-
-### Los comandos
-
-| Comando | Qué hace |
-|---------|----------|
-| `docker compose config` | valida el archivo y lo muestra con las variables sustituidas |
-| `docker compose up -d --build` | construye lo que haga falta y arranca todo en segundo plano |
-| `docker compose up -d --wait` | arranca y espera a que todo esté sano (`healthy`) |
-| `docker compose ps` | los contenedores del proyecto, con su estado y su salud |
-| `docker compose logs -f web` | los logs de un servicio (sin nombre: de todos) |
-| `docker compose exec db psql …` | un comando dentro de un servicio en marcha |
-| `docker compose restart web` | reinicia un servicio |
-| `docker compose down` | para y **borra** los contenedores y la red. Los volúmenes **se quedan** |
-| `docker compose down -v` | lo mismo y además **borra los volúmenes**: tus datos |
-
-## Práctica guiada
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 40 min, todo preparado pero sin arrancar); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
 
 ```bash
 mkdir -p ~/my-devops-journey/labs/clase-62 && cd ~/my-devops-journey/labs/clase-62
 ```
 
-### 1. La aplicación: un contador en PostgreSQL
+## Las piezas
+
+### Pieza 1 — La aplicación: un contador en PostgreSQL
+
+`psycopg` es la librería de Python para PostgreSQL. Funciona como `sqlite3` (clase 51), con dos diferencias: se conecta con una URL (`postgresql://usuario:contraseña@servidor:5432/base`) y los parámetros se escriben `%s` en lugar de `?`. `with psycopg.connect(…)` confirma los cambios y cierra la conexión al salir.
+
+**Pruébalo.** La aplicación, sus dependencias y el Dockerfile de dos etapas de la clase 59 (sin compiladores, que aquí no hacen falta):
 
 ```bash
 cat > app.py <<'EOF'
@@ -109,13 +79,6 @@ def visitas():
 EOF
 printf 'fastapi==0.143.0\nuvicorn==0.54.0\npsycopg[binary]==3.3.6\n' > requirements.txt
 printf '.venv/\n__pycache__/\n.env\n' > .dockerignore
-```
-
-`psycopg` es la librería de Python para PostgreSQL. Funciona como `sqlite3` (clase 51), con dos diferencias: se conecta con una URL (`postgresql://usuario:contraseña@servidor:5432/base`) y los parámetros se escriben `%s` en lugar de `?`. `with psycopg.connect(…)` confirma los cambios y cierra la conexión al salir.
-
-### 2. El Dockerfile (de la clase 59)
-
-```bash
 cat > Dockerfile <<'EOF'
 FROM python:3.14-slim AS construccion
 RUN python -m venv /opt/venv
@@ -133,9 +96,58 @@ USER app
 EXPOSE 8000
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
 EOF
+ls -A
 ```
 
-### 3. El `compose.yaml`
+👀 **Qué deberías ver:** `.dockerignore  app.py  Dockerfile  requirements.txt`. Todavía no se puede arrancar: la aplicación necesita una `DATABASE_URL` y una base de datos detrás. Para eso está Compose.
+
+✋ **Sin mirar:** ¿cómo se escribe un parámetro en una consulta de `psycopg`, y cómo en `sqlite3`?
+
+<details>
+<summary>Comprueba</summary>
+
+`%s` en `psycopg` y `?` en `sqlite3`. En los dos, el valor va aparte, nunca dentro del texto de la consulta.
+</details>
+
+**En resumen:** `psycopg.connect(URL)` es el `sqlite3.connect` de PostgreSQL, con una URL y `%s`.
+
+### Pieza 2 — Anatomía de un `compose.yaml`
+
+```yaml
+services:                          # cada servicio es un contenedor (o varios iguales)
+  db:
+    image: postgres:18             # una imagen de un registro…
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD en .env}
+    volumes:
+      - datos:/var/lib/postgresql  # volumen con nombre (clase 60)
+    healthcheck:                   # cómo saber si está sano
+      test: ["CMD-SHELL", "pg_isready -U contador -d contador"]
+      interval: 5s
+
+  web:
+    build: .                       # …o una imagen que construye con tu Dockerfile
+    environment:
+      DATABASE_URL: postgresql://contador:${POSTGRES_PASSWORD}@db:5432/contador
+    ports:
+      - "127.0.0.1:8000:8000"      # solo para tu máquina (clase 61)
+    depends_on:
+      db:
+        condition: service_healthy # no arranques hasta que db esté sano
+    restart: unless-stopped        # si se cae, levántalo
+
+volumes:
+  datos:                           # los volúmenes con nombre se declaran aquí
+```
+
+- Compose crea una **red** para el proyecto: los servicios se encuentran por su nombre (`db`).
+- El proyecto se llama como la carpeta, y los contenedores, `carpeta-servicio-1`.
+- Ya no hace falta la línea `version:` que verás en tutoriales antiguos.
+- `docker compose config` valida el archivo y lo muestra con las variables sustituidas; con `-q`, solo valida.
+
+🔮 **Predice** qué dirá `docker compose config -q` antes de que exista el `.env`.
+
+**Pruébalo:**
 
 ```bash
 cat > compose.yaml <<'EOF'
@@ -176,7 +188,23 @@ EOF
 docker compose config -q
 ```
 
-🔮 **Predice** qué dirá `docker compose config` antes de crear el `.env`. Se niega: `required variable POSTGRES_PASSWORD is missing a value: falta POSTGRES_PASSWORD en .env`. Mejor fallar aquí que arrancar una base de datos sin contraseña.
+👀 **Qué deberías ver:** Compose se niega: `required variable POSTGRES_PASSWORD is missing a value: falta POSTGRES_PASSWORD en .env`. Mejor fallar aquí que arrancar una base de datos sin contraseña.
+
+✋ **Sin mirar:** en este `compose.yaml`, ¿con qué nombre encuentra `web` a la base de datos, y por qué?
+
+<details>
+<summary>Comprueba</summary>
+
+Con `db`, el nombre del servicio: Compose crea una red propia para el proyecto, con el DNS interno de Docker (clase 61).
+</details>
+
+**En resumen:** `services:` con su `image` o `build`, `environment`, `volumes`, `ports`, `healthcheck` y `depends_on`; `volumes:` declara los volúmenes con nombre.
+
+### Pieza 3 — Variables y secretos con `.env`
+
+Compose lee automáticamente un archivo `.env` junto al `compose.yaml` y sustituye cada `${VARIABLE}`. `${VAR:?mensaje}` hace que Compose se niegue a arrancar si falta. Así, el `compose.yaml` va a Git sin secretos; el `.env` real **no** (al `.gitignore`), y en su lugar se sube un `.env.example` con valores de mentira que explica qué variables hay que definir.
+
+**Pruébalo:**
 
 ```bash
 printf 'POSTGRES_PASSWORD=cambia-esta-contrasena\n' > .env.example
@@ -185,9 +213,34 @@ nano .env                                # pon una contraseña tuya
 docker compose config | grep -A2 DATABASE_URL
 ```
 
-`config` muestra el archivo final con las variables sustituidas: la forma de comprobar que Compose ve lo que crees.
+👀 **Qué deberías ver:** `DATABASE_URL: postgresql://contador:<tu contraseña>@db:5432/contador`. `config` muestra el archivo final con las variables sustituidas: la forma de comprobar que Compose ve lo que crees.
 
-### 4. Arrancar y usar
+✋ **Sin mirar:** ¿qué archivo sube a Git y cuál no: `.env` o `.env.example`?
+
+<details>
+<summary>Comprueba</summary>
+
+`.env.example` (valores de mentira, explica qué variables hacen falta) sí; `.env` (los valores reales) no: va al `.gitignore`.
+</details>
+
+**En resumen:** los valores reales en `.env`, fuera de Git; la plantilla en `.env.example`; `${VAR:?}` para exigirlos.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, lo primero: `cd ~/my-devops-journey/labs/clase-62`.
+
+### Pieza 4 — Arrancar, y por qué esperar a que `db` esté sana
+
+Sin condición, `depends_on: [db]` solo garantiza que el contenedor de `db` **arranca** antes. PostgreSQL tarda unos segundos en aceptar conexiones, y una aplicación que conecta al arrancar falla en ese hueco (Rómpelo 2). Con `condition: service_healthy`, Compose espera a que el `healthcheck` de `db` dé verde. Y `restart: unless-stopped` es la red de seguridad para cuando la base de datos se cae más tarde.
+
+| Comando | Qué hace |
+|---------|----------|
+| `docker compose up -d --build` | construye lo que haga falta y arranca todo en segundo plano |
+| `docker compose up -d --wait` | arranca y espera a que todo esté sano (`healthy`) |
+| `docker compose ps` | los contenedores del proyecto, con su estado y su salud |
+| `docker compose logs -f web` | los logs de un servicio (sin nombre: de todos) |
+| `docker compose exec db psql …` | un comando dentro de un servicio en marcha |
+| `docker compose restart web` | reinicia un servicio |
+
+**Pruébalo:**
 
 ```bash
 docker compose up -d --build --wait
@@ -197,28 +250,56 @@ docker compose logs --tail 5 web
 docker compose exec db psql -U contador -d contador -c 'SELECT COUNT(*) FROM visitas;'
 ```
 
-`--wait` vuelve cuando los dos servicios están `healthy`. Fíjate en el orden de arranque en la salida: primero `db`, que pasa a `Healthy`, y solo entonces `web`. En los logs de `web` verás, además de tus peticiones, las del `healthcheck` cada 5 segundos.
+👀 **Qué deberías ver:** el orden de arranque en la salida de `up`: primero `db`, que pasa a `Healthy`, y solo entonces `web`; `--wait` vuelve cuando los dos están `healthy`. En `ps`, `clase-62-db-1` y `clase-62-web-1`, los dos `Up … (healthy)`. Después, `{"visitas":1}`, `{"visitas":2}` y `{"visitas":3}`. En los logs de `web` verás, además de tus peticiones, las del `healthcheck` cada 5 segundos. Y `psql` cuenta las mismas 3 filas.
 
-### 5. Qué sobrevive a qué
+✋ **Sin mirar:** sin `condition: service_healthy`, ¿qué garantiza `depends_on: [db]`?
+
+<details>
+<summary>Comprueba</summary>
+
+Solo que el contenedor de `db` arranca antes que el de `web`, no que PostgreSQL acepte ya conexiones.
+</details>
+
+**En resumen:** `healthcheck` en `db` + `condition: service_healthy` en `web` = arrancar en el orden correcto; `up -d --build --wait` lo levanta todo.
+
+### Pieza 5 — Qué sobrevive a qué: `down` y `down -v`
+
+| Comando | Qué hace |
+|---------|----------|
+| `docker compose down` | para y **borra** los contenedores y la red. Los volúmenes **se quedan** |
+| `docker compose down -v` | lo mismo y además **borra los volúmenes**: tus datos |
+
+🔮 **Predice** el número de visitas después de `down` y `up`.
+
+**Pruébalo:**
 
 ```bash
 docker compose down
 docker volume ls | grep datos
 docker compose up -d --wait
 curl -s 127.0.0.1:8000/visitas ; echo
-```
-
-🔮 **Predice** el número antes de ejecutar. Sale `{"visitas":4}`: `down` borró los contenedores y la red, pero no el volumen. Ahora, con `-v`:
-
-```bash
 docker compose down -v
 docker compose up -d --wait
 curl -s 127.0.0.1:8000/visitas ; echo
 ```
 
-`{"visitas":1}`: la base de datos empezó de cero. `down -v` es el `rm -rf` de Compose: úsalo solo cuando quieras borrar los datos a propósito.
+👀 **Qué deberías ver:** tras `down`, el volumen `clase-62_datos` sigue en la lista, y la siguiente visita es `{"visitas":4}`: `down` borró los contenedores y la red, pero no el volumen. Tras `down -v`, `{"visitas":1}`: la base de datos empezó de cero. `down -v` es el `rm -rf` de Compose: úsalo solo cuando quieras borrar los datos a propósito.
 
-### 6. Un cambio de código
+✋ **Sin mirar:** quieres apagar todo esta noche y seguir mañana con los mismos datos. ¿`down` o `down -v`?
+
+<details>
+<summary>Comprueba</summary>
+
+`down`: conserva los volúmenes con nombre. `down -v` borraría la base de datos.
+</details>
+
+**En resumen:** `down` conserva los datos; `down -v` los borra.
+
+### Pieza 6 — Un cambio de código
+
+`up --build` reconstruye la imagen (con la caché de la clase 58) y recrea solo los servicios cuya configuración o imagen cambió.
+
+**Pruébalo:**
 
 ```bash
 sed -i 's/title="Contador"/title="Contador de visitas"/' app.py
@@ -227,7 +308,31 @@ docker compose ps
 curl -s 127.0.0.1:8000/openapi.json | python3 -c 'import json, sys; print(json.load(sys.stdin)["info"]["title"])'
 ```
 
-`up --build` reconstruye la imagen (con la caché de la clase 58) y recrea solo el servicio que cambió. La base de datos ni se entera.
+👀 **Qué deberías ver:** en la salida de `up`, `db` aparece como `Running` (ni se entera) y `web` como `Recreated`/`Started`; en `ps`, `web` con un `Up` de unos segundos y `db` con el de antes; y `Contador de visitas`.
+
+✋ **Sin mirar:** cambias `app.py` y haces `up -d --build`. ¿Se reinicia la base de datos?
+
+<details>
+<summary>Comprueba</summary>
+
+No: solo se recrea `web`, cuya imagen cambió. `db` sigue como estaba.
+</details>
+
+**En resumen:** cambias el código, `up -d --build`, y solo se recrea lo que cambió.
+
+## Tu chuleta de la clase
+
+| Escribes | Qué hace |
+|----------|----------|
+| `docker compose config [-q]` | validar y ver el archivo con las variables sustituidas |
+| `docker compose up -d --build --wait` | construir, arrancar y esperar a que todo esté sano |
+| `docker compose ps` · `logs -f web` · `exec db psql …` | estado · logs · un comando dentro |
+| `docker compose restart web` · `stop db` · `start db` | reiniciar, parar y arrancar un servicio |
+| `docker compose down` | borrar contenedores y red, **conservando** los volúmenes |
+| `docker compose down -v` | borrar también los volúmenes (los datos) |
+| `${VAR:?mensaje}` en el `compose.yaml` | exigir una variable del `.env` |
+| `depends_on: {db: {condition: service_healthy}}` | esperar a que otro servicio esté sano |
+| `restart: unless-stopped` | levantarlo si se cae |
 
 ## Rómpelo
 
@@ -262,18 +367,73 @@ Sin `.gitignore`, `git add .` se lleva tu contraseña. Recuerda la clase 22: si 
 
 ## Reto
 
-1. Añade un tercer servicio, `adminer` (imagen `adminer:5`), publicado en `127.0.0.1:8081`, para ver la base de datos desde el navegador. Entra con servidor `db`, usuario `contador` y tu contraseña. ¿Por qué `db` funciona como nombre de servidor?
-2. Mete `adminer` en un **perfil**: `profiles: ["debug"]`. Comprueba que `docker compose up -d` no lo arranca y que `docker compose --profile debug up -d` sí.
-3. Simula la caída de la base de datos con `docker compose stop db`, pide `/visitas` y mira el código HTTP. Vuelve a arrancarla con `docker compose start db`. ¿Se recupera `web` sola?
+En `labs/clase-62/`. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
+
+**1.** Añade un tercer servicio, `adminer` (imagen `adminer:5`), publicado en `127.0.0.1:8081`, para ver la base de datos desde el navegador. ¿Por qué `db` funciona como nombre de servidor?
+
+> 🧩 **Ejemplo resuelto:** el servicio `web`: su `ports: ["127.0.0.1:8000:8000"]` publica su puerto 8000 solo para tu máquina.
+
+**Ahora tú, con huecos** (dentro de `services:`, al mismo nivel que `db` y `web`):
+```yaml
+  adminer:
+    image: adminer:____
+    ports:
+      - "127.0.0.1:____:8080"
+    depends_on: [db]
+```
+Después, `docker compose up -d` y abre `http://127.0.0.1:8081`: sistema PostgreSQL, servidor ____, usuario ____ y tu contraseña.
+
+<details>
+<summary>Pista</summary>
+
+Adminer escucha en el 8080 dentro de su contenedor; tú lo publicas en el 8081 de tu máquina. Para el servidor, piensa en cómo encuentra `web` a la base de datos.
+</details>
+
+**2.** Mete `adminer` en un **perfil**, para que solo arranque cuando lo pidas.
+
+> 🧩 **Ejemplo resuelto:** `docker compose up -d` arranca todos los servicios del archivo que **no** tienen perfil.
+
+**Ahora tú, con huecos:** añade a `adminer` la línea `profiles: ["____"]`, y comprueba:
+```bash
+docker compose down && docker compose up -d && docker compose ps --services
+docker compose --profile ____ up -d && docker compose ps --services
+```
+
+<details>
+<summary>Pista</summary>
+
+Un servicio con `profiles` solo arranca si activas uno de sus perfiles con `--profile`. Llámalo `debug`.
+</details>
+
+**3.** Simula la caída de la base de datos, pide `/visitas` y mira el código HTTP. Vuelve a arrancarla. ¿Se recupera `web` sola?
+
+> 🧩 **Ejemplo resuelto:** la tabla de comandos de la pieza 4: `docker compose restart web` reinicia un servicio.
+
+**Ahora tú, con huecos:**
+```bash
+docker compose ____ db
+curl -s -o /dev/null -w "%{http_code}\n" 127.0.0.1:8000/visitas
+docker compose ____ db && sleep 5
+curl -s 127.0.0.1:8000/visitas ; echo
+```
+Completa: «Con la base parada, `/visitas` da ____. Al arrancarla, `web` ____, porque abre una conexión nueva en…».
+
+<details>
+<summary>Pista</summary>
+
+`stop` para un servicio sin borrarlo y `start` lo vuelve a arrancar. Mira la función `visitas` de `app.py`: ¿cuándo se conecta?
+</details>
 
 ## Cierre
 
 En `notas/fase-5/clase-62.md`:
 
-1. ¿Qué hace `condition: service_healthy` y qué pasaría sin ella en esta aplicación?
-2. ¿Qué diferencia hay entre `docker compose down` y `docker compose down -v`?
-3. ¿Cómo mantienes la contraseña de la base de datos fuera de Git y, aun así, explicas a otros qué variables necesitan?
-4. **Repaso (clase 61, sin mirar):** dentro de un contenedor, ¿qué es `localhost`? ¿Cómo llega la web a la base de datos?
+1. ¿Qué hace `condition: service_healthy` y qué pasaría sin ella en esta aplicación? *(2 líneas. Empieza así: «Hace que Compose no arranque `web` hasta que… Sin ella, `web` arranca en cuanto…, intenta conectar y…»)*
+2. ¿Qué diferencia hay entre `docker compose down` y `docker compose down -v`? *(2 líneas. Empieza así: «`down` para y borra los contenedores y la red, pero conserva… `down -v` borra además…»)*
+3. ¿Cómo mantienes la contraseña de la base de datos fuera de Git y, aun así, explicas a otros qué variables necesitan? *(2 líneas. Empieza así: «La contraseña va en un `.env` incluido en el `.gitignore`… A Git subo un `.env.example` con…»)*
+4. **Repaso (clase 61, sin mirar):** dentro de un contenedor, ¿qué es `localhost`? ¿Cómo llega la web a la base de datos? *(1–2 líneas. Empieza así: «`localhost` es el propio contenedor. La web llega por el nombre del servicio…»)*
+
+Después, escríbeme `examíname clase-62`.
 
 ## Autocorrección
 
@@ -288,9 +448,11 @@ En `notas/fase-5/clase-62.md`:
 
 **4.** El propio contenedor. La web llega a la base de datos por el nombre del servicio, `db`, que el DNS interno de la red del proyecto resuelve a su IP, y por su puerto interno, el 5432.
 
-**Reto 1:** porque `adminer` y `db` están en la misma red del proyecto, y el DNS de Docker resuelve el nombre del servicio.
+**Reto 1:** `adminer:5`, el puerto `8081`, servidor `db` y usuario `contador`. `db` funciona porque `adminer` y `db` están en la misma red del proyecto, y el DNS de Docker resuelve el nombre del servicio.
 
-**Reto 3:** con la base de datos parada, `/visitas` da **500** (la conexión falla dentro de la petición). Al arrancar `db` de nuevo, `web` se recupera sola, porque abre una conexión nueva en cada petición, sin reiniciarse.
+**Reto 2:** `profiles: ["debug"]` y `--profile debug`. Sin el perfil, `ps --services` muestra solo `db` y `web`; con él, también `adminer`.
+
+**Reto 3:** `stop` y `start`. Con la base de datos parada, `/visitas` da **500** (la conexión falla dentro de la petición). Al arrancar `db` de nuevo, `web` se recupera sola, porque abre una conexión nueva en cada petición, sin reiniciarse.
 </details>
 
 ## Inglés

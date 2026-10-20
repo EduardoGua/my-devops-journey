@@ -2,6 +2,21 @@
 
 **Dónde:** tu Ubuntu + GitHub · **Tiempo:** 2 bloques largos (unas 5–6 h) · **Bloque:** B. Proyecto · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** Vigía se prepara para vivir en contenedores. En la v1, `check` y `serve` compartían un archivo SQLite; en contenedores serán dos procesos separados, así que la base de datos pasa a ser **PostgreSQL**, un servidor al que los dos se conectan por la red, y su dirección llega por la variable **`DATABASE_URL`**. Además, el chequeo aprende a repetirse cada N segundos y a pararse limpio cuando recibe SIGTERM, y Vigía estrena su Dockerfile de dos etapas sin root.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - Tus `storage.py` y `cli.py`, y las 26 pruebas de aceptación de la v1 (clases 54 y 55).
+> - `psycopg`, sus parámetros `%s` y PostgreSQL en un contenedor (clases 60 y 62).
+> - La configuración por variables de entorno (clase 50); SIGTERM y `trap` (clases 11 y 19).
+> - El Dockerfile en dos etapas con el usuario 10001 y `ENTRYPOINT` + `CMD` en forma exec (clases 58 y 59).
+> - Las redes de Docker y `-p 127.0.0.1:…` (clase 61).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - **`DATABASE_URL`**: la variable con la dirección de la base de datos, como `postgresql://usuario:contraseña@servidor:5432/base`.
+> - **manejador de señal**: la función que Python ejecuta al recibir una señal, registrada con `signal.signal(signal.SIGTERM, función)`.
+> - **parada limpia** (*graceful shutdown*): terminar lo que se está haciendo y salir al recibir SIGTERM, sin esperar a SIGKILL.
+> - **almacén**: en Vigía, el objeto que guarda y lee los resultados, sea SQLite o PostgreSQL.
+
 ## Objetivo
 
 Preparar Vigía para vivir en contenedores: que pueda guardar sus resultados en **PostgreSQL** además de en SQLite, que lea la base de datos de la variable `DATABASE_URL`, que el chequeo pueda repetirse solo y pararse limpiamente, y que tenga un Dockerfile de dos etapas que corra sin root. En la clase 66 lo juntarás todo con Docker Compose.
@@ -137,10 +152,12 @@ Es el de dos etapas de la clase 59, con tres cambios: `COPY vigia/ vigia/` y `CO
 
 En `notas/fase-5/clase-65.md`:
 
-1. ¿Por qué Vigía pasa a PostgreSQL en contenedores, si SQLite funcionaba en la v1?
-2. ¿Por qué la base de datos llega por `DATABASE_URL` y no escrita en `config.yaml`?
-3. Explica qué hace tu manejador de SIGTERM y qué pasaría en `docker stop` sin él.
-4. **Repaso (clase 64, sin mirar):** ¿qué diferencia hay entre una etiqueta y un *digest*?
+1. ¿Por qué Vigía pasa a PostgreSQL en contenedores, si SQLite funcionaba en la v1? *(2 líneas. Empieza así: «Porque la API y el chequeo serán contenedores separados, y compartir un archivo SQLite…»)*
+2. ¿Por qué la base de datos llega por `DATABASE_URL` y no escrita en `config.yaml`? *(2 líneas. Empieza así: «Porque la base de datos depende de dónde corre Vigía (…), no de qué vigila. Por el entorno,…»)*
+3. Explica qué hace tu manejador de SIGTERM y qué pasaría en `docker stop` sin él. *(2 líneas. Empieza así: «Cuando llega SIGTERM, el manejador solo marca… Sin él, Python como PID 1…»)*
+4. **Repaso (clase 64, sin mirar):** ¿qué diferencia hay entre una etiqueta y un *digest*? *(1 línea. Empieza así: «La etiqueta es un nombre móvil que…»)*
+
+Después, escríbeme `examíname clase-65`.
 
 ## Autocorrección
 

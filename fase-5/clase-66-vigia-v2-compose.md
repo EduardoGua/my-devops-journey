@@ -2,6 +2,21 @@
 
 **Dónde:** tu Ubuntu + GitHub + Docker Hub · **Tiempo:** 2 bloques largos (unas 5–6 h) · **Bloque:** B. Proyecto · **Proyecto de portafolio**
 
+> 💡 **La idea de hoy:** Vigía v2 se levanta entera con un comando: un `compose.yaml` con tres servicios. `db` es PostgreSQL con su volumen y sin puertos publicados; `checker` y `api` salen de **la misma imagen** con distinto comando (`check --interval 60` y `serve`), y los dos hablan con `db` por su nombre. Solo la API sale fuera de Docker, y solo hacia tu máquina. El criterio de salida de la fase: `docker compose up` levanta todo desde un clon limpio.
+
+> 📚 **Lo que ya sabes y hoy vas a usar:**
+> - La imagen `vigia:dev`, `DATABASE_URL` y la parada con SIGTERM (clase 65).
+> - `compose.yaml`: `healthcheck`, `depends_on` con `service_healthy`, `restart`, `.env` y `.env.example` (clase 62).
+> - Los volúmenes con nombre y la ruta de `postgres:18` (clase 60); el DNS de la red y `127.0.0.1:8000` (clase 61).
+> - Publicar en Docker Hub con una etiqueta de versión (clase 64).
+> - El PR, la etiqueta y la release (clase 25); el clon limpio y *What broke and how I found it* (clases 25 y 35).
+
+> 🔤 **Palabras nuevas de hoy:**
+> - ***stack***: el conjunto de servicios que forman una aplicación, como los tres de Vigía v2.
+> - **`command`**: en Compose, lo que sustituye al `CMD` de la imagen para un servicio.
+> - **supervisión**: que algo (aquí, Docker con `restart: unless-stopped`) vuelva a arrancar un proceso cuando muere o cuando arranca la máquina.
+> - **clon limpio**: un `git clone` nuevo, sin nada de tu carpeta de trabajo, para comprobar que el repo basta.
+
 ## Objetivo
 
 Levantar Vigía entero con un solo comando: tres servicios en un `compose.yaml` (la base de datos, la API y el chequeo), con los datos en un volumen, la contraseña fuera de Git, la API publicada solo en tu máquina y todo sano según sus *healthchecks*. Después, publicar la imagen en Docker Hub, actualizar el README y cerrar la versión `v2`.
@@ -20,7 +35,7 @@ Criterio de salida de la fase: *levantas Vigía con `docker compose up` desde un
 | R14 | La contraseña de PostgreSQL llega de un `.env` que está en `.gitignore`; en Git hay un `.env.example`, y el `compose.yaml` usa `${POSTGRES_PASSWORD:?…}` | 62 |
 | R15 | `bash ~/my-devops-journey/recursos/vigia/v2/verify.sh` termina con `Fallos: 0` | — |
 | R16 | La imagen publicada en Docker Hub como `TU_USUARIO/vigia:2.0.0` | 64 |
-| R17 | README en inglés: cómo levantarlo desde un clon limpio, la arquitectura, cómo ver los logs y los datos, *What broke and how I found it* y los límites. PR fusionado, etiqueta `v2` y release | 25 |
+| R17 | README en inglés: cómo levantarlo desde un clon limpio, la arquitectura, cómo ver los logs y los datos, *What broke and how I found it* y los límites (partes del modelo del Entregable). PR fusionado, etiqueta `v2` y release | 25, 35 |
 
 ## La arquitectura
 
@@ -150,6 +165,52 @@ curl -s 127.0.0.1:8000/status
 (how to see the logs of each service, query the database, stop it and back up the volume)
 ````
 
+### Modelo para adaptar (lo escribió Claude)
+
+Cópialo en tu README debajo de *Run it with Docker Compose* y rellena los huecos (`____`). No hace falta escribir más.
+
+````markdown
+## Architecture
+
+Three services in one Compose project:
+
+| Service | Image | What it does | Published port |
+|---------|-------|--------------|----------------|
+| `db` | `postgres:18` | stores every check in the `checks` table, in the named volume `datos` | none |
+| `checker` | `____/vigia:2.0.0` | runs `check --interval 60`: checks every URL once a minute and writes to `db` | none |
+| `api` | `____/vigia:2.0.0` | runs `serve`: reads the latest result of each URL from `db` | `127.0.0.1:8000` only |
+
+`checker` and `api` reach the database by its service name, `db`, on the project network.
+
+## Operations
+
+```bash
+docker compose ps                         # status and health of each service
+docker compose logs -f checker            # one line per URL and round
+docker compose exec db psql -U vigia -d vigia -c 'SELECT url, up, checked_at FROM checks ORDER BY id DESC LIMIT 5;'
+docker compose down                       # stop everything; the data stays in the volume
+docker run --rm -v ____:/origen:ro -v ./:/destino alpine:3.22 tar -czf /destino/vigia-db.tar.gz -C /origen .
+```
+
+## What broke and how I found it (v2)
+
+- **Symptom:** ____
+- **What I checked:** ____
+- **Cause:** ____
+- **Fix:** ____
+
+## Limitations
+
+- It runs on my laptop, only while it is on (v3 moves it to AWS).
+- Nobody builds, tests or deploys it automatically (v4 adds CI/CD).
+- It does not alert anyone when a site goes down (v7 adds alerts).
+- The API has no authentication, so it is published only on 127.0.0.1.
+````
+
+Un ejemplo de *What broke*, ya relleno: *Symptom:* `/status` returned an empty list. *What I checked:* `docker compose logs checker` showed it writing to `vigia.db`. *Cause:* the `checker` service had no `DATABASE_URL`, so it used SQLite inside its own container. *Fix:* add the same `DATABASE_URL` as the `api` service.
+
+Para el volumen de la copia de seguridad, mira su nombre con `docker volume ls`: Compose le pone delante el nombre del proyecto (`vigia_datos`).
+
 - Etiqueta y release:
 
 ```bash
@@ -163,10 +224,12 @@ gh release create v2 --title "v2" --notes "Multi-stage non-root image, Compose w
 
 En `notas/fase-5/clase-66.md`:
 
-1. Explica la arquitectura de Vigía v2: qué hace cada servicio, cómo se encuentran y qué está publicado.
-2. ¿Por qué el chequeo ya no necesita cron? ¿Qué hace que vuelva a arrancar tras reiniciar el portátil?
-3. ¿Qué te enseñó `verify.sh` que no habrías comprobado a mano?
-4. **Repaso (clase 65, sin mirar):** ¿qué pasaría con `docker stop` si tu chequeo no atendiera SIGTERM?
+1. Explica la arquitectura de Vigía v2: qué hace cada servicio, cómo se encuentran y qué está publicado. *(3 líneas, una por servicio. Empieza así: «`db` es PostgreSQL, con sus datos en… y sin puertos. `checker`… `api`…»)*
+2. ¿Por qué el chequeo ya no necesita cron? ¿Qué hace que vuelva a arrancar tras reiniciar el portátil? *(2 líneas. Empieza así: «Porque el propio contenedor repite el chequeo con `--interval`, y Docker… con `restart: unless-stopped`…»)*
+3. ¿Qué te enseñó `verify.sh` que no habrías comprobado a mano? *(1–2 líneas. Empieza así: «Me hizo comprobar… que yo no habría probado, y falló porque…»)*
+4. **Repaso (clase 65, sin mirar):** ¿qué pasaría con `docker stop` si tu chequeo no atendiera SIGTERM? *(1–2 líneas. Empieza así: «Python, como PID 1 sin manejador, ignoraría SIGTERM:…»)*
+
+Después, escríbeme `examíname clase-66`.
 
 ## Autocorrección
 
