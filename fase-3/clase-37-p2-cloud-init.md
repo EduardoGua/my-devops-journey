@@ -45,7 +45,7 @@ El servidor `web-01` debe cumplir **todo** esto nada más arrancar, sin interven
 | R7 | La configuración se puede recrear **idéntica** en < 5 minutos | 08 |
 | R8 | Un script `verify.sh` comprueba R1–R6 **desde fuera** y sale con código 0 solo si todo está bien | 04, 19, 26, 29 |
 
-## Práctica guiada
+## Plan de trabajo
 
 Cinco pasos. La teoría de cloud-init está en el paso 2, justo donde empiezas a usarla. Si la haces en dos sesiones, la primera termina con el paso 3 (todos los requisitos en el YAML) y la segunda empieza con `verify.sh`.
 

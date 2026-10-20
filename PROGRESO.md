@@ -386,7 +386,7 @@ Examen final de las fases 8 a 10 (fecha · nota):
 
 ## Antes de cada fase
 
-Las diez fases están escritas. La fase NOC tiene su plan y sus entregables; sus clases se escriben al llegar a ella (pídeme `escribe la fase NOC` al terminar la clase 38). Antes de empezar cada fase, pídeme `revisa la fase N`: compruebo que sus versiones, precios y comandos siguen al día. El temario completo y las horas de cada fase están en [`PLAN.md`](PLAN.md).
+Las diez fases están escritas, y todas sus clases ya están en el formato por piezas. La fase NOC tiene su plan y sus entregables; sus clases se escriben al llegar a ella, en el mismo formato (pídeme `escribe la fase NOC` al terminar la clase 38). Antes de empezar cada fase, pídeme `revisa la fase N`: solo compruebo que sus versiones, precios y comandos siguen al día, porque el formato ya no cambia. El temario completo y las horas de cada fase están en [`PLAN.md`](PLAN.md).
 
 ---
 

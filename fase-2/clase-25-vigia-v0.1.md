@@ -40,7 +40,7 @@ Tres cambios que encajan bien en R4 (puedes elegir otros):
 2. Añadir la opción `-h` / `--help` con un `case` (clase 17).
 3. Documentar la instalación y la programación con cron en el README.
 
-## Práctica guiada
+## Plan de trabajo
 
 Siete pasos. La teoría nueva de hoy, las etiquetas, está en el paso 6, justo donde la usas. Si la haces en dos sesiones, la primera termina después del paso 3 (el primer PR).
 

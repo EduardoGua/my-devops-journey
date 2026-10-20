@@ -31,7 +31,7 @@ Lo nuevo es lo que piden las ofertas y la ruta no tenía: redes de Cisco con la 
 | C. Operación con tickets | ITIL a nivel práctico, tickets y una hoja de troubleshooting | esta página | 8–10 h |
 | D. ★ Hito NOC | CV, LinkedIn, historias de entrevista y postulaciones | esta página y la [clase 91](../fase-7/clase-91-hito.md) como referencia | 8–10 h, y después 2–3 h por semana aparte |
 
-Esta fase no tiene clases propias todavía. En el bloque A el recurso principal es NetAcad, y en el B, la documentación de Zabbix. Si quieres clases como las de las fases 1 a 3 (con Rómpelo, reto y autocorrección) para los bloques B y C, pídeme `escribe la fase NOC` al terminar la clase 38: así las versiones y los comandos estarán al día.
+Esta fase no tiene clases propias todavía. En el bloque A el recurso principal es NetAcad, y en el B, la documentación de Zabbix. Si quieres clases como las del resto del curso para los bloques B y C, pídeme `escribe la fase NOC` al terminar la clase 38: las escribiré en el mismo formato por piezas (teoría y práctica intercaladas, con Rómpelo, reto en tres escalones y cierre guiado), con las versiones y los comandos al día.
 
 ## Cómo encajan
 
