@@ -1,6 +1,6 @@
 # El mapa — de cero a Cloud & DevOps (AWS)
 
-**Versión:** 5.2 · 2026-10-19 · alineada con la *Ruta Cloud & DevOps 2.0*, más la fase NOC
+**Versión:** 5.3 · 2026-10-20 · alineada con la *Ruta Cloud & DevOps 2.0*, más la fase NOC
 **Alumno:** Eduardo · Ubuntu 26.04 · unas 7 h por semana
 **Meta:** primero, un empleo de Analista NOC N1 o de soporte / mesa de ayuda N1 (el hito NOC); después, un empleo en Cloud / DevOps o soporte cloud (el hito Cloud/DevOps), con un proyecto de portafolio que lo respalde.
 
@@ -137,6 +137,8 @@ Lo que construyes queda publicado como **P3 — NOC lab**: la red de Packet Trac
 
 Al aprobar la CCST tienes Linux, Git, redes con una certificación de Cisco, el P1 y Vigía v0.2. Desde aquí postulas cada semana a Analista NOC N1 y a soporte o mesa de ayuda N1, mientras terminas los bloques B y C y sigues con la fase 4. Si consigues el empleo, la ruta sigue con las horas que te dejen los turnos, y lo que vivas en el NOC será tu experiencia para el hito Cloud/DevOps.
 
+> 📌 **Opcional:** antes de postular, haz un EF SET (gratis) y pon tu nivel de inglés en el CV. Si en 3–4 meses de postular no consigues puesto, considera el tecnólogo del SENA con contrato de aprendizaje. Los puestos de entrada que puedes buscar además del NOC, y cómo convertirlos en experiencia cloud: [`CARRERA.md`](CARRERA.md), secciones 3 y 4.
+
 ### Fase 4 — Python para automatizar · 50–70 h · clases 39–55 ✍️
 
 Bash sirve para tareas cortas; Python, para automatizaciones que crecen, para consumir APIs y para manejar AWS desde código. Clases en [`fase-4/`](fase-4/README.md): el lenguaje desde cero (39–45), las herramientas de operaciones (46–53: entornos virtuales, JSON/YAML, `argparse`, `requests`, `subprocess`, SQLite, `pytest` y FastAPI) y Vigía v1 (54–55), con [pruebas de aceptación](recursos/vigia/v1/README.md).
@@ -156,6 +158,8 @@ Llevas a la nube lo que ya sabes de Linux, redes y Docker, primero con la consol
 - **Los servicios básicos (71–77):** VPC, EC2 con Session Manager y NAT Gateway, security groups y NACLs, S3, ECR y CloudWatch; RDS, balanceadores, Auto Scaling y Lambda, como concepto.
 - **Vigía v3 (78–79):** en EC2 con un rol IAM, informe diario en S3 y logs en CloudWatch, con su [`verify-aws.sh`](recursos/vigia/v3/README.md).
 - **La preparación del CLF-C02 (80–81).**
+
+> 📌 **Opcional:** el CLF puede salirte gratis con AWS re/Start (Colsubsidio, si estás afiliado), y su preparación oficial está gratis en AWS Skill Builder. Al aprobarlo, guarda el voucher del 50 % para la SAA (sección 9).
 
 > ⏳ **Cuándo crear la cuenta.** Una cuenta nueva de AWS empieza en el plan gratuito:
 > - **Créditos:** 100 USD al registrarte y hasta 100 USD más con actividades.
@@ -193,6 +197,8 @@ Lo que creaste a mano en AWS pasa a archivos versionados, revisables y repetible
 
 **Recursos:** los tutoriales *Get Started* de HashiCorp para AWS y los objetivos del Terraform Associate (004), en el apéndice de la clase 101.
 
+> 📌 **Opcional:** el Terraform Associate (70,50 USD) justo al cerrar la fase, y después la SAA, la certificación de pago que más se pide en las ofertas de Bogotá (sección 9).
+
 ### Fase 9 — Kubernetes · 55–75 h · clases 102–115 ✍️
 
 Kubernetes orquesta contenedores en varios servidores: los reinicia, los escala y los actualiza sin cortar el servicio. Es lo más pesado de la ruta, por eso llega después de Docker, AWS y CI/CD. Todo corre en tu portátil, con kind. Clases en [`fase-9/`](fase-9/README.md):
@@ -203,6 +209,8 @@ Kubernetes orquesta contenedores en varios servidores: los reinicia, los escala 
 **Criterios de salida:** Vigía en kind con Deployment, Service, ConfigMap, Secret y un CronJob · una actualización y un *rollback* con `kubectl rollout` · diagnosticar un pod en CrashLoopBackOff y otro en ImagePullBackOff con `describe` y `logs` · explicar la diferencia entre una sonda *liveness* y una *readiness*.
 
 **Recursos:** *Learn Kubernetes Basics* (tutorial oficial) y la documentación de kind.
+
+> 📌 **Opcional:** el curso gratuito LFS158 de la Linux Foundation, como calentamiento; la CKA, mejor con el primer empleo (sección 9). Antes de empezar, comprueba si tu portátil admite 16 GB de memoria ([`CARRERA.md`](CARRERA.md), sección 7).
 
 ### Fase 10 — Observabilidad · 25–35 h · clases 116–125 ✍️
 
@@ -230,6 +238,8 @@ En producción no basta con que algo funcione: hay que saber cuándo deja de fun
 
 Precios, idiomas, horarios de supervisión en español y políticas de cada examen: en la Ruta 2.0, revisados el 9 de octubre de 2026; los de la CCST, en los datos que caducan de la [fase NOC](fase-noc/README.md#datos-que-caducan). Compruébalos de nuevo antes de pagar. Ninguna certificación sustituye a un proyecto.
 
+El orden recomendado, lo gratuito que tiene peso y lo que falta preparar para cada examen están en la sección 9, opcional.
+
 ## 6. Empleo (en paralelo)
 
 La entrada más realista no siempre es un puesto llamado "DevOps". Empieza por soporte y operaciones, y sube desde ahí mientras terminas la ruta.
@@ -246,6 +256,7 @@ La entrada más realista no siempre es un puesto llamado "DevOps". Empieza por s
 - **Preguntas técnicas típicas:** permisos y procesos, DNS y TCP, qué pasa al teclear una URL, imagen frente a contenedor, VPC y subredes, IAM, el estado de Terraform, CrashLoopBackOff y un incidente contado con el método STAR.
 - **Simulacros:** pídeme que haga de entrevistador.
 - **Inglés:** cada clase trae vocabulario y una frase de entrevista; las metas por fase están en la Ruta 2.0.
+- **Experiencia, formación y largo plazo** (opcional): qué pesa al contratarte, los puestos de entrada a TI y cómo convertirlos en experiencia cloud, la formación formal (SENA y UNAD), el inglés por niveles y lo práctico (equipo, dinero, turnos), en [`CARRERA.md`](CARRERA.md).
 
 ## 7. Reglas de dinero en AWS
 
@@ -261,7 +272,71 @@ La entrada más realista no siempre es un puesto llamado "DevOps". Empieza por s
 
 Una segunda nube, Jenkins, Ansible a fondo, *service mesh*, EKS en producción, las certificaciones Professional y coleccionar certificaciones en general. Son valiosos más adelante; antes del primer empleo diluyen el foco. El camino de junior a arquitecto está en `~/Documentos/ruta-junior-a-arquitecto-nube.md`, cerrado hasta terminar esta ruta.
 
-## 9. Historial
+## 9. Opcional: certificaciones con peso
+
+No cambia las fases ni sus criterios de salida: es una propuesta para cuando quieras reforzar el CV, **gratis primero** y de pago solo lo que más se pide en las ofertas de Bogotá. Comprobada el 2026-10-20; antes de pagar, pídeme que la revise. La experiencia laboral, la formación, el inglés y el largo plazo están en [`CARRERA.md`](CARRERA.md).
+
+### 9.1 Gratis y con peso
+
+| Qué | Peso en el CV | Cuándo | Para qué |
+|-----|---------------|--------|----------|
+| **EF SET 50** (inglés, 50 min) | medio | ahora, y al cerrar cada fase | un certificado de tu nivel para LinkedIn, y la medida de tu avance |
+| **AWS re/Start** con Colsubsidio (12 semanas a tiempo completo) | alto | si estás afiliado y puedes dejar 3 meses a tiempo completo | formación de AWS, el voucher del CLF y contacto con empresas. Las cohortes de 2026 ya empezaron: mira las de 2027 |
+| **AWS Skill Builder:** *Cloud Practitioner Essentials*, la preparación del examen y las preguntas oficiales de práctica | preparación | fase 6, y otra vez para la SAA | la preparación oficial de los exámenes de AWS |
+| **Linux Foundation LFS158**, *Introduction to Kubernetes* | bajo, pero buena preparación | antes de la fase 9 | otro enfoque de lo que verás en kind |
+| **Tecnólogo del SENA** en Gestión de Redes de Datos | alto en Colombia | decídelo en el hito NOC | un título formal y la etapa productiva en una empresa ([`CARRERA.md`](CARRERA.md), sección 4) |
+
+Gratis, pero con poco peso para tu objetivo: **Oracle OCI Foundations** (su examen es gratis, pero en Bogotá casi no se pide), **Talento Tech** de MinTIC (solo si una cohorte de nube incluye un voucher de examen) y **AZ-900** (99 USD y sin vouchers gratuitos fiables ahora; solo si apuntas a una oferta concreta de Azure).
+
+### 9.2 De pago, solo lo que pesa
+
+| Certificación | Precio | Idioma | Peso | Cuándo | Preparación extra |
+|---------------|--------|--------|------|--------|-------------------|
+| CCST Networking (ya en la ruta) | 125 USD | español | alto para NOC N1 | bloque A de la fase NOC | — |
+| CLF-C02 (ya en la ruta) | 100 USD, o 0 con re/Start | español (Latinoamérica) | medio: abre el soporte cloud | fase 6 | — |
+| **Terraform Associate (004)** | 70,50 USD | inglés | medio-alto: aparece como deseable | **al cerrar la fase 8** | 15–20 h |
+| **AWS Solutions Architect – Associate** | 150 USD; 75 con el 50 % que da el CLF | español (Latinoamérica) | **la más alta** para cloud y DevOps | después de la fase 8 | 60–80 h |
+| CKA (Kubernetes) | 445 USD; suele bajar un 30–40 % en promociones | inglés | alto si el puesto usa Kubernetes | con el primer empleo: en promoción o pagada por la empresa | 40–60 h |
+
+El camino recomendado (CCST, CLF, Terraform Associate y SAA) suma **unos 370 USD**, repartidos a lo largo de la ruta. La CKA, mejor que la pague la empresa.
+
+No se añaden, a propósito: KCNA, CKAD, LFCS, Security+, Google ACE, una segunda nube ni las Professional (sección 8).
+
+### 9.3 Lo que falta preparar para cada examen
+
+- **Terraform Associate:** lo que el apéndice de la clase 101 marca como no visto (HCP Terraform, Vault, `precondition` y `postcondition`, `TF_LOG`) y un simulacro: unas cuatro sesiones.
+- **SAA:**
+  - alta disponibilidad multi-AZ, ELB y Auto Scaling a fondo;
+  - RDS, Aurora y DynamoDB; las clases de almacenamiento de S3;
+  - CloudFront y Route 53;
+  - desacoplar con SQS, SNS y EventBridge;
+  - VPC *peering*, Transit Gateway y *endpoints*; KMS;
+  - los pilares del Well-Architected y el ahorro de costes.
+
+  Hazlo en Terraform, sobre la infraestructura de Vigía (por ejemplo, Vigía detrás de un ALB con Auto Scaling en dos zonas): estudias para el examen y mejoras el portafolio a la vez.
+- **CKA:**
+  - instalar y actualizar un cluster con `kubeadm`, en VMs de Multipass;
+  - copia y restauración de etcd, y averías en los nodos;
+  - NetworkPolicies, *taints*, tolerancias y afinidad;
+  - velocidad con los comandos imperativos y con la documentación abierta durante el examen.
+
+  El simulador killer.sh viene incluido con el examen.
+
+Al llegar a cada una, pídeme `escribe la preparación de <examen>`: la escribo en piezas, como las clases.
+
+### 9.4 Datos que caducan
+
+| Dato | Valor | Comprobado | Fuente |
+|------|-------|------------|--------|
+| AWS Solutions Architect – Associate | 150 USD · 130 min · 65 preguntas · en español (Latinoamérica); la página oficial enlaza la guía de la SAA-C03 | 2026-10-20 | aws.amazon.com/certification/certified-solutions-architect-associate |
+| AWS Cloud Practitioner (CLF-C02) | 100 USD · 90 min · en español (Latinoamérica) | 2026-10-20 | aws.amazon.com/certification/certified-cloud-practitioner |
+| Terraform Associate (004) | 70,50 USD según guías de terceros; examina Terraform 1.12; sustituyó a la 003 el 8 de enero de 2026 | 2026-10-20 | docs.hashicorp.com/certifications/infrastructure-automation |
+| CKA y KCNA | 445 USD y 250 USD de precio de lista; promociones frecuentes | 2026-10-20 | computingforgeeks.com, techbeatly.com |
+| AWS re/Start con Colsubsidio | 12 semanas, 420 h, voucher del CLF; para afiliados | 2026-10-20 | awsrestart-colsubsidio.com |
+| AZ-900 | 99 USD; los vouchers gratuitos dependen de eventos de Microsoft | 2026-10-20 | learn.microsoft.com (Q&A) |
+| EF SET 50 | gratis, lectura y escucha, certificado para LinkedIn | 2026-10-20 | efset.org |
+
+## 10. Historial
 
 | Versión | Fecha | Cambio |
 |---------|-------|--------|
@@ -270,3 +345,4 @@ Una segunda nube, Jenkins, Ansible a fondo, *service mesh*, EKS en producción, 
 | 5.0 | 2026-10-09 | Alineado con la *Ruta Cloud & DevOps 2.0*: 10 fases medidas en horas a 7 h por semana; scripting con Bash y cron en la fase 1 (clases 16–20, nuevas); Git (22–24) antes de redes (26–34); Vigía como proyecto único que crece en cada fase (clases 21, 25 y 35, nuevas); AWS antes que CI/CD; Kubernetes casi al final; CLF como criterio de salida de AWS; P1 y P2 pasan a laboratorios integradores |
 | 5.1 | 2026-10-10 | Las fases 4 a 10 escritas completas: clases 39–125, cada fase con su README, criterios de salida y "Datos que caducan"; Vigía v1 a v7 con pruebas de aceptación sin solución (`recursos/vigia/`), probadas contra una implementación de referencia privada; examen del hito (clase 91) y examen final con defensa (clase 125) |
 | 5.2 | 2026-10-19 | Integrado el *Plan 6 meses: Analista NOC N1* (`~/Plan 6 meses Analista NOC N1.md`): fase NOC entre la 3 y la 4 (CCST Networking, Zabbix, ITIL práctico y el P3), con su hito NOC para postular a NOC N1 y mesa de ayuda N1 al aprobar la CCST. Lo que el plan NOC repetía de las fases 1 y 3 no se duplica. El hito de la fase 7 pasa a llamarse hito Cloud/DevOps |
+| 5.3 | 2026-10-20 | Sección 9, opcional: certificaciones con peso, gratis primero, con su preparación y sus datos que caducan; notas opcionales en el hito NOC y en las fases 6, 8 y 9; y [`CARRERA.md`](CARRERA.md), con la experiencia laboral, la formación formal, el inglés, los contactos y lo práctico a largo plazo |

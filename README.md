@@ -41,6 +41,7 @@ Full roadmap with exit criteria: [`PLAN.md`](PLAN.md).
 
 ```
 PLAN.md            roadmap: phases, Vigía versions, exit criteria
+CARRERA.md         career strategy (optional): work experience, education, English, networking
 COMO-ESTUDIAR.md   study method
 PROGRESO.md        progress tracker and log
 fase-1/ … fase-10/ 125 lessons (Spanish), each phase with its exit criteria

@@ -157,7 +157,7 @@ La barrera más dura no es el conocimiento sino la experiencia certificada. El p
 | Barrera | Qué piden las ofertas | Cómo la atacas |
 |---------|-----------------------|----------------|
 | Experiencia certificada | 1–2 años, con certificados laborales que digan las funciones | Primer empleo en soporte o mesa de ayuda N1 si el NOC no sale; a los 12 meses, postulas a NOC. Documenta las tareas de tecnología que ya haces. |
-| Título técnico o tecnólogo | casi todas; alguna NOC pide solo bachiller | La CCST y las insignias de NetAcad compensan en parte: postula igual si cumples lo demás. A largo plazo, el tecnólogo virtual del SENA en Gestión de Redes de Datos (gratis, unas 4 h diarias). |
+| Título técnico o tecnólogo | casi todas; alguna NOC pide solo bachiller | La CCST y las insignias de NetAcad compensan en parte: postula igual si cumples lo demás. A largo plazo, el tecnólogo virtual del SENA en Gestión de Redes de Datos (gratis, unas 4 h diarias), con su contrato de aprendizaje: cuándo conviene, en [`CARRERA.md`](../CARRERA.md), sección 4. |
 | Turnos 7x24 | habituales en NOC | Se pagan con recargos. Es el costo del primer año. |
 | Inglés | los remotos y mejor pagados piden B2 o más | Tu plan de inglés sigue en paralelo; para las entrevistas, primero el inglés técnico básico. |
 
@@ -168,6 +168,7 @@ Muchas ofertas NOC de entrada pagan cerca del salario mínimo. El salto salarial
 - **La ruta sigue** en la fase 4, con las horas que te dejen los turnos. Recalcula cada mes la fecha del hito Cloud/DevOps, como siempre.
 - **Lo que vivas en el turno es tu material:** incidentes reales, Zabbix y tickets son tus historias STAR para la clase 91, y ese puesto irá primero en la sección *Experience* de tu CV.
 - **La CCNA es opcional.** Hazla solo si tu empleo la valora o decides especializarte en redes, porque compite en tiempo con el CLF de la fase 6. Comprueba sus datos en cisco.com antes de pagar.
+- **Convierte el puesto en experiencia cloud:** automatizar algo repetitivo, escribir el runbook de la avería que más se repite, medir antes y después y apuntar tus logros cada semana. Los seis hábitos, en [`CARRERA.md`](../CARRERA.md), sección 3.2.
 - **El siguiente salto:** NOC N2, soporte cloud o SRE junior. Es el hito Cloud/DevOps de la clase 91.
 
 ## Criterios de salida
