@@ -5,7 +5,7 @@
 > 💡 **La idea de hoy:** un **programa** es un archivo en el disco y un **proceso** es ese programa *mientras se ejecuta* (como una receta escrita frente al plato que se está cocinando), con su número (PID), su dueño y su padre. Para hablar con un proceso le envías **señales**: primero se le pide por favor que termine (`SIGTERM`) y solo si no hace caso se le fuerza (`SIGKILL`).
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
-> - El paso 4 de «Qué pasa cuando pulsas Enter»: el kernel crea un proceso (clase 01).
+> - El paso 4 de «Qué pasa cuando pulsas Enter»: el kernel crea un proceso (clase 01, pieza 4).
 > - `/proc` es una ventana al kernel: sus archivos no están en el disco (clase 02).
 > - nginx funciona en tu VM desde la clase 10.
 

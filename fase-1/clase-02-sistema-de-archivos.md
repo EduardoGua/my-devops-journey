@@ -27,9 +27,15 @@
 
 Cuando algo falla en un servidor, la primera pregunta es "¿dónde está la configuración?" y la segunda "¿dónde están los logs?". La respuesta casi siempre es `/etc` y `/var/log`. Si conoces el árbol, en un servidor que nunca has visto sabrás dónde mirar en segundos.
 
-## Teoría
+## Cómo va esta clase
 
-### Un solo árbol
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida en la terminal; no pases a la siguiente sin haber hecho la anterior.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 35 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+
+## Las piezas
+
+### Pieza 1 — Un solo árbol
 
 En Windows hay `C:\`, `D:\`… En Linux hay **un único árbol** que empieza en `/` (la **raíz**). Discos, USBs y discos de red se "cuelgan" (montan) en alguna rama de ese árbol.
 
@@ -54,9 +60,55 @@ En Windows hay `C:\`, `D:\`… En Linux hay **un único árbol** que empieza en 
 └── mnt/  media/       ← puntos donde se montan otros discos o USBs
 ```
 
-**"En Linux todo es un archivo."** Un disco es `/dev/nvme0n1`, la información de tu CPU se lee en `/proc/cpuinfo` y un proceso es un directorio en `/proc/<número>`. Esta idea explica muchas cosas más adelante.
+**Pruébalo:**
 
-### Rutas
+```bash
+cd /
+ls
+cd /etc
+ls | head -30
+cat /etc/hostname
+ls /var/log
+ls -lh /var/log | head
+```
+
+👀 **Qué deberías ver:** en `/`, los directorios del árbol de arriba (`bin`, `boot`, `dev`, `etc`, `home`…). En `/etc`, decenas de nombres de configuración (`hostname`, `hosts`, `passwd`, `ssh`…), y `cat /etc/hostname` imprime el nombre de tu máquina, el mismo del prompt. En `/var/log`, los logs del sistema: `syslog`, `auth.log`, `apt/`…
+
+✋ **Sin mirar:** ¿en qué carpeta buscarías la configuración de un programa? ¿Y sus logs?
+
+<details>
+<summary>Comprueba</summary>
+
+La configuración en `/etc`; los logs en `/var/log`.
+</details>
+
+**En resumen:** un solo árbol desde `/`; la configuración en `/etc` y los logs en `/var/log`.
+
+### Pieza 2 — "En Linux todo es un archivo"
+
+Un disco es `/dev/nvme0n1`, la información de tu CPU se lee en `/proc/cpuinfo` y un proceso es un directorio en `/proc/<número>`. `/proc` y `/sys` no están en el disco: son **virtuales**, ventanas al kernel. Esta idea explica muchas cosas más adelante.
+
+**Pruébalo:**
+
+```bash
+cat /proc/cpuinfo | head -20
+cat /proc/meminfo | head -5
+ls /dev | head
+```
+
+👀 **Qué deberías ver:** en `/proc/cpuinfo`, líneas como `processor : 0` y `model name : Intel(R) Core(TM) i5-10210U CPU @ 1.60GHz` (o tu procesador); en `/proc/meminfo`, `MemTotal:` y `MemFree:` en kB; y en `/dev`, nombres de dispositivos. `/proc/cpuinfo` no es un archivo guardado en disco: el kernel genera su contenido en el momento en que lo lees.
+
+✋ **Sin mirar:** ¿dónde está guardado de verdad el contenido de `/proc/meminfo`?
+
+<details>
+<summary>Comprueba</summary>
+
+En ningún sitio: el kernel lo genera cada vez que lo lees. Es una ventana al kernel con forma de archivo.
+</details>
+
+**En resumen:** dispositivos, procesos e información del sistema se leen como archivos.
+
+### Pieza 3 — Rutas absolutas y relativas
 
 | Ruta | Significado | Ejemplo |
 |------|-------------|---------|
@@ -69,57 +121,7 @@ En Windows hay `C:\`, `D:\`… En Linux hay **un único árbol** que empieza en 
 
 > ⚠️ Error típico: confundir `..` (subir **un** nivel) con `/` (ir **arriba del todo**). Desde `/home/educo/a/b`, `cd ..` te deja en `/home/educo/a`, no en `/`.
 
-### Archivos ocultos
-
-Un archivo cuyo nombre empieza por `.` está oculto: `.bashrc`, `.ssh/`, `.git/`. No es seguridad, solo orden: `ls` no los muestra salvo que uses `-a`.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. ¿En qué carpeta buscarías la configuración de un programa? ¿Y sus logs?
-2. Estás en `/home/educo/proyectos`. ¿A dónde te lleva `cd ..`?
-3. ¿Qué tiene de especial un archivo llamado `.bashrc`?
-
-<details>
-<summary>Comprueba</summary>
-
-1. La configuración en `/etc`; los logs en `/var/log`. 2. A `/home/educo`: sube **un** nivel, no a la raíz. 3. Empieza por punto: está **oculto**, y `ls` solo lo muestra con `-a`.
-</details>
-
-### Tu chuleta de la clase
-
-| Comando | Qué hace |
-|---------|----------|
-| `pwd` | dónde estoy |
-| `cd ruta` · `cd ..` · `cd -` · `cd` | ir a una ruta · subir un nivel · volver a la anterior · ir a tu casa |
-| `ls -a` · `ls -l` · `ls -lh` · `ls -lt` | ver ocultos · detalles · tamaños legibles · por fecha |
-| `ls -ld carpeta` | los detalles de la carpeta, no de lo que hay dentro |
-| `tree` | el árbol de una carpeta |
-| `cat archivo` | ver un archivo |
-
-## Práctica guiada
-
-### 1. Recorre el árbol
-
-```bash
-cd /
-ls
-ls -l
-cd /etc
-ls | head -30
-ls -l /etc/hostname /etc/os-release
-cat /etc/hostname
-```
-
-```bash
-ls /var/log
-ls -lh /var/log | head
-cat /proc/cpuinfo | head -20
-cat /proc/meminfo | head -5
-```
-
-`/proc/cpuinfo` no es un archivo guardado en disco: el kernel genera su contenido en el momento en que lo lees.
-
-### 2. Tu laboratorio
+**Pruébalo.** Tu laboratorio (`mkdir -p` crea toda la ruta de una vez; lo verás en la clase 03):
 
 ```bash
 cd ~/my-devops-journey
@@ -127,10 +129,6 @@ mkdir -p labs/clase-02/casa/cocina/cajon labs/clase-02/casa/salon labs/clase-02/
 cd labs/clase-02
 tree
 ```
-
-(`mkdir -p` crea toda la ruta de una vez; lo verás en la clase 03.)
-
-### 3. Navega prediciendo
 
 Empieza en `~/my-devops-journey/labs/clase-02`. Para cada línea, 🔮 **predice** dónde acabarás y comprueba con `pwd`:
 
@@ -155,21 +153,25 @@ cd ..                     # ¿qué hay por encima de la raíz?
 pwd
 ```
 
-El último `cd ..` deja `pwd` en `/`: el padre de la raíz es la propia raíz.
+👀 **Qué deberías ver:** `tree` dibuja `casa` (con `cocina/cajon` y `salon`) y `garaje`. Los `pwd`, en orden: `…/casa/cocina/cajon`, `…/casa/cocina`, `…/labs/clase-02`, `…/casa/cocina`, otra vez `…/labs/clase-02` (`cd -` vuelve al anterior), `/home/educo`, `…/garaje`, `/` y `/`. El último `cd ..` deja `pwd` en `/`: el padre de la raíz es la propia raíz.
 
-### 4. Listar con criterio
+✋ **Sin mirar:** estás en `/home/educo/proyectos`. ¿A dónde te lleva `cd ..`?
 
-```bash
-cd ~
-ls
-ls -a          # aparecen los ocultos (y . y ..)
-ls -la
-ls -lah        # tamaños legibles
-ls -lt | head  # ordenado por fecha, lo más reciente arriba
-ls -ld ~/.ssh  # -d: información del directorio, no de su contenido
-```
+<details>
+<summary>Comprueba</summary>
 
-Lee una línea de `ls -l`:
+A `/home/educo`: sube **un** nivel, no a la raíz.
+</details>
+
+**En resumen:** la absoluta empieza por `/`; la relativa, desde donde estás; `..` sube uno.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, `cd ~/my-devops-journey/labs/clase-02` y a la pieza 4.
+
+### Pieza 4 — Listar con criterio, y los ocultos
+
+Un archivo cuyo nombre empieza por `.` está **oculto**: `.bashrc`, `.ssh/`, `.git/`. No es seguridad, solo orden: `ls` no los muestra salvo que uses `-a`.
+
+Cada línea de `ls -l` se lee así:
 
 ```
 -rw-r--r-- 1 educo educo 3771 Sep 20 10:12 .bashrc
@@ -181,14 +183,63 @@ Lee una línea de `ls -l`:
 
 Los permisos se ven a fondo en la clase 06.
 
-### 5. Enlaces simbólicos
+**Pruébalo:**
+
+```bash
+cd ~
+ls
+ls -a          # aparecen los ocultos (y . y ..)
+ls -la
+ls -lah        # tamaños legibles
+ls -lt | head  # ordenado por fecha, lo más reciente arriba
+ls -ld ~/.ssh  # -d: información del directorio, no de su contenido
+```
+
+👀 **Qué deberías ver:** `ls -a` añade `.`, `..`, `.bashrc`, `.ssh` y otros ocultos. Con `-h`, los tamaños salen como `3,1K` (con coma: tu sistema está en español). Y `ls -ld ~/.ssh` da **una** línea, la de la carpeta: `drwx------ … /home/educo/.ssh`, que empieza por `d`, de directorio.
+
+✋ **Sin mirar:** ¿qué tiene de especial un archivo llamado `.bashrc`?
+
+<details>
+<summary>Comprueba</summary>
+
+Empieza por punto: está **oculto**, y `ls` solo lo muestra con `-a`.
+</details>
+
+**En resumen:** `-a` para los ocultos, `-l` para los detalles, `-h` para tamaños legibles, `-t` por fecha y `-d` para la carpeta misma.
+
+### Pieza 5 — Enlaces simbólicos
+
+Un **enlace simbólico** es un acceso directo: un archivo que apunta a otro archivo o carpeta. En `ls -l`, su línea empieza por `l` y lleva una flecha `->` hacia su destino.
+
+**Pruébalo:**
 
 ```bash
 ls -l /bin
 ls -l /usr/bin/python3
 ```
 
-`/bin -> usr/bin` significa que `/bin` es un **enlace simbólico**, un acceso directo a `usr/bin`.
+👀 **Qué deberías ver:** `lrwxrwxrwx 1 root root 7 … /bin -> usr/bin`: `/bin` es un **enlace simbólico**, un acceso directo a `usr/bin`. Y `/usr/bin/python3 -> python3.14`: el nombre genérico apunta a la versión instalada.
+
+✋ **Sin mirar:** en `ls -l`, ¿cómo distingues un enlace de un archivo normal?
+
+<details>
+<summary>Comprueba</summary>
+
+Por la primera letra de la línea (`l` en lugar de `-`) y por la flecha `->` hacia su destino.
+</details>
+
+**En resumen:** un enlace es un acceso directo: `l` al principio y `->` al final.
+
+## Tu chuleta de la clase
+
+| Comando | Qué hace |
+|---------|----------|
+| `pwd` | dónde estoy |
+| `cd ruta` · `cd ..` · `cd -` · `cd` | ir a una ruta · subir un nivel · volver a la anterior · ir a tu casa |
+| `ls -a` · `ls -l` · `ls -lh` · `ls -lt` | ver ocultos · detalles · tamaños legibles · por fecha |
+| `ls -ld carpeta` | los detalles de la carpeta, no de lo que hay dentro |
+| `tree` | el árbol de una carpeta |
+| `cat archivo` | ver un archivo |
 
 ## Rómpelo
 
@@ -209,33 +260,57 @@ Después de cualquier `cd` que falle, ejecuta `pwd` antes de seguir. Un `cd` fal
 
 ## Reto
 
-En la terminal. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En la terminal. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**. Atascarse un rato ayuda; atascarse media hora, no.
 
 **1.** Desde `~/my-devops-journey/labs/clase-02/casa/cocina/cajon`, escribe una ruta **relativa** que te lleve a `garaje`. Escribe también la **absoluta**.
+
+> 🧩 **Ejemplo resuelto:** desde `casa/cocina/cajon`, a `salon`.
+> ```bash
+> cd ../../salon
+> ```
+> Dos subidas (`cajon` → `cocina` → `casa`) y una bajada a `salon`. La absoluta: `cd ~/my-devops-journey/labs/clase-02/casa/salon`.
+
+**Ahora tú, con huecos:** relativa `cd ____/garaje`; absoluta `cd ~/my-devops-journey/labs/clase-02/____`.
 
 <details>
 <summary>Pista</summary>
 
-Cuenta cuántas carpetas tienes que subir desde `cajon` hasta llegar a `clase-02`: cada subida es un `..`, separados por `/`. Desde ahí, bajas a `garaje`. La absoluta empieza por `~/my-devops-journey/…`.
+Cuenta cuántas carpetas tienes que subir desde `cajon` hasta llegar a `clase-02`: cada subida es un `..`, separados por `/`. Desde ahí, bajas a `garaje`.
 </details>
 
 **2.** ¿Qué tamaño tiene `/etc/passwd`? Muéstralo en formato legible.
 
+> 🧩 **Ejemplo resuelto:** el tamaño de `/etc/hostname`, en bytes.
+> ```bash
+> ls -l /etc/hostname
+> ```
+> El número antes de la fecha: `41`, 41 bytes.
+
+**Ahora tú, con huecos:** `ls -l____ /etc/passwd` → «ocupa ____».
+
 <details>
 <summary>Pista</summary>
 
-`ls -l` da el tamaño en bytes. ¿Qué letra añadías en la práctica 4 para verlo en K, M o G?
+¿Qué letra añadías en la pieza 4 para ver los tamaños en K, M o G?
 </details>
 
 **3.** ¿Cuál es el archivo más reciente de `/var/log`?
 
+> 🧩 **Ejemplo resuelto:** el archivo más reciente de tu casa: `ls -lt ~ | head -2`. La primera línea es el total; la segunda, lo más reciente.
+
+**Ahora tú, con huecos:** `ls -l____ /var/log | head -____` → «el más reciente es ____».
+
 <details>
 <summary>Pista</summary>
 
-`ls -lt` ordena por fecha, con lo más reciente arriba. Con `| head` ves solo el principio, como en la práctica 4.
+`ls -lt` ordena por fecha, con lo más reciente arriba, como en la pieza 4.
 </details>
 
 **4.** ¿A dónde apunta el enlace `/usr/bin/python3`?
+
+> 🧩 **Ejemplo resuelto:** la pieza 5: `ls -l /bin` → `/bin -> usr/bin`.
+
+**Ahora tú, con huecos:** `ls -l ____` → «apunta a ____».
 
 <details>
 <summary>Pista</summary>
@@ -245,10 +320,18 @@ Cuenta cuántas carpetas tienes que subir desde `cajon` hasta llegar a `clase-02
 
 **5.** En `/etc` hay un archivo que dice qué servidores DNS usa la máquina. Su nombre empieza por `resolv`. Encuéntralo y averigua si es un archivo normal o un enlace.
 
+> 🧩 **Ejemplo resuelto:** `/etc/os-release`, de la clase 01.
+> ```bash
+> ls -l /etc/os-release
+> ```
+> La línea empieza por `l` y termina en `-> ../usr/lib/os-release`: es un enlace.
+
+**Ahora tú, con huecos:** `ls /etc | grep ____` para encontrar el nombre, y `ls -l /etc/____` → «es un ____, que apunta a ____».
+
 <details>
 <summary>Pista</summary>
 
-`ls /etc` y busca con la vista un nombre que empiece por `resolv`. Después, `ls -l` de ese archivo: ¿la línea empieza por `l` (enlace) o por `-` (archivo)?
+`grep resolv` deja solo las líneas que contienen esa palabra (lo verás a fondo en la clase 05). Después, mira si la línea de `ls -l` empieza por `l` o por `-`.
 </details>
 
 ## Cierre
@@ -275,7 +358,7 @@ Después, escríbeme `examíname clase-02`.
 
 **4.** El shell es un programa (bash) que interpreta lo que escribes y lanza programas pidiéndoselo al kernel. La terminal es solo la ventana que muestra texto y recibe teclas.
 
-**Reto:** 1) `cd ../../../garaje` · `cd ~/my-devops-journey/labs/clase-02/garaje` (o con `/home/educo/...`) · 2) `ls -lh /etc/passwd` · 3) `ls -lt /var/log | head -2` · 4) `ls -l /usr/bin/python3` → `python3.x` · 5) `ls -l /etc/resolv.conf`: es un **enlace** (a `../run/systemd/resolve/stub-resolv.conf`). Lo verás en la clase de DNS.
+**Reto:** 1) `cd ../../../garaje` · `cd ~/my-devops-journey/labs/clase-02/garaje` (o con `/home/educo/...`) · 2) `ls -lh /etc/passwd` → unos `3,1K` · 3) `ls -lt /var/log | head -2` · 4) `ls -l /usr/bin/python3` → `python3.14` · 5) `ls /etc | grep resolv` da `resolv.conf`, y `ls -l /etc/resolv.conf` muestra que es un **enlace** (a `../run/systemd/resolve/stub-resolv.conf`). Lo verás en la clase de DNS (31).
 </details>
 
 ## Inglés

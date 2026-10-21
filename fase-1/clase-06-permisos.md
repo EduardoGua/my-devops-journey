@@ -6,7 +6,7 @@
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - Leer una línea de `ls -l`: tipo, permisos, dueño y grupo (clase 02).
-> - `./script` pide al kernel ejecutar un archivo (clase 01, paso 4 de «Qué pasa cuando pulsas Enter»).
+> - `./script` pide al kernel ejecutar un archivo (clase 01, pieza 4: el paso 4 de «Qué pasa cuando pulsas Enter»).
 > - Crear un archivo de una línea con `echo … >` o `printf … >` (clase 04).
 
 > 🔤 **Palabras nuevas de hoy:**
@@ -29,7 +29,7 @@
 
 ## Cómo va esta clase
 
-🧪 **Formato en prueba.** Hasta la clase 05 la teoría iba toda junta y la práctica después. Aquí van mezcladas: son seis piezas, y en cada una lees **un** concepto y lo pruebas enseguida en la terminal. No pases a la pieza siguiente sin haber ejecutado la anterior. Al terminar, dime si así releíste menos: si funciona, el resto del curso pasa a este formato.
+Seis piezas. En cada una lees **un** concepto y lo pruebas enseguida en la terminal; no pases a la pieza siguiente sin haber ejecutado la anterior.
 
 Si la haces en dos mañanas: el primer día, las **piezas 1 a 4** (unos 35 min); el segundo, las **piezas 5 y 6**, el Rómpelo, el reto y el cierre.
 
@@ -427,7 +427,7 @@ En `notas/fase-1/clase-06.md`:
 3. Un compañero propone `chmod -R 777 /var/www` porque nginx da "Permission denied". ¿Qué le respondes y qué harías tú? *(3 líneas. Empieza así: «No, porque 777 deja que cualquiera… Yo miraría con qué usuario corre nginx y le daría solo…»)*
 4. **Repaso (clase 05, sin mirar):** ¿con qué pipeline sacarías las 5 IPs que más peticiones hacen en un log de nginx? *(una línea. Empieza así: `awk '{print $…}' access.log | …`)*
 
-Después, escríbeme `examíname clase-06` y dime en una línea si con las piezas intercaladas releíste menos que en la clase 05.
+Después, escríbeme `examíname clase-06`.
 
 ## Autocorrección
 

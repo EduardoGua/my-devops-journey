@@ -1,6 +1,6 @@
 # Clase 04 — Redirecciones, pipes y códigos de salida
 
-**Dónde:** tu Ubuntu · **Tiempo:** 90 min (puedes partirla en dos sesiones: la segunda empieza en el Rómpelo) · **Bloque:** A. Linux en tu equipo
+**Dónde:** tu Ubuntu · **Tiempo:** 90 min · **Bloque:** A. Linux en tu equipo
 
 > 💡 **La idea de hoy:** todo programa tiene **una entrada y dos salidas**. Por **stdout** salen los datos que pediste; por **stderr**, los errores. Las dos van a la pantalla, pero tú puedes **mandarlas a otro sitio**, como un archivo (eso es *redirigir*), o pasar el stdout de un programa a la entrada del siguiente (eso es un *pipe*, `|`). Y al terminar, cada programa deja un **código de salida**: 0 si todo fue bien.
 
@@ -16,7 +16,7 @@
 > - **pipe** (`|`): pasar el stdout de un programa a la entrada del siguiente.
 > - **código de salida**: el número que deja un programa al terminar (0 = todo bien).
 > - **`/dev/null`**: un archivo especial que descarta todo lo que le mandas.
-> - **pipeline de CI/CD**: la cadena de pasos automáticos que prueba y publica el código (pieza 4). No es el pipe `|`.
+> - **pipeline de CI/CD**: la cadena de pasos automáticos que prueba y publica el código (pieza 3). No es el pipe `|`.
 
 ## Objetivo
 
@@ -29,11 +29,19 @@
 
 Esta clase es **la filosofía Unix**: programas pequeños que hacen una cosa bien y se conectan entre sí. Con `|` analizarás logs de millones de líneas en un segundo. Y el código de salida de cada programa es el idioma con el que se entienden los scripts, los pipelines de CI/CD y los *health checks*: un job de GitHub Actions falla porque un comando dejó un código de salida distinto de 0.
 
-## Teoría
+## Cómo va esta clase
 
-Son cinco piezas pequeñas. Léelas en orden: cada una se apoya en la anterior.
+Seis piezas pequeñas. En cada una lees **una** idea y la pruebas enseguida en la terminal; no pases a la siguiente sin haber hecho la anterior: cada una se apoya en las de antes.
 
-### 1. Una entrada y dos salidas
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 45 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
+
+```bash
+mkdir -p ~/my-devops-journey/labs/clase-04 && cd ~/my-devops-journey/labs/clase-04
+```
+
+## Las piezas
+
+### Pieza 1 — Una entrada y dos salidas, y cómo leer un error
 
 ```
                      ┌────────────┐
@@ -44,19 +52,7 @@ Son cinco piezas pequeñas. Léelas en orden: cada una se apoya en la anterior.
 
 Los números (0, 1 y 2) importan: son los que escribirás en los comandos (`2>` significa «stderr a…»). Los nombres (*stdin*, *stdout*, *stderr*) son los que verás en la documentación y en las entrevistas.
 
-Por defecto, **stdout y stderr van a la pantalla**. Por eso los datos y los errores **parecen lo mismo**, aunque salgan por sitios distintos. Un ejemplo que da una cosa de cada:
-
-```bash
-ls /etc/hostname /no-existe
-```
-```
-ls: no se puede acceder a '/no-existe': No existe el archivo o directorio     ← stderr (2)
-/etc/hostname                                                                 ← stdout (1)
-```
-
-**En resumen:** los datos salen por stdout (1), los errores por stderr (2), y los dos van a la pantalla salvo que digas otra cosa.
-
-### Cómo leer un mensaje de error
+Por defecto, **stdout y stderr van a la pantalla**. Por eso los datos y los errores **parecen lo mismo**, aunque salgan por sitios distintos.
 
 Lo que sale por stderr casi siempre sigue el mismo molde: **quién se queja: sobre qué: por qué**.
 
@@ -68,13 +64,36 @@ quién                       sobre qué                por qué
 
 El mensaje te dice **dónde buscar**:
 - Si quien se queja es el programa (`ls`, `cp`, `grep`…), es que llegó a ejecutarse: el problema está en **lo que le pediste**.
-- Si quien se queja es `bash`, o el mensaje es `nombre: no se encontró la orden`, el programa ni siquiera arrancó: el problema está en **cómo escribiste la orden** (el nombre, las comillas o el permiso para ejecutarla).
+- Si quien se queja es `bash`, o el mensaje es `Orden «nombre» no encontrada`, el programa ni siquiera arrancó: el problema está en **cómo escribiste la orden** (el nombre, las comillas o el permiso para ejecutarla).
 
 Es lo que viste en la clase 01 con `ls /esto-no-existe` frente a `lsss`.
 
-**En resumen:** lee primero **quién** se queja: te dice dónde buscar.
+**Pruébalo.** Un comando que da una cosa de cada:
 
-### 2. Redirigir: mandar stdout o stderr a otro sitio
+```bash
+ls /etc/hostname /no-existe
+```
+
+👀 **Qué deberías ver:**
+
+```
+ls: no se puede acceder a '/no-existe': No existe el archivo o directorio     ← stderr (2)
+/etc/hostname                                                                 ← stdout (1)
+```
+
+Las dos líneas en la misma pantalla, como si fueran lo mismo: una es un dato y la otra un error.
+
+✋ **Sin mirar:** el mensaje `No existe el archivo o directorio`, ¿sale por stdout o por stderr?
+
+<details>
+<summary>Comprueba</summary>
+
+Por **stderr** (la 2): es un error.
+</details>
+
+**En resumen:** los datos salen por stdout (1), los errores por stderr (2), y los dos van a la pantalla salvo que digas otra cosa; en un error, lee primero **quién** se queja.
+
+### Pieza 2 — Redirigir: mandar stdout o stderr a otro sitio
 
 Cada símbolo redirige **una** de las dos salidas. Uno a uno:
 
@@ -99,93 +118,7 @@ comando > archivo 2>&1        # primero stdout va al archivo; después stderr co
 comando &> archivo            # atajo de bash que hace lo mismo
 ```
 
-**En resumen:** `>` redirige stdout, `2>` redirige stderr, y `> archivo 2>&1` manda los dos al archivo.
-
-### 3. Pipes: conectar programas
-
-```
- ┌──────┐    stdout     ┌──────┐
- │  ls  │ ─────────────►│  wc  │ ────► pantalla
- └──────┘     ( | )     └──────┘
-```
-
-`a | b` conecta el stdout de `a` con la entrada de `b`: lo que `a` iba a escribir en pantalla, `b` lo recibe para trabajar con ello. Por ejemplo, `ls /etc | wc -l` cuenta cuántas cosas hay en `/etc` (`wc -l` cuenta líneas).
-
-Ojo: el pipe **solo pasa stdout**. stderr sigue yendo a la pantalla, así que los errores no pasan al siguiente programa: los ves tú.
-
-`tee` deja pasar los datos al siguiente programa y, además, guarda una copia en un archivo (el nombre viene de la pieza en forma de T de las tuberías). `ls /etc | tee lista.txt | wc -l` cuenta las cosas de `/etc` **y** guarda la lista en `lista.txt`.
-
-**En resumen:** `|` pasa los datos de un programa al siguiente; los errores no pasan.
-
-### 4. El código de salida
-
-Al terminar, todo programa deja un número:
-- **0**: todo fue bien.
-- **Cualquier otro**: algo falló. Qué número exacto lo decide cada programa: `grep`, por ejemplo, deja 1 si no encontró nada y 2 si hubo un error de verdad.
-
-`$?` guarda el código de salida del **último** comando: `echo $?` te lo enseña.
-
-Con ese código puedes decidir qué se ejecuta después:
-
-| Escribes | Se lee como… |
-|----------|--------------|
-| `a && b` | «haz `a` y, **si salió bien**, haz `b`» |
-| `a \|\| b` | «haz `a` y, **si falló**, haz `b`» |
-| `a ; b` | «haz `a` y después `b`, pase lo que pase» |
-
-**En resumen:** 0 = bien; `&&` significa «si salió bien» y `||`, «si falló».
-
-> 🏭 **El código de salida en el trabajo: el pipeline de CI/CD.** Piensa en el control de calidad de una fábrica: cada pieza pasa por varias estaciones y, si una detecta un defecto, la cinta se para y esa pieza no llega a la tienda. Un **pipeline de CI/CD** hace lo mismo con el código: cada vez que alguien lo cambia, una máquina ejecuta sola una lista de pasos, como **probar** (los tests), **construir** (empaquetar la app) y **desplegar** (publicarla para los clientes). Cada paso es un comando, y el pipeline mira su **código de salida**: si un paso deja algo distinto de 0, se para y no se publica nada roto. Lo construirás tú en la fase 7. (No lo confundas con el pipe `|`: solo comparten el nombre).
-
-### 5. `$( )`: «pon aquí lo que imprima este comando»
-
-```bash
-echo "Hoy es $(date +%A)"
-```
-Antes de ejecutar `echo`, el shell ejecuta `date +%A`, coge lo que imprime (el día de la semana) y lo pone en su lugar.
-
-**En resumen:** `$(comando)` se sustituye por lo que imprime ese comando.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. El mensaje `No existe el archivo o directorio`, ¿sale por stdout o por stderr?
-2. ¿Qué diferencia hay entre `> notas.txt` y `>> notas.txt`?
-3. Acabas de ejecutar un comando que salió bien. ¿Qué muestra `echo $?`?
-
-<details>
-<summary>Comprueba</summary>
-
-1. Por **stderr** (la 2): es un error. 2. `>` vacía el archivo antes de escribir; `>>` añade al final. 3. `0`.
-
-Si fallaste alguna, relee esa pieza antes de seguir: la práctica se apoya en las tres.
-</details>
-
-### Tu chuleta de la clase
-
-Para consultar mientras practicas (no para memorizar de golpe):
-
-| Sintaxis | Efecto |
-|----------|--------|
-| `cmd > f` | datos a `f` (lo vacía antes) |
-| `cmd >> f` | datos al final de `f` |
-| `cmd 2> f` | errores a `f` |
-| `cmd > f 2>&1` / `cmd &> f` | datos y errores a `f` |
-| `cmd 2> /dev/null` | descarta los errores |
-| `cmd < f` | la entrada viene de `f` en lugar del teclado |
-| `a \| b` | los datos de `a` entran en `b` |
-| `a \| tee f \| b` | además, guarda una copia en `f` |
-| `a && b` · `a \|\| b` | `b` solo si `a` salió bien · solo si falló |
-| `$?` · `$(cmd)` | el código de salida del último comando · lo que imprime `cmd` |
-
-## Práctica guiada
-
-```bash
-mkdir -p ~/my-devops-journey/labs/clase-04 && cd ~/my-devops-journey/labs/clase-04
-```
-
-### 1. Redirigir stdout y stderr
-
-Ejecuta las líneas **de una en una**. Antes de cada una, 🔮 **predice**: ¿qué verás en pantalla? ¿Qué acabará en el archivo?
+**Pruébalo.** Ejecuta las líneas **de una en una**. Antes de cada una, 🔮 **predice**: ¿qué verás en pantalla? ¿Qué acabará en el archivo?
 
 ```bash
 ls /etc/hostname /no-existe > salida.txt
@@ -205,6 +138,8 @@ Ahora mira qué hay en cada archivo:
 cat salida.txt; echo ---; cat errores.txt; echo ---; cat todo.txt
 ```
 
+👀 **Qué deberías ver:**
+
 <details>
 <summary>Compruébalo después de predecir</summary>
 
@@ -218,7 +153,35 @@ cat salida.txt; echo ---; cat errores.txt; echo ---; cat todo.txt
 
 Verás errores en español (`ls`: *No existe el archivo o directorio*) y otros en inglés (`cat`: *No such file or directory*). Son las uutils de la clase 01, que aún no traducen todos sus mensajes. El idioma da igual: lo que importa es si cada mensaje sale por stdout o por stderr.
 
-### 2. Leer el código de salida
+✋ **Sin mirar:** ¿qué diferencia hay entre `> notas.txt` y `>> notas.txt`?
+
+<details>
+<summary>Comprueba</summary>
+
+`>` vacía el archivo antes de escribir; `>>` añade al final.
+</details>
+
+**En resumen:** `>` redirige stdout, `2>` redirige stderr, y `> archivo 2>&1` manda los dos al archivo.
+
+### Pieza 3 — El código de salida
+
+Al terminar, todo programa deja un número:
+- **0**: todo fue bien.
+- **Cualquier otro**: algo falló. Qué número exacto lo decide cada programa: `grep`, por ejemplo, deja 1 si no encontró nada y 2 si hubo un error de verdad.
+
+`$?` guarda el código de salida del **último** comando: `echo $?` te lo enseña.
+
+Con ese código puedes decidir qué se ejecuta después:
+
+| Escribes | Se lee como… |
+|----------|--------------|
+| `a && b` | «haz `a` y, **si salió bien**, haz `b`» |
+| `a \|\| b` | «haz `a` y, **si falló**, haz `b`» |
+| `a ; b` | «haz `a` y después `b`, pase lo que pase» |
+
+> 🏭 **El código de salida en el trabajo: el pipeline de CI/CD.** Piensa en el control de calidad de una fábrica: cada pieza pasa por varias estaciones y, si una detecta un defecto, la cinta se para y esa pieza no llega a la tienda. Un **pipeline de CI/CD** hace lo mismo con el código: cada vez que alguien lo cambia, una máquina ejecuta sola una lista de pasos, como **probar** (los tests), **construir** (empaquetar la app) y **desplegar** (publicarla para los clientes). Cada paso es un comando, y el pipeline mira su **código de salida**: si un paso deja algo distinto de 0, se para y no se publica nada roto. Lo construirás tú en la fase 7. (No lo confundas con el pipe `|`: solo comparten el nombre).
+
+**Pruébalo:**
 
 ```bash
 ls /etc/hostname ; echo "código: $?"
@@ -228,13 +191,7 @@ grep zzzz /etc/passwd ; echo "código: $?"
 grep root /no-existe  ; echo "código: $?"
 ```
 
-<details>
-<summary>Qué deberías ver</summary>
-
-Los códigos, en orden: `0`, `2`, `0`, `1` y `2`.
-</details>
-
-Fíjate en `grep`: deja **1** si no encontró nada y **2** si hubo un error de verdad (el archivo no existe). Un script bien hecho distingue los dos casos.
+👀 **Qué deberías ver:** los códigos, en orden: `0`, `2`, `0`, `1` y `2`. Fíjate en `grep`: deja **1** si no encontró nada y **2** si hubo un error de verdad (el archivo no existe). Un script bien hecho distingue los dos casos.
 
 Ahora usa el código de salida para decidir:
 ```bash
@@ -253,9 +210,32 @@ ping -c1 -W1 8.8.8.8 > /dev/null 2>&1 && echo "hay internet" || echo "sin intern
 - `> /dev/null 2>&1`: descarta stdout **y** stderr. No nos interesa lo que imprime, solo su código de salida.
 - `&& echo … || echo …`: si el código es 0, «hay internet»; si no, «sin internet».
 
-### 3. Pipes, pieza a pieza
+✋ **Sin mirar:** acabas de ejecutar un comando que salió bien. ¿Qué muestra `echo $?`?
 
-Empieza por uno sencillo:
+<details>
+<summary>Comprueba</summary>
+
+`0`.
+</details>
+
+**En resumen:** 0 = bien; `&&` significa «si salió bien» y `||`, «si falló».
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, `cd ~/my-devops-journey/labs/clase-04` y a la pieza 4.
+
+### Pieza 4 — Pipes: conectar programas
+
+```
+ ┌──────┐    stdout     ┌──────┐
+ │  ls  │ ─────────────►│  wc  │ ────► pantalla
+ └──────┘     ( | )     └──────┘
+```
+
+`a | b` conecta el stdout de `a` con la entrada de `b`: lo que `a` iba a escribir en pantalla, `b` lo recibe para trabajar con ello. Por ejemplo, `ls /etc | wc -l` cuenta cuántas cosas hay en `/etc` (`wc -l` cuenta líneas).
+
+Ojo: el pipe **solo pasa stdout**. stderr sigue yendo a la pantalla, así que los errores no pasan al siguiente programa: los ves tú.
+
+**Pruébalo.** Empieza por uno sencillo:
+
 ```bash
 cat /etc/passwd | wc -l               # cuántas cuentas de usuario hay en el sistema
 ```
@@ -278,23 +258,57 @@ cut -d: -f7 /etc/passwd | sort | uniq -c | sort -rn       # paso 4: de más a me
 Gana `/usr/sbin/nologin` con diferencia: la mayoría de las cuentas no son personas, sino servicios que no pueden iniciar sesión (lo verás en la clase 09). Estas herramientas las verás a fondo en la clase 05; hoy basta con entender cómo se conectan con `|`.
 
 Y comprueba que el pipe solo pasa stdout:
+
+🔮 **Predice:** ¿qué número saldrá? ¿Y el error?
+
 ```bash
 ls /etc/hostname /no-existe | wc -l
 ```
-🔮 **Predice:** ¿qué número saldrá? ¿Y el error? `wc` cuenta **1** línea, la de `/etc/hostname`. El error no entró en el pipe: salió directo a tu pantalla por stderr.
 
-### 4. `tee`: guardar una copia sin cortar el pipe
+👀 **Qué deberías ver:** `wc` cuenta **1** línea, la de `/etc/hostname`. El error no entró en el pipe: salió directo a tu pantalla por stderr.
+
+✋ **Sin mirar:** ¿por qué `uniq -c` necesita un `sort` antes?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque `uniq` solo junta las líneas iguales que están **seguidas**; `sort` pone juntas todas las iguales.
+</details>
+
+**En resumen:** `|` pasa los datos de un programa al siguiente; los errores no pasan. Los pipelines se construyen pieza a pieza.
+
+### Pieza 5 — `tee`: guardar una copia sin cortar el pipe
+
+`tee` deja pasar los datos al siguiente programa y, además, guarda una copia en un archivo (el nombre viene de la pieza en forma de T de las tuberías). Lo usarás desde la clase 10 para escribir archivos del sistema con `sudo`.
+
+**Pruébalo:**
 
 ```bash
 ls -l /etc | tee listado.txt | wc -l
 head -3 listado.txt
 ```
 
-👀 **Qué deberías ver:** un número (en tu equipo, unas 240 líneas) y después las tres primeras líneas de `listado.txt`, empezando por `total`.
+👀 **Qué deberías ver:** un número (en tu equipo, unas 240 líneas) y después las tres primeras líneas de `listado.txt`, empezando por `total`. El número de líneas sale en pantalla **y** la lista completa quedó guardada en `listado.txt`.
 
-El número de líneas sale en pantalla **y** la lista completa quedó guardada en `listado.txt`. Lo usarás desde la clase 10 para escribir archivos del sistema con `sudo`.
+✋ **Sin mirar:** ¿qué diferencia hay entre `ls -l /etc > listado.txt` y `ls -l /etc | tee listado.txt`?
 
-### 5. `$( )`: meter el resultado de un comando dentro de otro
+<details>
+<summary>Comprueba</summary>
+
+Los dos guardan la lista en el archivo, pero con `>` la pantalla se queda vacía; con `tee`, la lista sigue además hacia la pantalla (o hacia el siguiente programa del pipe).
+</details>
+
+**En resumen:** `tee` guarda una copia y deja pasar los datos.
+
+### Pieza 6 — `$( )`: «pon aquí lo que imprima este comando»
+
+```bash
+echo "Hoy es $(date +%A)"
+```
+
+Antes de ejecutar `echo`, el shell ejecuta `date +%A`, coge lo que imprime (el día de la semana) y lo pone en su lugar.
+
+**Pruébalo:**
 
 ```bash
 echo "Soy $(whoami) en $(hostname) y hay $(ls /etc | wc -l) cosas en /etc"
@@ -302,9 +316,34 @@ cp listado.txt "listado-$(date +%F).txt"
 ls
 ```
 
-👀 **Qué deberías ver:** una frase con tu usuario, el nombre de tu equipo y un número; y, en el `ls`, un archivo nuevo `listado-` con la fecha de hoy.
+👀 **Qué deberías ver:** una frase con tu usuario, el nombre de tu equipo y un número; y, en el `ls`, un archivo nuevo `listado-` con la fecha de hoy. `date +%F` produce la fecha como año-mes-día (`2026-10-14`): nombres con fecha que además se ordenan bien con `ls`, perfectos para backups.
 
-`date +%F` produce la fecha como año-mes-día (`2026-10-14`): nombres con fecha que además se ordenan bien con `ls`, perfectos para backups.
+✋ **Sin mirar:** ¿qué hace el shell con `$(date +%F)` antes de ejecutar el `cp`?
+
+<details>
+<summary>Comprueba</summary>
+
+Ejecuta `date +%F` y pone en su lugar lo que imprime, la fecha de hoy. El `cp` recibe ya `listado-2026-…txt`.
+</details>
+
+**En resumen:** `$(comando)` se sustituye por lo que imprime ese comando.
+
+## Tu chuleta de la clase
+
+Para consultar mientras practicas (no para memorizar de golpe):
+
+| Sintaxis | Efecto |
+|----------|--------|
+| `cmd > f` | datos a `f` (lo vacía antes) |
+| `cmd >> f` | datos al final de `f` |
+| `cmd 2> f` | errores a `f` |
+| `cmd > f 2>&1` / `cmd &> f` | datos y errores a `f` |
+| `cmd 2> /dev/null` | descarta los errores |
+| `cmd < f` | la entrada viene de `f` en lugar del teclado |
+| `a \| b` | los datos de `a` entran en `b` |
+| `a \| tee f \| b` | además, guarda una copia en `f` |
+| `a && b` · `a \|\| b` | `b` solo si `a` salió bien · solo si falló |
+| `$?` · `$(cmd)` | el código de salida del último comando · lo que imprime `cmd` |
 
 ## Rómpelo
 
@@ -426,7 +465,7 @@ Es el ejemplo al revés: ahora los errores (stderr, `2>`) van al archivo, y los 
 <details>
 <summary>Pista</summary>
 
-El primer hueco es el «si salió bien» de la pieza 4. El segundo, la misma fecha que pusiste en el nombre de la carpeta.
+El primer hueco es el «si salió bien» de la pieza 3. El segundo, la misma fecha que pusiste en el nombre de la carpeta.
 </details>
 
 ## Cierre

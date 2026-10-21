@@ -26,9 +26,17 @@ Al terminar sabrás:
 
 Un servidor en la nube (una EC2 en AWS) **no tiene escritorio**. Solo tienes una línea de texto por SSH. Todo lo que harás como Cloud/DevOps pasa por esa línea: instalar, revisar logs, reiniciar servicios, depurar. Si la terminal es tu casa, la nube deja de ser magia.
 
-## Teoría
+## Cómo va esta clase
 
-### Las cuatro capas
+Seis piezas. En cada una lees **una** idea y la pruebas enseguida en la terminal; no pases a la siguiente sin haber hecho la anterior.
+
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 25 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
+
+Abre una terminal: `Ctrl+Alt+T`. Hoy no hace falta ninguna carpeta.
+
+## Las piezas
+
+### Pieza 1 — Terminal, shell y kernel
 
 ```
   ┌──────────────────────────────────────────┐
@@ -54,11 +62,66 @@ Un servidor en la nube (una EC2 en AWS) **no tiene escritorio**. Solo tienes una
 - La **terminal** es solo la ventana. Puedes cerrarla, abrir otra o usar otra aplicación de terminal: el shell es otra cosa.
 - El **shell** (en Ubuntu, `bash`) es **un programa más**. Su trabajo: leer tu línea, entenderla y pedirle al kernel que ejecute lo que pediste.
 - El **kernel** es el único que toca el hardware. Ningún programa lee el disco directamente: se lo pide al kernel.
-- Una **distribución** (Ubuntu, Debian, Amazon Linux, Red Hat) es el kernel Linux más un conjunto de programas, un gestor de paquetes y una configuración. Cuando en AWS elijas una AMI de "Amazon Linux 2023" o "Ubuntu 24.04", estarás eligiendo una distribución.
 
 > **Analogía:** un restaurante. Tú (cliente) hablas con el camarero (shell), que lleva la comanda a la cocina (kernel), que es la única que toca los fogones (hardware). La terminal es la mesa donde te sientas.
 
-### El prompt
+**Pruébalo.** El shell es un programa, con su ruta y su número de proceso:
+
+```bash
+echo $SHELL
+ps -p $$
+```
+
+`$$` es "el número de proceso de este shell".
+
+🔮 **Predice:** si escribes `bash`, ¿se abre otra ventana?
+
+```bash
+bash
+ps -p $$
+exit
+ps -p $$
+```
+
+👀 **Qué deberías ver:** `/bin/bash`, la ruta del programa que es tu shell, y una tabla con `PID`, `TTY`, `TIME` y `CMD bash`. Al escribir `bash` no se abre ninguna ventana, pero el número de proceso (`PID`) cambia: arrancaste **un shell dentro de otro**, en la misma terminal. `exit` cierra el shell interior y vuelves al primero, con su número de antes. Es la prueba de que shell y terminal son cosas distintas.
+
+✋ **Sin mirar:** cierras la ventana de la terminal. ¿Has cerrado el shell, la terminal o las dos cosas?
+
+<details>
+<summary>Comprueba</summary>
+
+Las dos: la ventana era la terminal, y el shell que corría dentro termina con ella (lo verás en el Rómpelo 3).
+</details>
+
+**En resumen:** la terminal dibuja, el shell interpreta y el kernel ejecuta.
+
+### Pieza 2 — El kernel y la distribución
+
+Una **distribución** (Ubuntu, Debian, Amazon Linux, Red Hat) es el kernel Linux más un conjunto de programas, un gestor de paquetes y una configuración. Cuando en AWS elijas una AMI de "Amazon Linux 2023" o "Ubuntu 24.04", estarás eligiendo una distribución. El kernel tiene su propia versión, distinta de la de la distribución.
+
+**Pruébalo:**
+
+```bash
+uname -r              # versión del kernel
+uname -a              # todo lo que sabe uname
+cat /etc/os-release   # la distribución
+nproc                 # cuántos núcleos de CPU
+uptime                # cuánto tiempo lleva encendida y la carga
+```
+
+👀 **Qué deberías ver:** el kernel, algo como `7.0.0-38-generic`; en `/etc/os-release`, `PRETTY_NAME="Ubuntu 26.04.1 LTS"` y `VERSION_ID="26.04"`; un número de núcleos (por ejemplo, `8`); y en `uptime`, la hora, cuánto lleva encendida (`up 1 day, 16:08`) y tres números de carga. El kernel (`7.0…`) y Ubuntu (`26.04`) tienen versiones diferentes: **son cosas diferentes**.
+
+✋ **Sin mirar:** ¿quién es el único que toca el hardware: el shell o el kernel?
+
+<details>
+<summary>Comprueba</summary>
+
+El kernel. El shell, como cualquier otro programa, se lo pide.
+</details>
+
+**En resumen:** la distribución es el kernel más sus programas; cada uno tiene su versión.
+
+### Pieza 3 — El prompt y la anatomía de un comando
 
 ```
 educo@miequipo:~/my-devops-journey$
@@ -67,8 +130,6 @@ usuario  máquina    dónde estás     $ = usuario normal  (# = root, el adminis
 ```
 
 Fíjate siempre en el prompt **antes** de ejecutar algo. En el trabajo tendrás muchas terminales abiertas a la vez, conectadas a distintos servidores, y el prompt te dice en cuál estás.
-
-### Anatomía de un comando
 
 ```
 ls   -l -a   /etc
@@ -79,7 +140,38 @@ ls   -l -a   /etc
 
 Opciones largas: `--all` equivale a `-a`. Las largas se leen mejor en scripts. Las cortas son más rápidas de escribir.
 
-### Qué pasa cuando pulsas Enter
+**Pruébalo.** Lo que dice tu prompt, con comandos:
+
+```bash
+whoami
+hostname
+pwd
+date
+```
+
+Y la misma petición escrita de tres formas:
+
+```bash
+ls -l -a /etc | head -3
+ls -la /etc | head -3
+ls -l --all /etc | head -3
+```
+
+👀 **Qué deberías ver:** tu usuario, el nombre de la máquina y la carpeta en la que estás: los mismos tres datos que el prompt. Y las tres versiones de `ls` dan **la misma** salida (`| head -3` solo corta a tres líneas; lo verás en la clase 04).
+
+✋ **Sin mirar:** en `ls -l /etc`, ¿cuál es el comando, cuál la opción y cuál el argumento?
+
+<details>
+<summary>Comprueba</summary>
+
+`ls` es el comando, `-l` la opción y `/etc` el argumento.
+</details>
+
+**En resumen:** el prompt dice quién, dónde y en qué máquina; un comando es programa, opciones y argumentos.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, una terminal nueva y a la pieza 4.
+
+### Pieza 4 — Qué pasa cuando pulsas Enter
 
 ```
  Escribes  ls -l /etc  y pulsas Enter
@@ -93,109 +185,49 @@ Opciones largas: `--all` equivale a `-a`. Las largas se leen mejor en scripts. L
  7 ▼ SHELL     vuelve a mostrar el prompt
 ```
 
-Cada paso puede fallar, y el mensaje de error te dice en cuál estás. `lsss` falla en el paso 3: el shell no encuentra ningún programa con ese nombre. `ls /esto-no-existe` llega hasta el paso 5: el programa existe, pero la ruta no. Volverás a esta cadena con más detalle en la clase 07 (paso 3), en la 11 (paso 4) y en la 16 (cuando el programa es un script tuyo).
+Cada paso puede fallar, y el mensaje de error te dice en cuál estás. `lsss` falla en el paso 3: el shell no encuentra ningún programa con ese nombre. `ls /esto-no-existe` llega hasta el paso 5: el programa existe, pero la ruta no (los dos, en el Rómpelo 1). Volverás a esta cadena con más detalle en la clase 07 (paso 3), en la 11 (paso 4) y en la 16 (cuando el programa es un script tuyo).
 
-### ✋ Antes de practicar: tres preguntas, sin mirar
+**Pruébalo.** El paso 3, por dentro: dónde encuentra el shell el programa `ls`.
 
-1. Cierras la ventana de la terminal. ¿Has cerrado el shell, la terminal o las dos cosas?
-2. ¿Quién es el único que toca el hardware: el shell o el kernel?
-3. En `ls -l /etc`, ¿cuál es el comando, cuál la opción y cuál el argumento?
+```bash
+which ls
+ls -l /usr/bin/ls
+```
+
+👀 **Qué deberías ver:** `/usr/bin/ls` o `/bin/ls`: en Ubuntu, `/bin` es un enlace a `/usr/bin`, así que son el mismo archivo. Y en `ls -l`, una flecha `->` hacia `../lib/cargo/bin/coreutils/ls`. Ubuntu 26.04 usa **uutils**, las herramientas básicas reescritas en Rust. Se comportan casi igual que las clásicas (GNU coreutils). Si algún día un servidor responde distinto a tu PC, esa puede ser la razón: Amazon Linux, por ejemplo, usa las GNU.
+
+✋ **Sin mirar:** `lsss` falla. ¿En qué paso de la cadena?
 
 <details>
 <summary>Comprueba</summary>
 
-1. Las dos: la ventana era la terminal, y el shell que corría dentro termina con ella. 2. El kernel. 3. `ls` es el comando, `-l` la opción y `/etc` el argumento.
+En el 3: el shell busca un programa con ese nombre en el PATH y no lo encuentra. No llega a crearse ningún proceso.
 </details>
 
-### Tu chuleta de la clase
+**En resumen:** la terminal envía, el shell parte y busca, el kernel crea el proceso, el programa trabaja y el shell vuelve.
 
-| Comando | Qué hace |
-|---------|----------|
-| `whoami` · `hostname` · `pwd` · `date` | quién soy · cómo se llama la máquina · dónde estoy · qué hora es |
-| `uname -r` · `cat /etc/os-release` | versión del kernel · qué distribución es |
-| `nproc` · `uptime` | cuántos núcleos · cuánto lleva encendida |
-| `type cmd` · `type -a cmd` | qué es un comando (builtin, alias o programa) · todas sus versiones |
-| `man cmd` · `cmd --help` · `help cmd` | el manual · ayuda rápida · ayuda de un builtin |
-| `ps -p $$` | el proceso de tu shell |
+### Pieza 5 — Pedir ayuda sin internet
 
-## Práctica guiada
+Tres tipos de cosas pueden responder a un nombre:
+- **builtin**: una orden incorporada en el propio bash, como `cd`.
+- **alias**: un atajo. En Ubuntu, `ls` es un alias de `ls --color=auto` (por eso ves colores).
+- **programa**: un archivo en disco, como `/usr/bin/ls`.
 
-Abre una terminal (`Ctrl+Alt+T`).
+`type` dice cuál es. Y eso importa para pedir ayuda: `man` documenta programas, `--help` da la ayuda rápida de un programa, y los builtins se consultan con `help`.
 
-### 1. ¿Quién, dónde y qué sistema?
-
-```bash
-whoami
-hostname
-pwd
-date
-```
-
-🔮 **Predice:** ¿qué crees que mostrará `echo $SHELL`?
-
-```bash
-echo $SHELL
-```
-
-Debería ser `/bin/bash`: la ruta del programa que es tu shell. Comprueba que el shell es un proceso más, con su número:
-
-```bash
-ps -p $$
-```
-
-`$$` es "el número de proceso de este shell". Verás `bash`.
-
-### 2. El kernel y la distribución
-
-```bash
-uname -r              # versión del kernel
-uname -a              # todo lo que sabe uname
-cat /etc/os-release   # la distribución
-nproc                 # cuántos núcleos de CPU
-uptime                # cuánto tiempo lleva encendida y la carga
-```
-
-Fíjate: el kernel tiene su propia versión (algo como `7.0.0-…`), distinta de la de Ubuntu (`26.04`). **Son cosas diferentes.**
-
-### 3. Un shell dentro de otro
-
-🔮 **Predice:** si escribes `bash`, ¿se abre otra ventana?
-
-```bash
-ps -p $$
-bash
-ps -p $$
-exit
-ps -p $$
-```
-
-No se abre ninguna ventana, pero el número de proceso cambia: arrancaste **un shell dentro de otro**, en la misma terminal. `exit` cierra el shell interior y vuelves al primero. Es la prueba de que shell y terminal son cosas distintas.
-
-### 4. Pedir ayuda sin internet
+**Pruébalo:**
 
 ```bash
 type cd
 type ls
 type -a ls
-ls -l /usr/bin/ls
-```
-
-Tres tipos de cosas pueden responder a un nombre:
-- **builtin**: `cd` es una orden incorporada en el propio bash.
-- **alias**: un atajo. En Ubuntu, `ls` es un alias de `ls --color=auto` (por eso ves colores).
-- **programa**: un archivo en disco. `type -a ls` muestra todas las respuestas en orden; la real es `/usr/bin/ls`.
-
-`ls -l /usr/bin/ls` te enseñará una flecha `->` hacia `.../coreutils/ls`. Ubuntu 26.04 usa **uutils**, las herramientas básicas reescritas en Rust. Se comportan casi igual que las clásicas (GNU coreutils). Si algún día un servidor responde distinto a tu PC, esa puede ser la razón: Amazon Linux, por ejemplo, usa las GNU.
-
-Esto importa para pedir ayuda: `man` documenta programas, y los builtins se consultan con `help`:
-
-```bash
 help cd
 ls --help | head -20
 man ls
 ```
 
 Dentro de `man`:
+
 | Tecla | Acción |
 |-------|--------|
 | `Espacio` / `b` | página siguiente / anterior |
@@ -204,7 +236,19 @@ Dentro de `man`:
 
 Usa `/human` en `man ls` para encontrar la opción que muestra tamaños legibles (K, M, G).
 
-### 5. Atajos que usarás miles de veces
+👀 **Qué deberías ver:** `cd es una orden interna del intérprete de ordenes` (un builtin), `` ls es un alias de `ls --color=auto' `` y, con `type -a ls`, además las rutas del programa (`ls is /usr/bin/ls`; esa parte sale en inglés). `help cd` empieza con `Modifica el directorio de trabajo del shell.` Y en `man ls`, `/human` te lleva a `-h, --human-readable`.
+
+✋ **Sin mirar:** ¿por qué `man cd` no te sirve, y qué usas en su lugar?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque `cd` no es un programa con su manual: es un builtin de bash. Su ayuda está en `help cd`.
+</details>
+
+**En resumen:** `type` dice qué es un nombre; `man` y `--help` para programas, `help` para builtins.
+
+### Pieza 6 — Atajos que usarás miles de veces
 
 | Atajo | Qué hace |
 |-------|----------|
@@ -216,7 +260,31 @@ Usa `/human` en `man ls` para encontrar la opción que muestra tamaños legibles
 | `Ctrl+L` | Limpia la pantalla |
 | `Ctrl+A` / `Ctrl+E` | Ir al inicio / final de la línea |
 
-Pruébalos todos ahora, en especial `Ctrl+R`.
+**Pruébalo.** Escribe `unam` y pulsa `Tab`. Después `Ctrl+R`, escribe `os-rel` y pulsa `Enter`. Por último, `sleep 100` y cancélalo con `Ctrl+C`.
+
+👀 **Qué deberías ver:** `Tab` completa `uname`; `Ctrl+R` encuentra tu `cat /etc/os-release` de la pieza 2 y lo vuelve a ejecutar; y `Ctrl+C` corta el `sleep` y te devuelve el prompt (verás `^C`).
+
+✋ **Sin mirar:** ¿qué diferencia hay entre `Ctrl+C` y `Ctrl+D`?
+
+<details>
+<summary>Comprueba</summary>
+
+`Ctrl+C` cancela lo que se está ejecutando. `Ctrl+D` dice "fin de la entrada": a un programa que lee lo que escribes, le indica que ya terminaste; en un shell vacío, lo cierra.
+</details>
+
+**En resumen:** `Tab`, `↑` y `Ctrl+R` ahorran teclear; `Ctrl+C` cancela y `Ctrl+D` termina la entrada.
+
+## Tu chuleta de la clase
+
+| Comando | Qué hace |
+|---------|----------|
+| `whoami` · `hostname` · `pwd` · `date` | quién soy · cómo se llama la máquina · dónde estoy · qué hora es |
+| `uname -r` · `cat /etc/os-release` | versión del kernel · qué distribución es |
+| `nproc` · `uptime` | cuántos núcleos · cuánto lleva encendida |
+| `echo $SHELL` · `ps -p $$` | qué shell uso · el proceso de mi shell |
+| `which cmd` | dónde está el programa |
+| `type cmd` · `type -a cmd` | qué es un comando (builtin, alias o programa) · todas sus versiones |
+| `man cmd` · `cmd --help` · `help cmd` | el manual · ayuda rápida · ayuda de un builtin |
 
 ## Rómpelo
 
@@ -225,7 +293,7 @@ Pruébalos todos ahora, en especial `Ctrl+R`.
 lsss
 ls /esto-no-existe
 ```
-Son dos errores **distintos**. El primero lo da el **shell**: no encontró ningún programa llamado `lsss`. El segundo lo da **`ls`**: el programa sí existe, pero la ruta que le diste no. Lee siempre quién se queja. `ls: no se puede acceder…` empieza por el programa que se ejecutó; `lsss: no se encontró la orden` es el shell diciéndote que no encontró ese nombre.
+Son dos errores **distintos**. El primero lo da el **shell**: `Orden «lsss» no encontrada. Quizá quiso decir:`, y una lista de nombres parecidos (`less`, `lsns`…) con el paquete que los trae. Esas sugerencias las añade Ubuntu; en un servidor mínimo verás solo `lsss: orden no encontrada`. El segundo lo da **`ls`**: `ls: no se puede acceder a '/esto-no-existe': No existe el archivo o directorio`. El programa sí existe, pero la ruta que le diste no. Lee siempre quién se queja: el mensaje de `ls` empieza por `ls:`, el programa que se ejecutó.
 
 **2. Un comando que "se cuelga":**
 ```bash
@@ -242,38 +310,62 @@ Cierra la segunda ventana y repite el comando. El `sleep` desapareció: al cerra
 
 ## Reto
 
-Sin mirar la práctica, responde con comandos. Si llevas **5 minutos** atascado en un punto, abre su pista: está para usarla. Atascarse un rato ayuda; atascarse media hora, no.
+En la terminal. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**. Atascarse un rato ayuda; atascarse media hora, no.
 
 **1.** ¿Cuántos núcleos de CPU tiene tu máquina?
+
+> 🧩 **Ejemplo resuelto:** ¿qué versión del kernel tienes?
+> ```bash
+> uname -r
+> ```
+> `7.0.0-38-generic`: un comando de una palabra, con una opción.
+
+**Ahora tú, con huecos:** `____` → «Mi máquina tiene ____ núcleos».
 
 <details>
 <summary>Pista</summary>
 
-Es un comando de una sola palabra de la práctica 2. Viene del inglés *number of processors*.
+Es un comando de una sola palabra de la pieza 2. Viene del inglés *number of processors*.
 </details>
 
 **2.** ¿En qué directorio está el programa `ls`?
 
+> 🧩 **Ejemplo resuelto:** dónde está el programa `bash`.
+> ```bash
+> which bash
+> ```
+> `/bin/bash` (o `/usr/bin/bash`: en Ubuntu, `/bin` apunta a `/usr/bin`).
+
+**Ahora tú, con huecos:** `which ____` → «`ls` está en el directorio ____».
+
 <details>
 <summary>Pista</summary>
 
-`which ls` te da la ruta del programa. (`type ls` a secas solo te dice que es un alias).
+`which` da la ruta completa del programa; el directorio es todo menos el último nombre. (`type ls` a secas solo te dice que es un alias.)
 </details>
 
 **3.** Con `man`, encuentra la opción de `ls` que ordena por fecha de modificación.
 
+> 🧩 **Ejemplo resuelto:** la pieza 5: en `man ls`, `/human` y `Enter` llevan a `-h, --human-readable`, la opción de los tamaños legibles.
+
+**Ahora tú, con huecos:** `man ls`, `/____` y `Enter` (con `n` para la siguiente) → «la opción es `-__`».
+
 <details>
 <summary>Pista</summary>
 
-Abre `man ls`, escribe `/time` y pulsa Enter; `n` salta a la siguiente coincidencia. Busca la línea que dice *Sort by modification time*.
+En inglés, la fecha de modificación es *modification time*. Busca la línea que dice *Sort by modification time*.
 </details>
 
 **4.** ¿`pwd` es un builtin o un programa?
 
+> 🧩 **Ejemplo resuelto:** la pieza 5: `type cd` → `cd es una orden interna del intérprete de ordenes`, así que `cd` es un builtin.
+
+**Ahora tú, con huecos:** `type ____` → «`pwd` es ____». Y con `type -a pwd`: «además existe ____».
+
 <details>
 <summary>Pista</summary>
 
-El comando de la práctica 4 que te dice «qué es» un nombre: `type`.
+*Orden interna* es la forma en que bash, en español, dice *builtin*.
 </details>
 
 ## Cierre
@@ -302,7 +394,7 @@ Del **Reto**, anota solo los resultados (núcleos, ruta…) y marca cada punto c
 
 **4.** Porque los servidores no tienen interfaz gráfica: se administran por SSH. La automatización (scripts, CI/CD, Terraform, AWS CLI) es texto, y la consola web no sirve para repetir tareas, depurar dentro de una instancia ni trabajar a escala.
 
-**Reto:** 1) `nproc` · 2) `which ls` o `type -a ls` → `/usr/bin/ls` (`type ls` a secas solo te dice que es un alias) · 3) `-t` (`ls -lt`) · 4) `type pwd` → builtin (también existe `/usr/bin/pwd`, pero bash usa el suyo).
+**Reto:** 1) `nproc` · 2) `which ls` → `/usr/bin/ls` o `/bin/ls`, el mismo archivo: el directorio es `/usr/bin` (`type ls` a secas solo te dice que es un alias) · 3) `/time`, y la opción es `-t` (`ls -lt`) · 4) `type pwd` → `pwd es una orden interna del intérprete de ordenes`, un builtin; `type -a pwd` muestra que además existe el programa `/usr/bin/pwd`, pero bash usa el suyo.
 </details>
 
 ## Inglés

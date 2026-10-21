@@ -5,7 +5,7 @@
 > 💡 **La idea de hoy:** cada proceso nace con un conjunto de variables, su **entorno**, que es una **copia** del entorno de su padre. Lo que exportas con `export` lo reciben tus procesos hijos, pero un hijo nunca puede cambiar tus variables. El `PATH` es una de esas variables: la lista ordenada de carpetas donde el shell busca cada comando que escribes.
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
-> - El paso 3 de «Qué pasa cuando pulsas Enter»: el shell busca el programa (clase 01).
+> - El paso 3 de «Qué pasa cuando pulsas Enter»: el shell busca el programa (clase 01, pieza 4).
 > - `bash` abre un shell dentro de otro, y `exit` vuelve al primero (clase 01).
 > - `$(comando)` mete lo que imprime un comando dentro de otro (clase 04).
 

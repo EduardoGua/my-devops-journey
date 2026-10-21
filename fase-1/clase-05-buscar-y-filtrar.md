@@ -26,11 +26,24 @@
 
 "La web va lenta desde las 14:00", "nos están atacando", "¿qué endpoint da errores?". Todas se responden filtrando logs. Hay herramientas grandes para eso (CloudWatch Logs Insights, Grafana Loki), pero en el servidor, en el minuto uno del incidente, tienes `grep` y un pipe. Quien sabe filtrar un log en 30 segundos tiene ventaja en cualquier entrevista técnica.
 
-## Teoría
+## Cómo va esta clase
 
-Cuatro piezas. Las dos primeras son buscar; las dos últimas, sacar respuestas de lo que encuentras.
+Siete piezas. Las dos primeras son buscar; las demás, sacar respuestas de lo que encuentras. En cada una lees **una** idea y la pruebas enseguida en la terminal; no pases a la siguiente sin haber hecho la anterior.
 
-### 1. `find`: buscar **archivos**
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 30 min); el segundo, las **piezas 4 a 7**, el Rómpelo, el reto y el cierre.
+
+```bash
+cd ~/my-devops-journey
+ls -lh recursos/clase-05/access.log
+mkdir -p labs/clase-05 && cd labs/clase-05
+LOG=~/my-devops-journey/recursos/clase-05/access.log
+```
+
+`LOG=...` guarda la ruta en una variable; `$LOG` la usa. Lo verás a fondo en la clase 07. Si cierras la terminal (o al empezar el segundo día), vuelve a escribir la línea de `LOG=`.
+
+## Las piezas
+
+### Pieza 1 — `find`: buscar **archivos**
 
 `find` recorre carpetas y te da los archivos que cumplen unas condiciones. Siempre se escribe en el mismo orden: **dónde busco** y **qué condiciones** tiene que cumplir lo que busco.
 
@@ -49,9 +62,37 @@ Las cuatro condiciones que más usarás:
 | `-size +100M` | que ocupe más de 100 MB |
 | `-mtime -1` | modificado hace menos de un día |
 
+**Pruébalo:**
+
+```bash
+find /etc -name "*.conf" -type f 2>/dev/null | head        # archivos de configuración (los 10 primeros)
+find /etc -name "*.conf" -type f 2>/dev/null | wc -l       # ¿cuántos hay?
+find ~ -maxdepth 2 -type d -name ".*"                     # carpetas ocultas en tu casa, sin bajar más de 2 niveles
+find /var/log -type f -size +1M 2>/dev/null | head        # logs grandes (casi todos del journal, clase 13)
+find ~/my-devops-journey -type f -mtime -1                # lo que tocaste en las últimas 24 h
+```
+
+🔮 **Predice:** ¿por qué hace falta `2>/dev/null` en `/etc` y `/var/log`? Pruébalo sin él en uno de los dos.
+
+👀 **Qué deberías ver:** rutas de archivos `.conf` y su número (unos cientos), tus carpetas ocultas (`.ssh`, `.local`, `.config`…), los logs grandes y lo que tocaste ayer y hoy.
+
+<details>
+<summary>Comprueba la predicción</summary>
+
+Hay carpetas en las que tu usuario no tiene permiso para entrar, y `find` se queja de cada una por **stderr** (clase 04). `2>/dev/null` descarta esos errores y te deja ver solo los resultados.
+</details>
+
+✋ **Sin mirar:** quieres los archivos `.log` de `/var/log`. ¿`find` o `grep`?
+
+<details>
+<summary>Comprueba</summary>
+
+`find`: buscas **archivos** por su nombre (`find /var/log -name "*.log"`).
+</details>
+
 **En resumen:** `find DÓNDE CONDICIONES` busca **archivos**. El patrón del nombre, siempre entre comillas.
 
-### 2. `grep`: buscar **texto dentro** de los archivos
+### Pieza 2 — `grep`: buscar **texto dentro** de los archivos
 
 `grep texto archivo` imprime las **líneas** del archivo que contienen ese texto. Nada más. Cinco opciones lo cambian:
 
@@ -65,103 +106,7 @@ Las cuatro condiciones que más usarás:
 
 Y dos símbolos para afinar dónde está el texto: `^` significa «al **principio** de la línea» y `$`, «al **final**». `grep "^198"` encuentra las líneas que **empiezan** por 198, no las que lo tienen en cualquier sitio.
 
-**En resumen:** `grep texto archivo` imprime las líneas que contienen ese texto; con `-c`, las cuenta.
-
-### 3. Leer una línea de log
-
-Un log de nginx tiene una línea por cada visita a la web. Parece un churro, pero cada trozo separado por espacios es un dato, y `awk` los numera así:
-
-```
-203.0.113.6 - - [03/Oct/2026:08:00:08 +0000] "POST /login HTTP/1.1" 200 1879 "-" "Mozilla/5.0 ..."
-    $1      $2 $3          $4             $5    $6     $7     $8    $9   $10
- quién pidió          cuándo                  método  qué página    estado  bytes
-```
-
-Los que más vas a usar: **$1** (la IP de quien visita), **$7** (la página que pidió) y **$9** (el código de estado: cómo le fue).
-
-El código de estado dice cómo fue cada petición, igual que el código de salida de los programas en la clase 04: **2xx** bien · **3xx** redirigido a otro sitio · **4xx** el cliente pidió mal (404: no existe; 401: sin permiso) · **5xx** falló el servidor (500: error interno; 502: el servidor de detrás no respondió). Los verás a fondo en la clase 32.
-
-**En resumen:** cada trozo de la línea es un dato: `$1` quién, `$7` qué página y `$9` cómo le fue.
-
-### 4. Encadenar filtros con `|`
-
-Para responder preguntas con un log se conectan con `|` herramientas pequeñas. Cada una hace **una sola cosa** y le pasa el resultado a la siguiente:
-
-| Comando | Qué hace |
-|--------|----------|
-| `awk '{print $9}'` | se queda solo con el trozo 9 de cada línea |
-| `awk '$9 >= 500'` | deja pasar solo las líneas cuyo trozo 9 es 500 o más |
-| `sort` | ordena: las líneas iguales quedan juntas |
-| `uniq -c` | junta las iguales **que están seguidas** y pone delante cuántas hay |
-| `sort -rn` | ordena por ese número, de mayor a menor |
-| `head -5` | se queda con las 5 primeras |
-
-Juntas forman la cadena más usada del oficio, **el top-N**: «¿cuáles son los N que más se repiten?».
-
-```bash
-awk '{print $1}' access.log | sort | uniq -c | sort -rn | head -5    # las 5 IPs que más visitan
-```
-
-Ya la construiste pieza a pieza en la clase 04 con `cut`. Hoy cambias `cut` por `awk`, que cuenta los trozos separados por espacios aunque haya varios seguidos.
-
-**En resumen:** `awk` saca un trozo, `sort | uniq -c | sort -rn` cuenta y ordena, y `head` se queda con los primeros.
-
-### ✋ Antes de practicar: tres preguntas, sin mirar
-
-1. Quieres los archivos `.log` de `/var/log`. ¿`find` o `grep`?
-2. Quieres saber cuántas líneas de un log contienen `ERROR`. ¿Qué escribes?
-3. En la cadena top-N, ¿por qué va `sort` **antes** de `uniq -c`?
-
-<details>
-<summary>Comprueba</summary>
-
-1. `find`: buscas **archivos** por su nombre (`find /var/log -name "*.log"`). 2. `grep -c ERROR archivo.log`. 3. Porque `uniq -c` solo junta las líneas iguales que están **seguidas**: primero hay que ordenarlas para que queden juntas.
-</details>
-
-### Tu chuleta de la clase
-
-Para consultar mientras practicas. Las opciones con ➕ son extra: no las necesitas hoy.
-
-| `find` | | `grep` | | Pipeline | |
-|--------|-|--------|-|-------------------|-|
-| `-name "*.log"` | por nombre | `-c` | cuenta | `awk '{print $1, $9}'` | trozos 1 y 9 |
-| `-type f` / `d` | archivo / directorio | `-v` | las que no | `awk '$9 >= 500'` | filtra filas |
-| `-size +100M` | más de 100 MB | `-i` | sin mayúsculas | `cut -d: -f1` | trozo 1, cortando por `:` |
-| `-mtime -1` / `+7` | hace menos de 1 día / más de 7 | `-n` | nº de línea | `sort` / `-n` / `-rn` | orden alfabético / numérico / al revés |
-| ➕ `-iname` | nombre sin mayúsculas | `-E "a\|b"` | esto o aquello | `uniq -c` | cuenta iguales seguidas |
-| ➕ `-maxdepth 2` | no bajar más de 2 niveles | ➕ `-r` / `-l` | en carpetas / solo nombres | `head` / `wc -l` | primeras / cuenta líneas |
-| ➕ `-exec cmd {} \;` | ejecuta `cmd` con cada uno | ➕ `-o`, `-w`, `-A 3` | solo lo que coincide, palabra entera, contexto | `sed 's/viejo/nuevo/g'` | sustituye texto |
-
-## Práctica guiada
-
-```bash
-cd ~/my-devops-journey
-ls -lh recursos/clase-05/access.log
-mkdir -p labs/clase-05 && cd labs/clase-05
-LOG=~/my-devops-journey/recursos/clase-05/access.log
-```
-
-`LOG=...` guarda la ruta en una variable; `$LOG` la usa. Lo verás a fondo en la clase 07.
-
-### 1. `find`
-
-```bash
-find /etc -name "*.conf" -type f 2>/dev/null | head        # archivos de configuración (los 10 primeros)
-find /etc -name "*.conf" -type f 2>/dev/null | wc -l       # ¿cuántos hay?
-find ~ -maxdepth 2 -type d -name ".*"                     # carpetas ocultas en tu casa, sin bajar más de 2 niveles
-find /var/log -type f -size +1M 2>/dev/null | head        # logs grandes (casi todos del journal, clase 13)
-find ~/my-devops-journey -type f -mtime -1                # lo que tocaste en las últimas 24 h
-```
-
-🔮 **Predice:** ¿por qué hace falta `2>/dev/null` en `/etc` y `/var/log`? Pruébalo sin él en uno de los dos.
-
-<details>
-<summary>Compruébalo</summary>
-
-Hay carpetas en las que tu usuario no tiene permiso para entrar, y `find` se queja de cada una por **stderr** (clase 04). `2>/dev/null` descarta esos errores y te deja ver solo los resultados.
-</details>
-
-### 2. `grep` básico sobre el log
+**Pruébalo:**
 
 ```bash
 head -3 $LOG                          # cómo son las líneas
@@ -175,21 +120,75 @@ grep -E " (500|502) " $LOG | wc -l    # cuántas tienen 500 o 502 (los espacios 
 
 👀 **Qué deberías ver:** las 3 primeras líneas del log; `2120` visitas en total; `228` intentos de iniciar sesión; y `102` líneas con 500 o 502.
 
-### 3. Las preguntas de un incidente
+✋ **Sin mirar:** quieres saber cuántas líneas de un log contienen `ERROR`. ¿Qué escribes?
 
-**¿Cuántas peticiones por código de estado?**
-```bash
-awk '{print $9}' $LOG | sort | uniq -c | sort -rn
+<details>
+<summary>Comprueba</summary>
+
+`grep -c ERROR archivo.log`.
+</details>
+
+**En resumen:** `grep texto archivo` imprime las líneas que contienen ese texto; con `-c`, las cuenta.
+
+### Pieza 3 — Leer una línea de log
+
+Un log de nginx tiene una línea por cada visita a la web. Parece un churro, pero cada trozo separado por espacios es un dato, y `awk` los numera así:
+
+```
+203.0.113.6 - - [03/Oct/2026:08:00:08 +0000] "POST /login HTTP/1.1" 200 1879 "-" "Mozilla/5.0 ..."
+    $1      $2 $3          $4             $5    $6     $7     $8    $9   $10
+ quién pidió          cuándo                  método  qué página    estado  bytes
 ```
 
-👀 **Qué deberías ver:** `1611 200` arriba del todo y, debajo, el resto de códigos: 404, 401, 304, 500, 301 y 502.
+Los que más vas a usar: **$1** (la IP de quien visita), **$7** (la página que pidió) y **$9** (el código de estado: cómo le fue).
 
-**¿Qué IPs hacen más peticiones?**
+El código de estado dice cómo fue cada petición, igual que el código de salida de los programas en la clase 04: **2xx** bien · **3xx** redirigido a otro sitio · **4xx** el cliente pidió mal (404: no existe; 401: sin permiso) · **5xx** falló el servidor (500: error interno; 502: el servidor de detrás no respondió). Los verás a fondo en la clase 32.
+
+**Pruébalo:**
+
 ```bash
+head -1 $LOG
+head -1 $LOG | awk '{print $1, $7, $9}'
+head -5 $LOG | awk '{print $9}'
+```
+
+👀 **Qué deberías ver:** la primera línea entera; después, solo tres datos de ella: `203.0.113.6 /login 200` (quién, qué página y cómo le fue); y los códigos de estado de las cinco primeras visitas, uno por línea.
+
+✋ **Sin mirar:** en una línea del log, el trozo 9 vale `502`. ¿Qué pasó con esa visita?
+
+<details>
+<summary>Comprueba</summary>
+
+Falló el servidor: un 5xx. En concreto, 502 significa que el servidor de detrás no respondió.
+</details>
+
+**En resumen:** cada trozo de la línea es un dato: `$1` quién, `$7` qué página y `$9` cómo le fue.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, en `labs/clase-05`, vuelve a escribir `LOG=~/my-devops-journey/recursos/clase-05/access.log`.
+
+### Pieza 4 — Encadenar filtros: el top-N
+
+Para responder preguntas con un log se conectan con `|` herramientas pequeñas. Cada una hace **una sola cosa** y le pasa el resultado a la siguiente:
+
+| Comando | Qué hace |
+|--------|----------|
+| `awk '{print $9}'` | se queda solo con el trozo 9 de cada línea |
+| `awk '$9 >= 500'` | deja pasar solo las líneas cuyo trozo 9 es 500 o más |
+| `sort` | ordena: las líneas iguales quedan juntas |
+| `uniq -c` | junta las iguales **que están seguidas** y pone delante cuántas hay |
+| `sort -rn` | ordena por ese número, de mayor a menor |
+| `head -5` | se queda con las 5 primeras |
+
+Juntas forman la cadena más usada del oficio, **el top-N**: «¿cuáles son los N que más se repiten?». Ya la construiste pieza a pieza en la clase 04 con `cut`. Hoy cambias `cut` por `awk`, que cuenta los trozos separados por espacios aunque haya varios seguidos.
+
+**Pruébalo.** ¿Cuántas peticiones por código de estado? ¿Y qué IPs hacen más peticiones?
+
+```bash
+awk '{print $9}' $LOG | sort | uniq -c | sort -rn
 awk '{print $1}' $LOG | sort | uniq -c | sort -rn | head -5
 ```
 
-👀 **Qué deberías ver:** `198.51.100.7` con 169 visitas, muy por encima de las demás (unas 66 cada una).
+👀 **Qué deberías ver:** `1611 200` arriba del todo y, debajo, el resto de códigos: 404, 401, 304, 500, 301 y 502. Y en las IPs, `198.51.100.7` con 169 visitas, muy por encima de las demás (unas 66 cada una).
 
 🔮 **Predice:** una IP destaca mucho por encima del resto. ¿Qué podría estar haciendo?
 
@@ -201,39 +200,63 @@ grep "^198.51.100.7 " $LOG | grep " 401 " | tail -2                             
 
 El `^` y el espacio del final hacen que solo coincidan las líneas que **empiezan** por esa IP exacta.
 
-Más de cien `POST /login` con 401 en dos minutos, todas con `python-requests`: es un **ataque de fuerza bruta** contra el login. La respuesta en el mundo real sería bloquear esa IP (firewall, WAF) y limitar intentos (rate limit).
+👀 **Qué deberías ver:** más de cien `POST /login` con 401 en dos minutos, todas con `python-requests`: es un **ataque de fuerza bruta** contra el login. La respuesta en el mundo real sería bloquear esa IP (firewall, WAF) y limitar intentos (rate limit).
 
-**¿Qué rutas fallan con 5xx?**
-```bash
-awk '$9 >= 500 {print $7}' $LOG | sort | uniq -c | sort -rn
-```
+✋ **Sin mirar:** en la cadena top-N, ¿por qué va `sort` **antes** de `uniq -c`?
 
-**¿A qué hora se concentran los 5xx?**
-```bash
-awk '$9 >= 500' $LOG | cut -d: -f2 | sort | uniq -c
-```
+<details>
+<summary>Comprueba</summary>
 
-`cut -d: -f2` corta cada línea por los dos puntos y se queda con el trozo 2. Fíjate en por qué es la hora:
+Porque `uniq -c` solo junta las líneas iguales que están **seguidas**: primero hay que ordenarlas para que queden juntas.
+</details>
+
+**En resumen:** `awk` saca un trozo, `sort | uniq -c | sort -rn` cuenta y ordena, y `head` se queda con los primeros.
+
+### Pieza 5 — Dónde y cuándo: cruzar datos de un incidente
+
+Un dato suelto ("hay errores 5xx") no dice qué hacer. Cruzado con otro (en qué ruta, a qué hora), apunta a la causa. `cut -d: -f2` corta cada línea por los dos puntos y se queda con el trozo 2, que en este log es la hora:
+
 ```
 203.0.113.6 - - [03/Oct/2026:08:00:08 +0000] "GET / ...
 └──────── trozo 1 ─────────┘ 2  3  └──── trozo 4 ...
 ```
-Hay un pico a las 14:00. Si cruzas ese dato con la ruta, sabrás qué se rompió y cuándo:
+
+**Pruébalo.** ¿Qué rutas fallan con 5xx, y a qué hora se concentran?
+
+```bash
+awk '$9 >= 500 {print $7}' $LOG | sort | uniq -c | sort -rn
+awk '$9 >= 500' $LOG | cut -d: -f2 | sort | uniq -c
+```
+
+👀 **Qué deberías ver:** `/api/orders` arriba en la primera lista, y un pico a las 14:00 en la segunda (21 errores, frente a unos 8 en las demás horas). Si cruzas ese dato con la ruta, sabrás qué se rompió y cuándo:
+
 ```bash
 awk '$9 >= 500' $LOG | grep "2026:14:" | awk '{print $7}' | sort | uniq -c
 ```
 
 ¿Por qué `"2026:14:"` y no solo `":14:"`? Porque `":14:"` también coincidiría con el **minuto** 14 de cualquier hora (`10:14:22`). Incluir lo que va delante de la hora hace el patrón exacto.
 
-### 📄 Para leer: el resumen del incidente
-
-No tienes que escribir nada: lee cómo quedan los datos que acabas de sacar cuando se los cuentas a tu jefe. Fíjate en que cada frase lleva un dato del log (hora, ruta, IP, cuántas peticiones) y una acción.
+**📄 Para leer: el resumen del incidente.** No tienes que escribir nada: lee cómo quedan los datos que acabas de sacar cuando se los cuentas a tu jefe. Fíjate en que cada frase lleva un dato del log (hora, ruta, IP, cuántas peticiones) y una acción.
 
 > Hubo dos problemas. Primero, hacia las 14:00 se triplicaron los errores 5xx (21 en esa hora, frente a unos 8 en las demás), sobre todo en `/api/orders`: los pedidos fallaban. Revisaría los logs de la aplicación de pedidos a esa hora y si hubo algún cambio o despliegue. Segundo, desde la IP 198.51.100.7 hubo un ataque de fuerza bruta: unos 120 `POST /login` con 401 entre las 19:25 y las 19:27, con `python-requests`. La bloquearía en el firewall, limitaría los intentos de login y comprobaría que ninguna cuenta llegó a entrar.
 
 Son **dos** sucesos distintos, a horas distintas: el ataque no causó los errores de las 14:00. Mezclarlos es el error típico cuando se saca una conclusión sin mirar los datos.
 
-### 4. Guardar el informe
+✋ **Sin mirar:** ¿por qué `":14:"` no sirve para buscar las líneas de las 14:00?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque también coincide con el **minuto** 14 de cualquier hora (`10:14:22`). `"2026:14:"` solo casa con la hora.
+</details>
+
+**En resumen:** cruzar el qué con el dónde y el cuándo convierte un dato en una causa.
+
+### Pieza 6 — Guardar el informe
+
+Las llaves `{ }` agrupan varios comandos para redirigirlos juntos: todo lo que imprimen va al mismo archivo, con un solo `>`.
+
+**Pruébalo:**
 
 ```bash
 {
@@ -248,9 +271,21 @@ cat informe.txt
 
 👀 **Qué deberías ver:** cuatro partes: la fecha, `Total peticiones: 2120`, `Errores 5xx: 102` y las 3 IPs que más visitan.
 
-Las llaves `{ }` agrupan varios comandos para redirigirlos juntos.
+✋ **Sin mirar:** ¿por qué `wc -l < $LOG` y no `wc -l $LOG` dentro del informe?
 
-### 5. `sed`: sustituir
+<details>
+<summary>Comprueba</summary>
+
+Con `<`, `wc` lee el archivo por su entrada y solo imprime el número; con el nombre como argumento, imprime también la ruta, y el informe diría `2120 /home/educo/…`.
+</details>
+
+**En resumen:** `{ …; } > archivo` junta varias salidas en un informe.
+
+### Pieza 7 — `sed`: sustituir
+
+`sed 's/viejo/nuevo/g'` se lee «**s**ustituye *viejo* por *nuevo*, **g** = todas las veces en cada línea». Sin opciones, `sed` no toca el archivo: solo cambia lo que sale por pantalla. `sed -i` modifica el archivo **en el sitio**, y con `.bak` deja antes una copia de seguridad: úsalo siempre así en servidores.
+
+**Pruébalo:**
 
 ```bash
 echo "server_port=80" | sed 's/80/8080/'
@@ -261,11 +296,33 @@ grep -c IP-BLOQUEADA copia.log
 ls                                          # sed -i.bak guardó una copia del original
 ```
 
+En `HTTP\/1.1`, la `\` delante de `/` es necesaria porque `/` separa las partes del `s/…/…/`.
+
 👀 **Qué deberías ver:** `server_port=8080`; dos líneas del log con `H1`; `169` (las líneas que cambió); y en el `ls`, `copia.log` y `copia.log.bak`.
 
-`sed 's/viejo/nuevo/g'` se lee «**s**ustituye *viejo* por *nuevo*, **g** = todas las veces en cada línea». En `HTTP\/1.1`, la `\` delante de `/` es necesaria porque `/` separa las partes del `s/…/…/`.
+✋ **Sin mirar:** ¿qué diferencia hay entre `sed 's/a/b/' f` y `sed -i.bak 's/a/b/' f`?
 
-Sin opciones, `sed` no toca el archivo: solo cambia lo que sale por pantalla. `sed -i` modifica el archivo **en el sitio**, y con `.bak` deja antes una copia de seguridad: úsalo siempre así en servidores.
+<details>
+<summary>Comprueba</summary>
+
+El primero solo cambia lo que sale por pantalla; el archivo queda igual. El segundo cambia el archivo y deja el original en `f.bak`.
+</details>
+
+**En resumen:** `sed 's/viejo/nuevo/g'` sustituye; `-i.bak`, en el archivo y con copia.
+
+## Tu chuleta de la clase
+
+Para consultar mientras practicas. Las opciones con ➕ son extra: no las necesitas hoy.
+
+| `find` | | `grep` | | Pipeline | |
+|--------|-|--------|-|-------------------|-|
+| `-name "*.log"` | por nombre | `-c` | cuenta | `awk '{print $1, $9}'` | trozos 1 y 9 |
+| `-type f` / `d` | archivo / directorio | `-v` | las que no | `awk '$9 >= 500'` | filtra filas |
+| `-size +100M` | más de 100 MB | `-i` | sin mayúsculas | `cut -d: -f1` | trozo 1, cortando por `:` |
+| `-mtime -1` / `+7` | hace menos de 1 día / más de 7 | `-n` | nº de línea | `sort` / `-n` / `-rn` | orden alfabético / numérico / al revés |
+| ➕ `-iname` | nombre sin mayúsculas | `-E "a\|b"` | esto o aquello | `uniq -c` | cuenta iguales seguidas |
+| ➕ `-maxdepth 2` | no bajar más de 2 niveles | ➕ `-r` / `-l` | en carpetas / solo nombres | `head` / `wc -l` | primeras / cuenta líneas |
+| ➕ `-exec cmd {} \;` | ejecuta `cmd` con cada uno | ➕ `-o`, `-w`, `-A 3` | solo lo que coincide, palabra entera, contexto | `sed 's/viejo/nuevo/g'` | sustituye texto |
 
 ## Rómpelo
 
@@ -345,7 +402,7 @@ Es el ejemplo con otro código de estado.
 <details>
 <summary>Pista</summary>
 
-¿En qué trozo de la línea está la IP? Está en la pieza 3 de la teoría.
+¿En qué trozo de la línea está la IP? Está en la pieza 3.
 </details>
 
 **4.** ¿Cuántos bytes en total se sirvieron (la suma del trozo 10)?
@@ -389,7 +446,7 @@ Cuando termines la fase 1 harás [Bandit](bandit.md) como prueba: un juego por S
 En `notas/fase-1/clase-05.md`:
 
 1. Explica el patrón `sort | uniq -c | sort -rn | head` paso a paso. ¿Por qué hace falta el primer `sort`? *(3–4 líneas, una por pieza. Empieza así: «`sort` junta… `uniq -c`… `sort -rn`… y `head`… El primer `sort` hace falta porque…»)*
-2. **Solo para leer, no se responde ni se califica:** relee el resumen del incidente de la práctica guiada (después del paso 3) y fíjate en qué dato del log sostiene cada frase.
+2. **Solo para leer, no se responde ni se califica:** relee el resumen del incidente de la pieza 5 y fíjate en qué dato del log sostiene cada frase.
 3. ¿Por qué `grep " 401 "` y `awk '$9 == 401'` dieron números distintos? ¿Qué lección sacas? *(2 líneas. Empieza así: «`grep` encontró también una línea en la que 401 era…, mientras que `awk` mira solo… Lección: …»)*
 4. **Repaso (clase 04, sin mirar):** ¿qué hace `2>/dev/null` y por qué lo usaste con `find`? *(2 líneas. Empieza así: «Manda stderr a… Con `find` hacía falta porque…»)*
 
@@ -402,7 +459,7 @@ Después, escríbeme `examíname clase-05`.
 
 **1.** `sort` junta las líneas iguales, `uniq -c` cuenta cada grupo y pone el número delante, `sort -rn` ordena por ese número de mayor a menor y `head` se queda con el top 10. El primer `sort` hace falta porque `uniq` solo agrupa líneas iguales **contiguas**.
 
-**2.** No se califica: era solo para leer el ejemplo de la práctica.
+**2.** No se califica: era solo para leer el ejemplo de la pieza 5.
 
 **3.** `grep` busca texto en cualquier parte de la línea, y una línea tenía **401 bytes** en el campo de tamaño. `awk '$9 == 401'` mira solo la columna del estado. Lección: cuando el dato tiene estructura, se filtra por columna. Y siempre se valida un número antes de sacar conclusiones.
 
