@@ -15,6 +15,8 @@
 > - **índice de paquetes**: la lista de lo que hay en el repositorio y en qué versión.
 > - **dependencia**: otro paquete que un programa necesita para funcionar.
 > - **firma**: la prueba criptográfica de que un paquete viene del repositorio oficial y nadie lo ha modificado.
+> - **aprovisionar**: preparar un servidor nuevo instalando y configurando lo que necesita.
+> - **parche**: una actualización pequeña que corrige un fallo, a menudo de seguridad.
 
 ## Objetivo
 
@@ -46,7 +48,7 @@ multipass shell servidor-01
 ```
  Repositorio de Ubuntu (internet)          Tu servidor
  ┌────────────────────────────┐            ┌──────────────────────────────┐
- │ índice: nginx 1.24, curl…  │ apt update │ /var/lib/apt/lists/          │
+ │ índice: nginx 1.28, curl…  │ apt update │ /var/lib/apt/lists/          │
  │ paquetes .deb firmados     │──────────► │   (copia LOCAL del índice)   │
  └────────────────────────────┘            │                              │
                │          apt install nginx│                              │
@@ -71,6 +73,8 @@ apt list --upgradable | head
 ```
 
 👀 **Qué deberías ver:** los archivos de repositorios; el de Ubuntu por dentro (líneas `URIs:` y `Suites:`); `apt update` descargando índices (`Hit`, `Get`); y los paquetes que tienen versión nueva. Nada se instaló: solo se actualizó el índice.
+
+Verás también un `WARNING: apt does not have a stable CLI interface…` en inglés: apt avisa de que su salida puede cambiar entre versiones, así que no conviene usarlo en scripts. Por eso en scripts se usa `apt-get` (pieza 5).
 
 ✋ **Sin mirar:**
 1. Acabas de crear un servidor y `apt install curl` dice `Unable to locate package`. ¿Qué te faltó hacer?
@@ -107,10 +111,10 @@ systemctl status nginx --no-pager
 <details>
 <summary>Qué deberías ver</summary>
 
-La información del paquete nginx (versión, dependencias como `nginx-common`, descripción), la instalación, el principio de su página de bienvenida (`<!DOCTYPE html>`…) y nginx en `active (running)`: ya funciona solo.
+La información del paquete nginx (versión, dependencias como `nginx-common`, descripción) y otra vez el `WARNING` de la pieza 1; después, la instalación, el principio de su página de bienvenida (`<!DOCTYPE html>`…) y nginx en `active (running)`: ya funciona solo.
 </details>
 
-En Ubuntu, instalar un servicio suele **arrancarlo y activarlo** automáticamente. (En otras distribuciones, como Amazon Linux, no.)
+En Ubuntu, instalar un servicio suele **arrancarlo y activarlo** automáticamente (activarlo es que arranque solo al encender la máquina: clase 12). En otras distribuciones, como Amazon Linux, no.
 
 **En resumen:** un paquete lleva el programa y sus datos: su versión, sus dependencias y su firma. `apt` trae las dependencias solas.
 
@@ -134,7 +138,7 @@ ls /etc/nginx/
 
 **En resumen:** `apt` busca y descarga; `dpkg` instala y sabe qué archivo es de qué paquete.
 
-> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`.
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`; mañana vuelves con `multipass shell servidor-01` y sigues en la pieza 4.
 
 ### Pieza 4 — Los cinco del día a día
 
@@ -151,10 +155,10 @@ La diferencia entre `remove` y `purge` es la configuración: con `remove`, si lo
 **Pruébalo: las herramientas que usarás en el curso.**
 
 ```bash
-sudo apt install -y htop jq net-tools dnsutils traceroute tcpdump netcat-openbsd ufw rsync acl
+sudo apt install -y htop jq net-tools bind9-dnsutils traceroute tcpdump netcat-openbsd ufw rsync acl
 ```
 
-`dnsutils` trae `dig`; `net-tools`, el antiguo `netstat`; `tcpdump` captura tráfico; `netcat-openbsd` es `nc`. Muchos ya vienen instalados: `apt` simplemente te dirá que ya están en la versión más reciente.
+`bind9-dnsutils` trae `dig` (antes se llamaba `dnsutils`); `net-tools`, el antiguo `netstat`; `tcpdump` captura tráfico; `netcat-openbsd` es `nc`. Muchos ya vienen instalados: `apt` simplemente te dirá que ya están en la versión más reciente. Esta instalación y el `upgrade` de abajo pueden tardar unos minutos: mientras esperas, puedes ir leyendo la pieza 5.
 
 Ahora, actualiza todo el sistema:
 
@@ -185,7 +189,7 @@ Si se actualizó el kernel, el nuevo **no se usa hasta reiniciar**. En producci�
 
 ```bash
 sudo apt-get update && sudo apt-get install -y tree
-tree -L 1 /etc/nginx
+tree -L 1 /etc/nginx             # -L 1: solo el primer nivel
 ```
 
 👀 **Qué deberías ver:** el `update` y la instalación sin ninguna pregunta, y el árbol de carpetas de `/etc/nginx`.
@@ -238,8 +242,19 @@ sudo cp /tmp/nginx.conf.bak /etc/nginx/nginx.conf
 **2. El bloqueo de apt:**
 
 > Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
-Abre **dos** `multipass shell servidor-01`. En la primera: `sudo apt install -y cowsay` y, mientras corre, en la segunda: `sudo apt install -y sl`.
-Verás `Could not get lock /var/lib/dpkg/lock-frontend`: solo puede haber un apt a la vez. En una EC2 recién creada pasa mucho, porque `unattended-upgrades` o `cloud-init` están usando apt en los primeros minutos. **No se borra el archivo de lock**: se espera a que el otro proceso termine.
+
+Abre **dos** `multipass shell servidor-01`. En la primera, **sin** `-y`:
+```bash
+sudo apt install build-essential    # muchas dependencias: apt pregunta «Do you want to continue? [Y/n]». No contestes aún
+```
+Mientras pregunta, ese apt tiene cogido el bloqueo. En la segunda:
+```bash
+sudo apt install -y cowsay          # apt espera su turno; cuando veas el aviso, sal con Ctrl+C
+sudo apt-get install -y cowsay      # apt-get no espera: falla al instante
+```
+Por último, en la primera, contesta `n`: no se instala nada.
+
+Con `apt` verás `Waiting for cache lock: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process … (apt)` y una cuenta de segundos: `apt` espera hasta 2 minutos a que el otro termine. Con `apt-get`, al momento: `E: Could not get lock /var/lib/dpkg/lock-frontend…`. Solo puede haber un apt a la vez. En una EC2 recién creada pasa mucho, porque `unattended-upgrades` o `cloud-init` están usando apt en los primeros minutos, y un script con `apt-get` falla en seco. **No se borra el archivo de lock**: se espera a que el otro proceso termine.
 
 **3. Un paquete que no existe:**
 ```bash
@@ -291,7 +306,7 @@ Ejecútalo dos veces, una con cada nombre. Hazlo en la VM: en tu PC, por cómo e
 La opción de `apt list` que enseña lo instalado está en la chuleta.
 </details>
 
-**3.** Instala `cowsay` y luego quítalo **sin dejar rastro**, incluidas las dependencias que ya no se usan.
+**3.** Instala `cowsay` y luego quítalo **sin dejar rastro**, incluidas las dependencias que ya no se usan. (Si ya lo tienes del Rómpelo 2, apt te lo dirá: sigue con el resto.)
 
 > 🧩 **Ejemplo resuelto:** instalar el paquete `sl` (un tren que cruza tu terminal), probarlo y quitarlo.
 > ```bash
@@ -336,7 +351,7 @@ En `notas/fase-1/clase-10.md`:
 
 1. ¿Qué diferencia hay entre `apt update` y `apt upgrade`? *(2 líneas. Empieza así: «`apt update` descarga…, pero no… `apt upgrade`…»)*
 2. ¿Por qué `sudo echo "x" >> /etc/archivo` falla y `echo "x" | sudo tee -a /etc/archivo` funciona? *(2–3 líneas. Empieza así: «Porque el `>>` lo hace mi shell, que no es root, antes de… Con `tee`, quien abre el archivo es…»)*
-3. Acabas de lanzar una EC2 y `apt install` falla con "Could not get lock". ¿Qué pasa y qué haces? *(2 líneas. Empieza así: «Otro proceso, como cloud-init o las actualizaciones automáticas, está usando… Yo esperaría a que…, sin borrar…»)*
+3. Acabas de lanzar una EC2 y tu script falla en `apt-get install` con "Could not get lock". ¿Qué pasa y qué haces? *(2 líneas. Empieza así: «Otro proceso, como cloud-init o las actualizaciones automáticas, está usando… Yo esperaría a que…, sin borrar…»)*
 4. **Repaso (clase 09, sin mirar):** ¿por qué se edita sudoers con `visudo` y no con `nano` directamente? *(1–2 líneas. Empieza así: «Porque `visudo` comprueba…, y un error en sudoers…»)*
 
 Después, escríbeme `examíname clase-10`.

@@ -1,6 +1,6 @@
 # Repaso del bloque A — Linux en tu equipo
 
-**Dónde:** tus notas, sin terminal hasta el final · **Tiempo:** 45 min · **Cuándo:** después de la clase 07 y antes de la 08
+**Dónde:** tus notas, sin terminal hasta el final · **Tiempo:** unos 60 min · **Cuándo:** después de la clase 07 y antes de la 08
 
 > 💡 **Por qué este repaso:** han pasado un par de semanas desde la clase 01 y empiezas a olvidar. Es justo el momento en que recordar fija más. Las preguntas vienen **mezcladas**, sin decirte de qué clase son, como en una entrevista o en un incidente: parte del ejercicio es reconocer qué herramienta toca.
 
@@ -13,9 +13,11 @@
 5. Cada 🟡 o ❌ es una tarjeta de Anki y 10 minutos de vuelta a la clase que indica la respuesta.
 6. Termina con tu chuleta (abajo).
 
+Si lo haces en dos mañanas: el primer día, los pasos 1 a 4 (preguntas, 💻 y autocorrección: unos 40 min); el segundo, los pasos 5 y 6 (las vueltas a las clases y la chuleta).
+
 ## Preguntas
 
-1. Escribes `pyhton3 --version` y ves `pyhton3: no se encontró la orden`. ¿Quién da el error, en qué paso de «Qué pasa cuando pulsas Enter» y qué compruebas primero?
+1. En un servidor mínimo, escribes `pyhton3 --version` y ves `pyhton3: orden no encontrada`. ¿Quién da el error, en qué paso de «Qué pasa cuando pulsas Enter» y qué compruebas primero?
 2. Estás en `/var/log/nginx`. Escribe la ruta relativa y la absoluta hasta `/etc/nginx/nginx.conf`.
 3. Vas a ejecutar `rm *.log` en un servidor. ¿Qué dos comandos escribes antes y qué te dice cada uno?
 4. 💻 Sin ejecutarlo: ¿qué se ve en pantalla con `ls /etc/hostname /nada 2>/dev/null | wc -l`? ¿Y qué muestra `echo $?` justo después?
@@ -59,7 +61,7 @@ Después repasa las clases 01 a 07 y añade lo que faltaba marcado con ➕. Lo m
 
 **10.** `prod`. `./script.sh` corre en un proceso **hijo** con una copia de tu entorno, y un hijo nunca cambia el del padre. Con `source`, el script corre en **tu** shell y la variable queda en `dev`. *(Clase 07.)*
 
-**11.** `/opt/tool/bin` no está en su PATH, así que el shell no lo encuentra en el paso 3. Soluciones: usar la ruta completa (`/opt/tool/bin/tool`), o añadir la carpeta al PATH **en un solo sitio** (`~/.profile`) y solo si no está ya, como en el Reto 5 de la clase 07. *(Clases 01 y 07.)*
+**11.** `/opt/tool/bin` no está en su PATH, así que el shell no lo encuentra en el paso 3. Soluciones: usar la ruta completa (`/opt/tool/bin/tool`); `export PATH="/opt/tool/bin:$PATH"` para esta terminal (clase 07, pieza 5); y para siempre, añadir la carpeta al PATH **en un solo sitio** (`~/.profile`). *(Clases 01 y 07.)*
 
 **12.** (a) `backup.sh` no tiene permiso de ejecución: el kernel se niega a ejecutarlo (clase 06). Quien se queja es `bash`, por stderr, que no estaba redirigido: por eso lo ves en pantalla (clase 04). (b) `log.txt` está vacío porque el shell crea el archivo y aplica `>` **antes** de intentar ejecutar el comando, igual que con `sort` en la pregunta 5. Arreglo: `chmod u+x backup.sh`. *(Clases 04 y 06.)*
 </details>

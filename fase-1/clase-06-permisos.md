@@ -7,7 +7,7 @@
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - Leer una línea de `ls -l`: tipo, permisos, dueño y grupo (clase 02).
 > - `./script` pide al kernel ejecutar un archivo (clase 01, pieza 4: el paso 4 de «Qué pasa cuando pulsas Enter»).
-> - Crear un archivo de una línea con `echo … >` o `printf … >` (clase 04).
+> - Crear un archivo de una o dos líneas con `echo … >` o `printf … >` (clase 04).
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **dueño**, **grupo** y **otros**: los tres «quiénes» de cada archivo.
@@ -15,6 +15,9 @@
 > - **root**: el administrador del sistema, que se salta casi todos los permisos.
 > - **chmod**: el comando que cambia los permisos.
 > - **umask**: la máscara que decide con qué permisos nacen los archivos nuevos.
+> - **id**: muestra tu usuario y tus grupos.
+> - **stat**: muestra los datos de un archivo, permisos incluidos.
+> - **mínimo privilegio**: dar a cada usuario o programa solo los permisos que necesita.
 
 ## Objetivo
 
@@ -65,7 +68,7 @@ Las 9 letras que ves con `ls -l` son tres bloques de permisos, de tres letras ca
  └┬┘└┬┘└┬┘
   │  │  └── el resto del mundo (otros, «o»):   ---  nada
   │  └───── los del grupo devs (grupo, «g»):   r-x  leer y ejecutar
-  └──────── la dueña, educo (dueño, «u»):      rwx  todo
+  └──────── el dueño, educo (dueño, «u»):      rwx  todo
 ```
 
 Cada letra es un permiso: **r** para leer, **w** para escribir y **x** para ejecutar. Un guion (`-`) es un permiso que falta.
@@ -91,7 +94,7 @@ Para cada línea, di en voz alta quién es el dueño, quién es el grupo y qué 
 cat /etc/shadow
 ```
 
-👀 **Qué deberías ver:** `cat: /etc/shadow: Permission denied` (en inglés: el `cat` de Ubuntu 26.04 aún no está traducido). El archivo es `rw-r-----`, de `root` y del grupo `shadow`, y tú caes en el bloque de otros (`---`). Guarda los *hashes* de las contraseñas (una versión cifrada de cada una), por eso solo root y el grupo `shadow` pueden leerlo.
+👀 **Qué deberías ver:** `cat: /etc/shadow: Permission denied` (en inglés: el `cat` de Ubuntu 26.04 aún no está traducido). El archivo es `rw-r-----`, de `root` y del grupo `shadow`, y tú caes en el bloque de otros (`---`). Guarda los *hashes* de las contraseñas (un código calculado a partir de cada contraseña, del que no se puede sacar la contraseña), por eso solo root y el grupo `shadow` pueden leerlo.
 
 ✋ **Sin mirar:** un archivo es `---rwxrwx` y tú eres su dueño. ¿Puedes leerlo?
 
@@ -147,7 +150,7 @@ chmod g-w,o-r archivo       # QUITA (-) la w al Grupo y la r a los Otros
 
 Con letras: **u** = dueño (*user*), **g** = grupo, **o** = otros; **+** añade y **-** quita. Los números sirven para dejar los permisos exactamente como quieres; las letras, para cambiar un permiso sin tocar los demás.
 
-`chown usuario:grupo archivo` cambia el dueño y el grupo. Solo lo puede hacer root: lo practicarás en el servidor (clase 09).
+`chown usuario:grupo archivo` cambia el dueño y el grupo. Cambiar el **dueño** solo lo puede hacer root: lo practicarás en el servidor (clase 09).
 
 **Pruébalo con un script:**
 
@@ -156,6 +159,8 @@ printf '#!/bin/bash\necho "hola desde el script"\n' > hola.sh
 ls -l hola.sh
 ./hola.sh
 ```
+
+`\n` es un salto de línea: el archivo tiene dos líneas. La primera, `#!/bin/bash`, dice qué programa lee el script (lo verás en la clase 16).
 
 🔮 **Predice:** ¿funcionará? Mira la columna de permisos antes de pulsar Enter.
 
@@ -183,7 +188,7 @@ ls -l privado.txt
 
 **En resumen:** `chmod 640` lo fija todo con números; `chmod g-w` cambia un solo permiso con letras.
 
-> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, `cd ~/my-devops-journey/labs/clase-06` y a la pieza 5.
 
 ### Pieza 5 — En un directorio, los permisos significan otra cosa
 
@@ -210,7 +215,7 @@ ls -ld /root ~
 
 👀 **Qué deberías ver:** `/root` es `drwx------` de `root`: tú caes en otros (`---`) y ni siquiera puedes entrar. Tu carpeta personal es tuya y tiene todo en el bloque del dueño.
 
-**Ahora con una carpeta de prueba.** Vas a quitarle permisos a `caja` y ver qué puedes hacer en cada caso. Antes de cada bloque, 🔮 **predice** qué funcionará y qué no, y apúntalo.
+**Ahora con una carpeta de prueba.** Vas a quitarle permisos a `caja` y ver qué puedes hacer en cada caso. Antes de cada bloque, 🔮 **predice** qué funcionará y qué no, y apúntalo. Verás errores en español (*Permiso denegado*) o en inglés (*Permission denied*) según el programa: significan lo mismo.
 
 ```bash
 mkdir caja && echo "dato" > caja/dato.txt
@@ -278,7 +283,7 @@ La `w` de la **carpeta**: borrar es quitar un nombre de la lista del directorio.
 
 ### Pieza 6 — `umask`: los permisos de los archivos nuevos
 
-Los archivos nuevos no nacen con permisos al azar: los decide una máscara, la **umask**. Con la de Ubuntu para tu usuario (`002`), un archivo nuevo nace `664` (`rw-rw-r--`) y un directorio nuevo, `775`. La máscara **quita** permisos: con `002`, le quita la `w` a los otros.
+Los archivos nuevos no nacen con permisos al azar. Un archivo nuevo parte de `666` (`rw-rw-rw-`: nunca lleva `x`) y una carpeta nueva, de `777` (`rwxrwxrwx`). Después, una máscara, la **umask**, les **quita** permisos. Con la de Ubuntu para tu usuario (`002`), les quita la `w` a los otros: el archivo nace `664` (`rw-rw-r--`) y la carpeta, `775` (`rwxrwxr-x`).
 
 `umask 077` cambia la máscara **solo en esa terminal**: al cerrarla, vuelve la de siempre.
 
@@ -293,7 +298,7 @@ ls -ld con-umask-* dir-*
 umask 002             # restaura (o cierra la terminal)
 ```
 
-👀 **Qué deberías ver:** `umask` responde `0002`. Con la máscara normal, el archivo nace `rw-rw-r--` y la carpeta `rwxrwxr-x`. Con `077`, la máscara quita **todo** al grupo y al resto: nacen `rw-------` y `rwx------`, privados desde el primer momento.
+👀 **Qué deberías ver:** `umask` responde `0002` (el primer `0` es para permisos especiales: ignóralo). Con la máscara normal, el archivo nace `rw-rw-r--` y la carpeta `rwxrwxr-x`. Con `077`, la máscara quita **todo** al grupo y al resto: nacen `rw-------` y `rwx------`, privados desde el primer momento.
 
 **En resumen:** la umask decide qué permisos les faltan a los archivos que nacen.
 
@@ -394,7 +399,7 @@ Nace `rw-rw-r--` y lo quieres `rw-r-----`. ¿Qué letra le sobra al grupo? ¿Y a
 > ```
 > El archivo nace `-rw-------` y la carpeta `drwx------`. Al final, `umask 002` deja la máscara como siempre.
 
-**Ahora tú, con huecos:** `Con 027 → archivo: `rw-` `___` `---` · carpeta: `rwx` `___` `---``
+**Ahora tú, con huecos:** Con 027 → archivo: `rw-` `___` `---` · carpeta: `rwx` `___` `---`
 
 <details>
 <summary>Pista</summary>
@@ -410,7 +415,7 @@ Solo tienes que pensar el bloque del grupo: el `2` le quita la `w`. Un archivo p
 > ```
 > `/etc/shadow` solo lo puede modificar root (`-rw-r-----`, dueño root). Cuando cambias tu contraseña, `passwd` tiene que escribir ahí. La `s` de `-rwsr-xr-x` hace que corra como su dueño, root, aunque lo lances tú.
 
-**Ahora tú, con huecos:** `Para `su`: `ls -l /usr/bin/su` y `man su`. ¿Qué necesita hacer `su` que solo puede hacer root? → ____`
+**Ahora tú, con huecos:** Para `su`: `ls -l /usr/bin/su` y `man su`. ¿Qué necesita hacer `su` que solo puede hacer root? → ____
 
 <details>
 <summary>Pista</summary>
@@ -436,9 +441,9 @@ Después, escríbeme `examíname clase-06`.
 
 **1.** Dueño (`rwx`): listar, crear y borrar archivos dentro, y entrar. Grupo (`r-x`): listar y entrar (y leer los archivos si sus propios permisos lo permiten), pero no crear ni borrar. Otros (`---`): nada, ni siquiera entrar.
 
-**2.** `ls caja` → *Permiso denegado*: falta `r` para listar. `cat caja/dato.txt` → *Permission denied* (las uutils aún no lo traducen): falta `x` para atravesar el directorio. `ls -ld caja` funciona porque no entra en `caja`: lee su información (permisos, dueño) en el directorio **padre**, donde sí tienes permisos.
+**2.** `ls caja` → *Permiso denegado*: falta `r` para listar. `cat caja/dato.txt` → *Permission denied* (el `cat` de uutils aún no está traducido; `ls` y `rm` sí): falta `x` para atravesar el directorio. `ls -ld caja` funciona porque no entra en `caja`: lee su información (permisos, dueño) en el directorio **padre**, donde sí tienes permisos.
 
-**3.** No: `777` da escritura a todo el mundo y convierte la web en un punto de entrada para cualquiera que comprometa un proceso de la máquina. Lo correcto: ver qué usuario ejecuta nginx (`ps aux | grep nginx` → `www-data`), qué permiso falta y en qué tramo de la ruta (`namei -l /var/www/html/index.html` lo enseña), y dar lo mínimo: archivos `644`, directorios `755`, y si hace falta, dueño o grupo `www-data` con `chown`.
+**3.** No: `777` da escritura a todo el mundo y convierte la web en un punto de entrada para cualquiera que comprometa un proceso de la máquina. Lo correcto: ver con qué usuario corre nginx, qué permiso le falta (también la `x` de cada directorio del camino, pieza 5) y darle solo lo mínimo: archivos `644` y directorios `755`. *(Cómo ver ese usuario lo verás en la clase 11: `ps aux | grep nginx` → `www-data`. Cambiar el dueño con `chown`, en la clase 09. Si no pusiste esto, tu respuesta vale igual.)*
 
 **4.** `awk '{print $1}' access.log | sort | uniq -c | sort -rn | head -5`
 

@@ -402,3 +402,4 @@ La columna *Tiempo* es tiempo enfocado. Desde la clase 06 sale de las sesiones m
 | 2026-10-14 | — | — | Fase 1 revisada y probada en Ubuntu 26.04: *La idea de hoy* en cada clase, `nueva-nota.sh`, repasos de bloque A, B y C. |
 |2026-10-15|04|3 horas en dos dias| la encontre confusa pero considero que es solo falta de practica. |
 |2026-10-18|05|fueron como 3 dias con 15 a media hora en cada dia | la clase la lei en 3 veces para poder tanto comprender todo lo posible con respecto a los comandos find y grep del resto considero lo mismo no es tanto memorizacion sino practica para dominarlos
+| 2026-10-23 | — | — | Revisión del curso con subagentes (informe en `revision-2026-10-22.md`). Corregidas las clases 06–11 y el repaso A: comandos explicados antes de usarse, salidas reales de Ubuntu 26.04, la 09 en 7 piezas y la 11 en 6. |

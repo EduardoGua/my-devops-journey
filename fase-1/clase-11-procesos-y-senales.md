@@ -6,7 +6,7 @@
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - El paso 4 de «Qué pasa cuando pulsas Enter»: el kernel crea un proceso (clase 01, pieza 4).
-> - `/proc` es una ventana al kernel: sus archivos no están en el disco (clase 02).
+> - `/proc` lo genera el kernel cuando lo lees: sus archivos no están en el disco (clase 02).
 > - nginx funciona en tu VM desde la clase 10.
 
 > 🔤 **Palabras nuevas de hoy:**
@@ -14,6 +14,7 @@
 > - **PID**: el número único de cada proceso; **PPID**, el de su padre.
 > - **señal**: un aviso del kernel a un proceso (`SIGTERM`, `SIGKILL`…).
 > - **primer / segundo plano**: ocupando tu terminal, o funcionando por detrás mientras la usas.
+> - **trabajo** (*job*): un proceso que lanzaste desde esta terminal; `jobs` los numera ([1], [2]…) y `%1` es el número 1.
 > - **master / worker**: en nginx, el proceso jefe y los que atienden a los clientes.
 > - **Kubernetes / ECS**: plataformas que ejecutan aplicaciones en contenedores y las sustituyen por versiones nuevas sin que lo hagas a mano (fases 5, 6 y 9).
 
@@ -30,9 +31,9 @@
 
 ## Cómo va esta clase
 
-Cinco piezas. En cada una lees **una** idea y la pruebas enseguida en el servidor; no pases a la siguiente sin haber ejecutado la anterior.
+Seis piezas. En cada una lees **una** idea y la pruebas enseguida en el servidor; no pases a la siguiente sin haber ejecutado la anterior.
 
-Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 30 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 30 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
 
 Todo se hace dentro de la VM:
 
@@ -51,7 +52,7 @@ Todos los procesos descienden del **PID 1** (`systemd`), el primero que arranca 
 
 ```
 systemd (1)
-├── sshd ──── sshd ──── bash ──── ps        ← tu sesión
+├── sshd ── sshd-session ── bash ── ps      ← tu sesión
 ├── nginx (master, root) ─┬─ nginx (worker, www-data)
 │                         └─ nginx (worker, www-data)
 └── cron
@@ -94,50 +95,52 @@ En la columna `STAT` de `ps` verás sobre todo dos estados: **R** (*running*, ej
 **Pruébalo:**
 
 ```bash
-ps -f
 ps aux | head
 ps aux | wc -l
 pstree -p | head -20
-ps -ef --forest | grep -A3 [n]ginx
+ps -ef --forest | grep -A3 '[n]ginx'    # todos, en árbol; -A3: y las 3 líneas siguientes
 ```
 
-👀 **Qué deberías ver:** tus procesos; las primeras líneas de la lista completa; cuántos hay; el árbol que empieza en `systemd(1)`; y los procesos de nginx colgando de su master.
+👀 **Qué deberías ver:** las primeras líneas de la lista completa; cuántos hay; el árbol que empieza en `systemd(1)`; y los procesos de nginx colgando de su master.
 
 (El truco `[n]ginx` evita que `grep` se encuentre a sí mismo en la lista.)
+
+**En resumen:** `ps aux` es una foto fija, `pstree` el árbol de familia y `top` el directo.
+
+### Pieza 3 — El proceso por dentro: su usuario y `/proc`
+
+Cada proceso tiene un dueño, y los de un mismo programa no siempre tienen el mismo.
 
 🔮 **Predice:** ¿con qué usuario corre el proceso nginx *master* y con cuál los *workers*? ¿Por qué crees que es así?
 
 ```bash
-ps -o user,pid,ppid,cmd -C nginx
+ps -o user,pid,ppid,cmd -C nginx     # -C nginx: solo los procesos de ese programa
 ```
 
 El master corre como **root** porque necesita abrir el puerto 80 (los puertos < 1024 requieren privilegios). Los workers, que atienden a los clientes, corren como **www-data**. Si un atacante compromete un worker, no es root. Es mínimo privilegio aplicado a procesos.
 
-**En resumen:** `ps aux` es una foto fija, `pstree` el árbol de familia y `top` el directo.
+Para mirar un proceso por dentro, el kernel muestra cada uno como una carpeta, `/proc/<PID>`, llena de archivos que no están en el disco: los genera al leerlos. Ahí están su estado, su programa, su carpeta de trabajo y mucho más.
 
-### Pieza 3 — `/proc`: el proceso por dentro
-
-El kernel muestra cada proceso como una carpeta, `/proc/<PID>`, llena de archivos que no están en el disco: los genera al leerlos. Ahí están su estado, su programa, su carpeta de trabajo y mucho más. `/proc/loadavg` da la carga de todo el sistema.
-
-**Pruébalo:**
+**Pruébalo** con el master:
 
 ```bash
 PID=$(pgrep -o nginx)          # -o: el más antiguo, el master
 sudo ls /proc/$PID
 sudo cat /proc/$PID/status | head -10
 sudo ls -l /proc/$PID/cwd /proc/$PID/exe
-cat /proc/loadavg
 ```
 
-👀 **Qué deberías ver:** la carpeta del proceso en `/proc`; su estado (`State:`); su carpeta de trabajo y su programa (dos flechas `->`); y la carga del sistema: tres números y dos contadores.
+👀 **Qué deberías ver:** la carpeta del proceso en `/proc`; su estado (`State:`); y su carpeta de trabajo y su programa (dos flechas `->`).
 
-**En resumen:** cada proceso es una carpeta en `/proc/<PID>`: ahí lees su estado sin ninguna herramienta extra.
+**En resumen:** el master de nginx corre como root y los workers como www-data. Cada proceso es una carpeta en `/proc/<PID>`: ahí lees su estado sin ninguna herramienta extra.
 
-> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`.
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`; mañana vuelves con `multipass shell servidor-01` y sigues en la pieza 4.
 
 ### Pieza 4 — Primer y segundo plano
 
-Normalmente, un comando ocupa tu terminal hasta que termina: está en **primer plano**. Puedes mandarlo a **segundo plano** para seguir usando la terminal mientras se ejecuta:
+Normalmente, un comando ocupa tu terminal hasta que termina: está en **primer plano**. Puedes mandarlo a **segundo plano** para seguir usando la terminal mientras se ejecuta.
+
+Para leer (lo pruebas justo debajo):
 
 ```bash
 sleep 300 &       # el & lo lanza directamente en segundo plano
@@ -193,14 +196,13 @@ Lo **pausa**: sigue existiendo, en estado `T`.
 
 ### Pieza 5 — Señales
 
-Una **señal** es un aviso que el kernel entrega a un proceso. Cuatro que usarás siempre:
+Una **señal** es un aviso que el kernel entrega a un proceso. Tres que usarás siempre:
 
 | Señal | Cómo se envía | Qué le pide al proceso |
 |-------|---------------|------------------------|
 | `SIGTERM` (15) | `kill PID` | que **termine**: puede acabar lo que está haciendo, guardar y cerrar con orden |
 | `SIGINT` (2) | `Ctrl+C` | lo mismo, desde el teclado |
 | `SIGKILL` (9) | `kill -9 PID` | nada: el kernel lo **mata en el acto**. No puede guardar ni cerrar nada |
-| `SIGHUP` (1) | `kill -HUP PID` | muchos servicios lo entienden como «**vuelve a leer tu configuración**» (recargar) |
 
 El proceso puede **atrapar** las señales y reaccionar (despedirse, guardar datos)… todas menos `SIGKILL`, que no se puede atrapar. Por eso el orden correcto es: **`kill PID` → esperar unos segundos → solo si sigue vivo, `kill -9 PID`**.
 
@@ -216,6 +218,8 @@ EOF
 chmod +x ~/educado.sh
 ~/educado.sh &
 ```
+
+`trap '…' TERM` dice qué hacer al recibir SIGTERM; `while true; do sleep 1; done` mantiene vivo el script (los bucles, en la clase 18).
 
 🔮 **Predice** qué mensajes verás con cada señal:
 
@@ -233,18 +237,6 @@ jobs
 
 👀 **Qué deberías ver:** con `SIGTERM`, las dos líneas de despedida (`recibí SIGTERM…` y `listo, adiós`). Con `SIGKILL`, ninguna: el kernel lo eliminó sin avisar, y `jobs` dice `Killed`. En una base de datos, eso puede significar datos a medio escribir.
 
-**Y SIGHUP para recargar, con nginx:**
-
-```bash
-ps -o pid,cmd -C nginx
-sudo kill -HUP $(pgrep -o nginx)
-ps -o pid,cmd -C nginx
-```
-
-🔮 **Predice:** ¿cambiará el PID del master? ¿Y los de los workers?
-
-El master sigue con el mismo PID, pero los **workers son nuevos**: nginx releyó la configuración y renovó sus workers **sin cortar el servicio**. Eso es lo que hace por debajo `systemctl reload nginx` (clase 12).
-
 ✋ **Sin mirar:** una app no responde. ¿Qué señal envías primero y cuál solo como último recurso?
 
 <details>
@@ -253,7 +245,25 @@ El master sigue con el mismo PID, pero los **workers son nuevos**: nginx releyó
 Primero `SIGTERM` (`kill PID`); `SIGKILL` (`kill -9`) solo si no hace caso.
 </details>
 
-**En resumen:** primero `kill PID` (SIGTERM); solo si no termina, `kill -9 PID` (SIGKILL). `kill -HUP` pide recargar la configuración.
+**En resumen:** primero `kill PID` (SIGTERM); solo si no termina, `kill -9 PID` (SIGKILL).
+
+### Pieza 6 — SIGHUP: recargar sin cortar
+
+Una cuarta señal que usarás con servicios: `SIGHUP` (1), que se envía con `kill -HUP PID`. Muchos servicios la entienden como «**vuelve a leer tu configuración**» (recargar), sin terminar.
+
+🔮 **Predice:** después de enviarle `SIGHUP` al master de nginx, ¿cambiará su PID? ¿Y los de los workers?
+
+**Pruébalo:**
+
+```bash
+ps -o pid,cmd -C nginx
+sudo kill -HUP $(pgrep -o nginx)
+ps -o pid,cmd -C nginx
+```
+
+👀 **Qué deberías ver:** el master sigue con el mismo PID, pero los **workers son nuevos**: nginx releyó la configuración y renovó sus workers **sin cortar el servicio**. Eso es lo que hace por debajo `systemctl reload nginx` (clase 12).
+
+**En resumen:** `kill -HUP PID` pide a un servicio que vuelva a leer su configuración; nginx lo hace sin cortar el servicio.
 
 ## Tu chuleta de la clase
 
@@ -285,13 +295,14 @@ Primero `SIGTERM` (`kill PID`); `SIGKILL` (`kill -9`) solo si no hace caso.
 ps -o pid,cmd -C nginx
 sudo kill -9 <PID de un worker>
 ps -o pid,cmd -C nginx
-curl -s -o /dev/null -w "%{http_code}\n" localhost
+curl -s -o /dev/null -w "%{http_code}\n" localhost    # solo imprime el código de estado HTTP (200 = bien, clase 05)
 ```
 El master detecta la muerte del worker y **lanza otro**. La web sigue respondiendo. Es *auto-reparación* a pequeña escala; Kubernetes hace lo mismo con contenedores.
 
 **2. Una conexión que se corta mata los trabajos:**
 
 > Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
+
 Abre una terminal **nueva** en tu PC, entra con `multipass shell servidor-01` y ejecuta:
 ```bash
 sleep 1000 &
@@ -421,7 +432,7 @@ Después, escríbeme `examíname clase-11`.
 
 **4.** `remove` desinstala el programa, pero deja sus archivos de configuración en `/etc`. `purge` borra también la configuración.
 
-**Reto:** 1) `systemd`; el `etime` es el tiempo desde el arranque. 2) `pkill -f "sleep 500"`. Riesgo: `pkill` busca por patrón y puede coincidir con procesos que no querías (un `pkill python` mata **todos** los Python de la máquina, incluidas otras apps). Con `-f` busca en la línea de comandos completa, y `sudo pkill -f patrón` puede llegar a matar al propio `sudo`, cuya línea también contiene el patrón. Antes se comprueba con `pgrep -af patrón` qué coincide, y si hay duda, se mata por PID. 3) El proceso con `nice 19` recibe mucha menos CPU cuando compiten: la prioridad solo importa cuando hay escasez. `kill %1 %2` o `pkill yes`.
+**Reto:** 1) `systemd`; el `etime` es el tiempo desde el arranque. 2) `pkill -f "sleep 500"`. Riesgo: `pkill` busca por patrón y puede coincidir con procesos que no querías (un `pkill python` mata **todos** los Python de la máquina, incluidas otras apps). Con `-f` busca en la línea de comandos completa, y `sudo pkill -f patrón` puede llegar a matar al propio `sudo`, cuya línea también contiene el patrón. Antes se comprueba con `pgrep -af patrón` qué coincide, y si hay duda, se mata por PID. 3) El proceso con `nice 19` recibe mucha menos CPU cuando compiten: la prioridad solo importa cuando hay escasez. `kill %1 %2` o `pkill yes`. 4) `ps aux --sort=-%mem | head -6`: la cabecera y los 5 que más memoria usan.
 </details>
 
 ## Inglés

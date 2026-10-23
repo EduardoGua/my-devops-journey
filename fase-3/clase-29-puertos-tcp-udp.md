@@ -8,7 +8,7 @@
 > - La capa de transporte entrega al programa por su puerto, y el handshake TCP es `[S]`, `[S.]`, `[.]` (clase 26, piezas 1 y 3).
 > - `Connection refused` frente a timeout (clase 26, Rómpelo).
 > - `nc -zv`, `tcpdump` y la variable `IP` con la dirección de la VM (clase 26).
-> - nginx corre como root para abrir el puerto 80 y baja a `www-data` (clase 11, pieza 2).
+> - nginx corre como root para abrir el puerto 80 y baja a `www-data` (clase 11, pieza 3).
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **puerto**: el número (0–65535) que identifica a un programa dentro de una máquina.

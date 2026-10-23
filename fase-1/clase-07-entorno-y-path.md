@@ -1,6 +1,6 @@
 # Clase 07 — Variables de entorno, PATH y el shell
 
-**Dónde:** tu Ubuntu · **Tiempo:** 60 min · **Bloque:** A. Linux en tu equipo
+**Dónde:** tu Ubuntu · **Tiempo:** 75 min · **Bloque:** A. Linux en tu equipo
 
 > 💡 **La idea de hoy:** cada proceso nace con un conjunto de variables, su **entorno**, que es una **copia** del entorno de su padre. Lo que exportas con `export` lo reciben tus procesos hijos, pero un hijo nunca puede cambiar tus variables. El `PATH` es una de esas variables: la lista ordenada de carpetas donde el shell busca cada comando que escribes.
 
@@ -11,8 +11,11 @@
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **variable**: una etiqueta con un valor (`REGION=us-east-1`).
+> - **proceso padre / hijo**: el programa que lanza otro / el programa lanzado.
 > - **entorno**: las variables que recibe cada programa al arrancar, copiadas de su padre.
 > - **export**: convertir una variable del shell en variable de entorno.
+> - **unset**: borrar una variable.
+> - **heredoc**: una forma de escribir varias líneas en un archivo desde la terminal, sin abrir un editor.
 > - **PATH**: la lista de carpetas donde el shell busca los comandos.
 > - **alias**: un atajo para un comando largo.
 > - **source**: ejecutar un archivo en tu propio shell, no en un hijo.
@@ -127,13 +130,13 @@ bash -c 'echo "COLOR=$COLOR  ENTORNO=$ENTORNO"'
 
 ```bash
 env | grep ENTORNO
-env | grep COLOR          # no aparece: no es de entorno
+env | grep '^COLOR='      # no aparece: no es de entorno
 printenv HOME
 ```
 
-👀 **Qué deberías ver:** `ENTORNO=produccion`; nada para `COLOR`; y tu carpeta personal, `/home/educo`.
+👀 **Qué deberías ver:** `ENTORNO=produccion`; nada para `COLOR`; y tu carpeta personal, `/home/educo`. El `^` (clase 05) pide que la línea **empiece** por `COLOR=`: sin él podría salir `COLORTERM`, otra variable que crea tu terminal.
 
-Una variable solo para un comando, sin dejarla en tu shell:
+Una variable solo para un comando, sin dejarla en tu shell (*staging* es el entorno de pruebas antes de producción):
 
 ```bash
 ENTORNO=staging bash -c 'echo $ENTORNO'
@@ -141,6 +144,13 @@ echo $ENTORNO             # sigue siendo produccion
 ```
 
 Así se pasan configuraciones en Docker y en CI: `PORT=8080 python3 app.py`.
+
+Y para borrar una variable, `unset`:
+
+```bash
+unset COLOR
+echo "[$COLOR]"           # []: COLOR ya no existe
+```
 
 ✋ **Sin mirar:** escribes `COLOR=azul` y lanzas un script que hace `echo $COLOR`. ¿Qué imprime? ¿Y si antes hubieras hecho `export COLOR`?
 
@@ -152,13 +162,13 @@ Una línea vacía: `COLOR` era una variable del shell, no de entorno. Con `expor
 
 **En resumen:** una variable sin `export` solo la ve tu shell; con `export` la heredan tus procesos hijos.
 
-> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, `cd ~/my-devops-journey/labs/clase-07` y a la pieza 4.
 
 ### Pieza 4 — El hijo recibe una copia: no cambia al padre
 
 El hijo recibe una **copia** del entorno: puede cambiar la suya, pero nunca la de su padre. Cuando termina, sus cambios desaparecen con él. La excepción es `source archivo`: ejecuta el archivo **en tu propio shell**, no en un hijo.
 
-**Pruébalo.** Primero, un truco para crear archivos de varias líneas sin abrir un editor: el *heredoc*. `cat > archivo <<'EOF'` escribe en `archivo` todo lo que pongas debajo, hasta la línea que dice `EOF`. Crea un script pequeño:
+**Pruébalo.** Primero, un truco para crear archivos de varias líneas sin abrir un editor: el *heredoc*. `cat > archivo <<'EOF'` escribe en `archivo` todo lo que pongas debajo, hasta la línea que dice `EOF`. Las comillas de `'EOF'` funcionan como las simples de la pieza 2: el `$ENTORNO` se copia tal cual al archivo, sin sustituirlo. Crea un script pequeño:
 
 ```bash
 cat > cambia.sh <<'EOF'
@@ -166,12 +176,15 @@ cat > cambia.sh <<'EOF'
 export ENTORNO=modificado-por-el-script
 echo "Dentro del script: $ENTORNO"
 EOF
-chmod +x cambia.sh
+chmod +x cambia.sh       # sin letra delante: x para dueño, grupo y otros
 ```
 
-🔮 **Predice** qué imprime cada `echo` antes de ejecutar estas líneas. Recuerda: ahora mismo `ENTORNO` vale `produccion`.
+`#!/bin/bash` dice qué programa lee el script, como en el `hola.sh` de la clase 06 (lo verás a fondo en la clase 16).
+
+🔮 **Predice** qué imprime cada `echo` antes de ejecutar estas líneas. La primera vuelve a dejar `ENTORNO` en `produccion`, como en la pieza 3: si la hiciste ayer, esta terminal es nueva y ya no la tenía (las variables se pierden al cerrar la terminal).
 
 ```bash
+export ENTORNO=produccion
 ./cambia.sh
 echo "En mi shell: $ENTORNO"
 source cambia.sh
@@ -180,6 +193,13 @@ echo "Tras source: $ENTORNO"
 
 <details>
 <summary>Compruébalo</summary>
+
+```
+Dentro del script: modificado-por-el-script
+En mi shell: produccion
+Dentro del script: modificado-por-el-script
+Tras source: modificado-por-el-script
+```
 
 `./cambia.sh` corre en un hijo: cambia **su copia** de la variable, y el cambio desaparece con él. Tu shell sigue con `produccion`. `source` ejecuta el archivo **en tu propio shell**, así que ahí sí cambia: `modificado-por-el-script`.
 </details>
@@ -203,7 +223,7 @@ Si no está en ninguna de esas carpetas, ves `no se encontró la orden`, aunque 
 
 ```bash
 echo $PATH
-echo $PATH | tr ':' '\n'      # uno por línea
+echo $PATH | tr ':' '\n'      # tr cambia cada : por un salto de línea (\n)
 which python3 ls
 type -a python3
 ```
@@ -260,6 +280,8 @@ grep -A3 'private bin' ~/.profile     # el bloque que lo añade
 echo $PATH | tr ':' '\n' | head -3
 ```
 
+👀 **Qué deberías ver:** dos bloques, separados por `--`: el primero añade `~/bin` al PATH y el segundo, `~/.local/bin`. Después, las tres primeras carpetas de tu PATH.
+
 Evita la receta que verás en muchos tutoriales, `echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc`. `~/.bashrc` se ejecuta en **cada** shell nuevo, también en los que abres dentro de otro, y cada vez añade otra copia al PATH. En el Reto 5 verás un caso real.
 
 Ahora, dos alias:
@@ -272,7 +294,7 @@ journey && pwd
 alias                         # lista todos
 ```
 
-👀 **Qué deberías ver:** la lista de `ls -lah`; después, `/home/educo/my-devops-journey`; y todos tus alias, con los dos nuevos entre ellos.
+👀 **Qué deberías ver:** la lista de `ls -lah`; después, `/home/educo/my-devops-journey`; y todos tus alias. `journey` es nuevo; `ll` ya existía en Ubuntu (`ls -alF`), y el tuyo lo sustituye en esta terminal.
 
 Para que duren, añádelos a `~/.bashrc` con `nano ~/.bashrc` y después `source ~/.bashrc`.
 
@@ -305,7 +327,7 @@ ls
 exit                          # vuelves al shell padre, con el PATH intacto
 ls
 ```
-Esto pasa de verdad: un `cron` o un servicio de `systemd` arrancan con un PATH mínimo, y un script que funciona en tu terminal falla allí con "command not found". La solución es usar rutas completas o fijar el PATH al principio del script.
+Esto pasa de verdad: una tarea de `cron` (el programa que lanza tareas a una hora fija; clase 20) o un servicio de `systemd` (clase 12) arrancan con un PATH mínimo, y un script que funciona en tu terminal falla allí con "command not found". La solución es usar rutas completas o fijar el PATH al principio del script.
 
 **2. Suplantar un comando:**
 
@@ -422,7 +444,7 @@ Es el alias de la pieza 6. Añádelo con `nano` al final de `~/.bashrc` y pruéb
 `which` acepta varios nombres a la vez.
 </details>
 
-**5.** **Tu PATH real.** Cuenta las carpetas repetidas de tu PATH y busca qué líneas de `~/.bashrc` y `~/.profile` las añaden. Explica con tus palabras por qué se repiten. **No edites** esos archivos todavía.
+**5.** ➕ **Opcional: tu PATH real.** Cuenta las carpetas repetidas de tu PATH y busca qué líneas de `~/.bashrc` y `~/.profile` las añaden. Explica con tus palabras por qué se repiten. **No edites** esos archivos todavía.
 
 > 🧩 **Ejemplo resuelto:** contar las palabras repetidas de una lista separada por `:`.
 > ```bash
@@ -478,6 +500,7 @@ APP_ENV=produccion ./entorno.sh
 unset APP_ENV; ./entorno.sh
 which git docker        # /usr/bin/git, /usr/bin/docker (o /bin/…: en Ubuntu, /bin es un enlace a /usr/bin)
 echo $PATH | tr ':' '\n' | sort | uniq -c | sort -rn | head
+grep -n PATH ~/.bashrc ~/.profile
 ```
 **Reto 5:** cada `export PATH="algo:$PATH"` de `~/.bashrc` se ejecuta en cada shell nuevo y añade otra copia, aunque ya esté. Un shell dentro de otro (`bash`, la terminal de VS Code, un `source ~/.bashrc`) hereda el PATH con las copias y añade más. Además, si la misma carpeta se añade en `~/.profile` y en `~/.bashrc`, se suma dos veces desde el principio. El arreglo (usa `case`, que verás en la clase 17): añadir cada carpeta **en un solo sitio** y solo si no está ya:
 ```bash

@@ -6,14 +6,16 @@
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - Los tres bloques de permisos (dueño, grupo y otros) y los permisos en números, como `750` (clase 06).
-> - La umask, el molde con el que nacen los archivos (clase 06).
+> - La umask, que decide qué permisos les faltan a los archivos nuevos (clase 06).
 > - `bash -c '…'` lanza un shell hijo que ejecuta lo que va entre comillas (clase 07).
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **autenticación**: demostrar quién eres (con una contraseña o una llave).
 > - **autorización**: lo que te dejan hacer una vez dentro.
-> - **sudo**: ejecutar un comando como root, si la lista te lo permite.
+> - **sudo**: ejecutar un comando como root (o, con `-u`, como otro usuario), si la lista te lo permite.
 > - **sudoers**: esa lista: quién puede usar `sudo` y para qué.
+> - **visudo**: el editor de sudoers que revisa lo que escribiste antes de guardar.
+> - **su**: abrir un shell como otro usuario, con la contraseña de ese usuario.
 > - **usuario de servicio**: una cuenta para un programa, no para una persona (`www-data`).
 > - **setgid** en una carpeta: hace que todo lo que se crea dentro sea del grupo de la carpeta.
 > - **IAM** (AWS): el servicio que decide quién puede hacer qué en una cuenta de AWS, con usuarios, grupos y permisos. Es el sudoers de la nube (fase 6).
@@ -32,9 +34,9 @@ En un servidor real conviven personas (cada administrador con su cuenta) y servi
 
 ## Cómo va esta clase
 
-Cinco piezas. En cada una lees **una** idea y la pruebas enseguida en el servidor; no pases a la siguiente sin haber ejecutado la anterior.
+Siete piezas. En cada una lees **una** idea y la pruebas enseguida en el servidor; no pases a la siguiente sin haber ejecutado la anterior.
 
-Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 30 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 30 min); el segundo, las **piezas 4 a 7**, el Rómpelo, el reto y el cierre. El segundo día es más largo: si vas justo de tiempo, el Rómpelo 5 es opcional.
 
 Todo se hace dentro de la VM:
 
@@ -52,7 +54,7 @@ El sistema comprueba **quién eres** una vez y, a partir de ahí, solo te deja h
 
 | | Pregunta | En Linux | En AWS |
 |-|----------|----------|--------|
-| **Autenticación** | ¿Quién eres? | contraseña, llave SSH | contraseña + MFA, access keys |
+| **Autenticación** | ¿Quién eres? | contraseña, llave SSH | contraseña + MFA (un segundo código, del móvil), access keys (claves para programas) |
 | **Autorización** | ¿Qué puedes hacer? | permisos de archivos, grupos, sudoers | políticas IAM |
 
 Primero se autentica y después se autoriza. Puedes haber entrado (autenticado) y aun así no tener permiso para leer un archivo concreto (no autorizado).
@@ -95,7 +97,7 @@ Linux apunta a cada usuario en una línea de `/etc/passwd`:
 /etc/group    →  devs:x:1003:ana,luis    (grupo:x:GID:miembros)
 ```
 
-Las contraseñas no están ahí, sino cifradas en `/etc/shadow`, que solo puede leer root (lo viste en la clase 06 y en la pieza 1). Los **grupos** y sus miembros están en `/etc/group`.
+Las contraseñas no están ahí. En `/etc/shadow` se guardan sus *hashes* (de los que no se puede sacar la contraseña), y ese archivo solo puede leerlo root (lo viste en la clase 06 y en la pieza 1). Los **grupos** y sus miembros están en `/etc/group`.
 
 No todos los usuarios son personas. `www-data` (el de nginx) o `nobody` son **usuarios de servicio**: su shell es `/usr/sbin/nologin`, porque existen para ser **dueños de procesos y archivos**, no para que alguien entre con ellos. Ya lo viste en la clase 04: son la mayoría de las cuentas.
 
@@ -104,7 +106,7 @@ No todos los usuarios son personas. `www-data` (el de nginx) o `nobody` son **us
 ```bash
 tail -5 /etc/passwd
 grep -E '^(root|www-data|nobody|ubuntu):' /etc/passwd
-getent group sudo
+getent group sudo      # la línea del grupo sudo en /etc/group
 ```
 
 👀 **Qué deberías ver:** las últimas cuentas del sistema; las líneas de root (UID 0), www-data y nobody (con `/usr/sbin/nologin`) y ubuntu (UID 1000, con `/bin/bash`); y el grupo `sudo` con `ubuntu` como miembro.
@@ -149,9 +151,9 @@ Luis pasa a estar **solo** en `devs` y pierde los demás grupos.
 
 **En resumen:** `adduser` da de alta, `groupadd` crea un equipo y `usermod -aG` añade a alguien a él (¡con la `-a`!).
 
-> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`; mañana vuelves con `multipass shell servidor-01`.
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`; mañana vuelves con `multipass shell servidor-01` y sigues en la pieza 4.
 
-### Pieza 4 — Un directorio de equipo: setgid y umask
+### Pieza 4 — Un directorio de equipo: setgid
 
 Queremos `/srv/proyecto`, donde los miembros de `devs` lean y escriban, y nadie más pueda ni mirar. Hacen falta dos cosas que ya conoces de la clase 06 (el grupo del directorio y sus permisos) y una nueva, el **setgid**: un `2` delante de los permisos de un directorio hace que todo lo que se crea dentro sea del grupo del directorio, en vez del grupo personal de quien lo crea.
 
@@ -166,24 +168,15 @@ ls -ld /srv/proyecto
 
 👀 **Qué deberías ver:** `drwxrws---`, con dueño `root` y grupo `devs`. La `s` en el bloque del grupo es el setgid. Sin él, los archivos de Ana serían del grupo `ana` y Luis no podría editarlos.
 
-Antes de seguir, mira un detalle que va a importar:
-
-```bash
-umask
-sudo -u ana bash -c 'umask'
-```
-
-Probablemente tu sesión tiene `0002`, pero lo que ejecutas con `sudo -u` tiene `0022`: el `sudo` de Ubuntu 26.04 (*sudo-rs*) aplica su propia máscara. Los archivos los crea **el proceso**, y es **su** umask el que cuenta. Por eso en las pruebas siguientes la fijamos a mano: así el resultado no depende de la versión de sudo.
+Para probarlo con cada miembro del equipo: `sudo -u ana comando` ejecuta el comando **como Ana**, no como root. Así pruebas lo que ella puede hacer sin conocer su contraseña. Si el comando lleva `>>`, va dentro de `bash -c '…'` (clase 07): así también escribe Ana, y no tu shell.
 
 🔮 **Predice** el resultado de cada línea:
 
 ```bash
-sudo -u ana bash -c 'umask 002; echo "paso 1" >> /srv/proyecto/plan.txt'
-sudo -u ana bash -c 'umask 022; echo "borrador" > /srv/proyecto/borrador.txt'
+sudo -u ana bash -c 'umask 002; echo "paso 1" >> /srv/proyecto/plan.txt'   # umask 002: lo verás en la pieza 5
 ls -l /srv/proyecto
 sudo ls -l /srv/proyecto
 sudo -u luis bash -c 'echo "paso 2" >> /srv/proyecto/plan.txt'
-sudo -u luis bash -c 'echo "cambio" >> /srv/proyecto/borrador.txt'
 sudo -u carla cat /srv/proyecto/plan.txt
 ```
 
@@ -191,13 +184,41 @@ sudo -u carla cat /srv/proyecto/plan.txt
 <summary>Compruébalo después de predecir</summary>
 
 - `ls -l /srv/proyecto` como `ubuntu` **falla**: `ubuntu` no está en `devs`, y el directorio no da nada a "otros". Por eso el siguiente lleva `sudo`.
-- Los dos archivos son del grupo `devs` gracias al setgid. ✅
-- `plan.txt` (creado con umask 002) es `rw-rw-r--`, y Luis puede añadir. ✅
-- `borrador.txt` (creado con umask 022) es `rw-r--r--`, y Luis **no** puede escribir. ❌ El umask 022 quitó la escritura al grupo. Muchos servicios, scripts y el propio sudo trabajan con 022.
+- `plan.txt` es del grupo `devs` gracias al setgid, con `rw-rw-r--`, y Luis puede añadir. ✅
 - Carla no puede ni leer: no está en `devs`.
 </details>
 
-En equipos reales, un directorio compartido necesita dos cosas: **setgid** (que el grupo sea el correcto) y **permisos de grupo correctos**: umask 002 en quien crea los archivos, o mejor, ACLs por defecto en el directorio (`setfacl -d -m g:devs:rwX /srv/proyecto`), que no dependen de nadie. Con una sola de las dos falla. Arregla el borrador:
+**En resumen:** el setgid (`2770`) hace que lo creado dentro sea del grupo del directorio. `sudo -u ana` prueba un comando como Ana.
+
+### Pieza 5 — La umask de quien crea el archivo
+
+El setgid arregla el **grupo** de los archivos, pero no los **permisos** de ese grupo: esos los recorta la umask (clase 06). Y los archivos los crea **el proceso**, así que es **su** umask el que cuenta, no el de tu sesión.
+
+**Pruébalo:**
+
+```bash
+umask
+sudo -u ana bash -c 'umask'
+```
+
+👀 **Qué deberías ver:** probablemente `0002` en tu sesión y `0022` con `sudo -u`. Lo que ejecutas con `sudo` tiene `0022`: sudo aplica su propia máscara. Por eso en estas pruebas la fijamos a mano: así el resultado no depende de la versión de sudo.
+
+🔮 **Predice:** Ana crea un borrador con umask 022. ¿Podrá Luis añadirle una línea?
+
+```bash
+sudo -u ana bash -c 'umask 022; echo "borrador" > /srv/proyecto/borrador.txt'
+sudo ls -l /srv/proyecto
+sudo -u luis bash -c 'echo "cambio" >> /srv/proyecto/borrador.txt'
+```
+
+<details>
+<summary>Compruébalo después de predecir</summary>
+
+- `borrador.txt` es del grupo `devs` (el setgid funciona), pero nació `rw-r--r--`: el umask 022 quitó la escritura al grupo.
+- Luis **no** puede escribir: `Permission denied`. ❌ Muchos servicios, scripts y el propio sudo trabajan con 022.
+</details>
+
+Un directorio compartido necesita las dos cosas: **setgid** (que el grupo sea el correcto) y **permisos de grupo correctos** (umask 002 en quien crea los archivos). Con una sola de las dos falla. Arregla el borrador:
 
 ```bash
 sudo chmod g+w /srv/proyecto/borrador.txt
@@ -206,9 +227,11 @@ sudo -u luis bash -c 'echo "cambio" >> /srv/proyecto/borrador.txt' && echo "ahor
 
 👀 **Qué deberías ver:** `ahora sí`.
 
-**En resumen:** el setgid (`2770`) hace que lo creado dentro sea del grupo del directorio; además, cada archivo necesita la `w` del grupo, que depende del umask de quien lo crea.
+**Para reconocerlo** (no hace falta más hoy): en equipos reales se suelen usar **ACL por defecto** en el directorio, con el comando `setfacl`. Una ACL es una lista de permisos extra; la de por defecto da `rw` al grupo en todo lo que se crea dentro, sin depender de la umask de nadie.
 
-### Pieza 5 — `sudo`: ejecutar como root, solo lo necesario y con registro
+**En resumen:** cada archivo necesita la `w` del grupo, y eso depende del umask del proceso que lo crea. Lo que ejecutas con `sudo` lleva `0022`.
+
+### Pieza 6 — `sudo`: ejecutar como root, solo lo necesario
 
 `sudo comando` ejecuta ese comando **como root**, el administrador, pero solo si **`/etc/sudoers`** te lo permite. Ese archivo es la lista de quién puede usar `sudo` y para qué. Tres detalles:
 - Te pide **tu** contraseña, no la de root: demuestras que eres tú.
@@ -241,13 +264,27 @@ ana ALL=(root) /usr/bin/journalctl
 ```
 
 ```bash
-sudo chmod 440 /etc/sudoers.d/ana
+sudo chmod 440 /etc/sudoers.d/ana      # r--r-----: solo lectura, lo recomendado en sudoers
 sudo -l -U ana
 ```
 
 👀 **Qué deberías ver:** en la lista de Ana aparece la regla nueva: `(root) /usr/bin/journalctl`.
 
-Ahora compruébalo **siendo** Ana. `su` pide la contraseña de Ana:
+✋ **Sin mirar:** ¿por qué no se edita `/etc/sudoers` con `nano` directamente?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque `visudo` revisa la sintaxis antes de guardar; con `nano`, un error dejaría a todos sin `sudo`.
+</details>
+
+**En resumen:** `sudo` deja ejecutar como root solo a quien está en sudoers. Las reglas se escriben con `visudo`, en `/etc/sudoers.d/`, y dan solo lo necesario.
+
+### Pieza 7 — Comprobarlo siendo Ana, y el rastro
+
+`su - ana` abre un shell como Ana; pide la contraseña **de Ana** (la que le pusiste en la pieza 3). Hasta que escribas `exit`, eres Ana: así compruebas la regla como la vivirá ella. (`sudo -u ana` ejecuta un solo comando; `su - ana` te deja dentro.)
+
+**Pruébalo:**
 
 ```bash
 su - ana
@@ -263,20 +300,12 @@ exit
 Y el rastro que deja cada uso:
 
 ```bash
-sudo journalctl _COMM=sudo -n 10
+sudo journalctl _COMM=sudo -n 10       # las 10 últimas líneas que escribió sudo
 ```
 
-👀 **Qué deberías ver:** cada uso de sudo, permitido o no, con usuario, directorio y comando, incluidos los dos intentos denegados de Ana. Es la base de una **auditoría**, como CloudTrail en AWS.
+👀 **Qué deberías ver:** cada uso de sudo, permitido o no, con usuario, directorio y comando, incluidos los dos intentos denegados de Ana. Es la base de una **auditoría**, como CloudTrail en AWS (el registro de todo lo que se hace en una cuenta de AWS).
 
-✋ **Sin mirar:** ¿por qué no se edita `/etc/sudoers` con `nano` directamente?
-
-<details>
-<summary>Comprueba</summary>
-
-Porque `visudo` revisa la sintaxis antes de guardar; con `nano`, un error dejaría a todos sin `sudo`.
-</details>
-
-**En resumen:** `sudo` deja ejecutar como root solo a quien está en sudoers, y apunta cada uso. La lista se edita con `visudo`, y se da solo lo necesario.
+**En resumen:** `su - ana` abre un shell como Ana, con la contraseña de Ana. Cada uso de `sudo`, permitido o denegado, queda apuntado en el log.
 
 ## Tu chuleta de la clase
 
@@ -301,6 +330,7 @@ Antes de romper, **snapshot** desde otra terminal en tu PC:
 ```bash
 multipass stop servidor-01 && multipass snapshot servidor-01 --name pre-sudoers && multipass start servidor-01
 ```
+Tu sesión en la VM se cerrará: vuelve a entrar con `multipass shell servidor-01`.
 
 **1. Un error de sintaxis en sudoers:**
 ```bash
@@ -321,10 +351,12 @@ sudo usermod -aG devs luis
 ```
 
 **3. Los grupos se cargan al iniciar sesión:**
+
+Abre otra pestaña en tu PC, entra con `multipass shell servidor-01` y ahí haz:
 ```bash
-su - carla                    # en otra pestaña o ventana, deja esta sesión abierta
+su - carla                    # pide la contraseña de Carla
 ```
-Desde la sesión de `ubuntu`: `sudo usermod -aG devs carla`. En la sesión de Carla: `id` **todavía no** muestra `devs`. Sal (`exit`) y vuelve a entrar con `su - carla`: ahora sí. Si alguien "ya está en el grupo pero sigue sin poder entrar", lo primero es pedirle que cierre la sesión y vuelva a entrar.
+Deja esa pestaña abierta y vuelve a la primera. Desde la sesión de `ubuntu`: `sudo usermod -aG devs carla`. En la sesión de Carla: `id` **todavía no** muestra `devs`. Sal (`exit`) y vuelve a entrar con `su - carla`: ahora sí. Si alguien "ya está en el grupo pero sigue sin poder entrar", lo primero es pedirle que cierre la sesión y vuelva a entrar.
 
 **4. Bloquear frente a borrar:**
 ```bash
@@ -335,9 +367,10 @@ sudo usermod -U luis
 Cuando alguien deja la empresa, primero se **bloquea** (es reversible y se conserva el rastro) y se borra después, cuando ya está todo revisado. Ojo: bloquear la contraseña no bloquea sus llaves SSH (clase 15).
 
 
-**5. El comodín y sudo:**
+**5. ➕ Opcional: el comodín y sudo:**
 
 > Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
+
 ```bash
 sudo ls /srv/proyecto
 sudo rm /srv/proyecto/*.txt
@@ -350,11 +383,13 @@ En la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, e
 
 **1.** Crea el usuario de servicio `appsvc`: sin casa, con shell `/usr/sbin/nologin` y como usuario de sistema. Comprueba que nadie puede entrar con él.
 
-> 🧩 **Ejemplo resuelto:** mirar cómo es `www-data`, otro usuario de servicio.
+> 🧩 **Ejemplo resuelto:** crear sin preguntas a `prueba`, una persona, compararla con `www-data` y borrarla.
 > ```bash
-> grep "^www-data:" /etc/passwd
+> sudo useradd --create-home --shell /bin/bash prueba
+> grep -E "^(www-data|prueba):" /etc/passwd
+> sudo userdel -r prueba
 > ```
-> Su UID está por debajo de 1000 (es del sistema) y su shell es `/usr/sbin/nologin`: así son los usuarios de servicio.
+> Es el `useradd` de la chuleta con las opciones largas: `--create-home` es `-m` (le crea casa) y `--shell` es `-s` (elige su shell). En el `grep`, `www-data` tiene UID por debajo de 1000 y `/usr/sbin/nologin`: un usuario de servicio. `prueba` tiene UID 1000 o más y `/bin/bash`: una persona. Al borrarla, el aviso *mail spool … not found* es normal: nunca tuvo buzón.
 
 **Ahora tú, con huecos:**
 ```bash
@@ -365,7 +400,7 @@ sudo su - appsvc
 <details>
 <summary>Pista</summary>
 
-El primer hueco es la opción que lo hace «de sistema». El segundo, el shell que no deja entrar, el mismo de `www-data`.
+El primer hueco es la opción que lo hace «de sistema»: búscala con `useradd --help | grep -i system`, en la línea que dice *create a system account* (crear una cuenta de sistema). `--no-create-home` es lo contrario de `--create-home`. El segundo hueco, el shell que no deja entrar, el mismo de `www-data`.
 </details>
 
 **2.** Crea, **como Ana**, el archivo `/srv/proyecto/config.txt`, y deja sus permisos para que los de `devs` puedan leerlo pero **solo Ana** pueda modificarlo.
@@ -392,7 +427,7 @@ Dueña, leer y escribir: 6. Grupo, solo leer: 4. Los demás, nada: 0.
 
 **3.** Da a Luis permiso para ejecutar con sudo **solo** `apt update`, sin `apt install`. Pruébalo.
 
-> 🧩 **Ejemplo resuelto:** la regla de Ana de la pieza 5.
+> 🧩 **Ejemplo resuelto:** la regla de Ana de la pieza 6.
 > ```bash
 > sudo visudo -f /etc/sudoers.d/ana
 > # dentro:  ana ALL=(root) /usr/bin/journalctl
@@ -411,7 +446,7 @@ sudo visudo -f /etc/sudoers.d/luis
 Escribir el argumento detrás del comando limita la regla a ese argumento exacto. Para probar: `su - luis`, y después `sudo apt update` (funciona) y `sudo apt install cowsay` (denegado).
 </details>
 
-**4.** Borra a Carla con su casa y comprueba que no queda rastro en `/etc/passwd` ni en `/home`.
+**4.** Borra a Carla con su casa y comprueba que no queda rastro en `/etc/passwd` ni en `/home`. Antes, cierra la sesión de Carla en la otra pestaña (`exit`): si sigue abierta, `userdel` se niega a borrarla. El aviso *mail spool … not found* es normal: Carla nunca tuvo buzón.
 
 > 🧩 **Ejemplo resuelto:** dar de alta y de baja a un usuario de prueba, `temporal`.
 > ```bash

@@ -123,7 +123,7 @@ Una **deuda** es un 🟡 o ❌ sin corrección escrita, o una parte de la clase 
 ## Repaso
 
 - **La pregunta 4 del cierre** es de una clase anterior y se responde **sin mirar tus notas**. Si fallas, esa clase vuelve a ser deuda.
-- **Repaso de bloque** (fase 1: al terminar los bloques A, B y C): unas 12 preguntas que mezclan todas las clases del bloque y algunas de los anteriores, sin mirar, y al final tu propia chuleta de memoria. Unos 45 minutos. Lo que falles va a Anki y te dice qué clase repasar.
+- **Repaso de bloque** (fase 1: al terminar los bloques A, B y C): unas 12 preguntas que mezclan todas las clases del bloque y algunas de los anteriores, sin mirar, y al final tu propia chuleta de memoria. Entre 45 y 60 minutos. Lo que falles va a Anki y te dice qué clase repasar.
 - **Anki, cada día:** las tarjetas que vas creando en el paso 5. En un día pesado, 10 minutos de Anki cuentan como día cumplido.
 - **Antes de cambiar de fase:** una sesión para repasar y marcar los criterios de salida en `PROGRESO.md`, solo los que cumples sin mirar.
 

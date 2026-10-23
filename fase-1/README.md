@@ -14,8 +14,8 @@
 | 04 | [Redirecciones, pipes y códigos de salida](clase-04-redirecciones-y-pipes.md) | Ubuntu | 90 min |
 | 05 | [Buscar y filtrar: find, grep y compañía](clase-05-buscar-y-filtrar.md) | Ubuntu | 75 min |
 | 06 | [Permisos: usuarios, grupos y rwx](clase-06-permisos.md) | Ubuntu | 75 min |
-| 07 | [Variables de entorno, PATH y el shell](clase-07-entorno-y-path.md) | Ubuntu | 60 min |
-| ↺ | [Repaso del bloque A](repaso-bloque-a.md) | notas | 45 min |
+| 07 | [Variables de entorno, PATH y el shell](clase-07-entorno-y-path.md) | Ubuntu | 75 min |
+| ↺ | [Repaso del bloque A](repaso-bloque-a.md) | notas | 60 min |
 | | **B. Administrar un servidor** | | |
 | 08 | [Tu primer servidor (Multipass)](clase-08-primer-servidor.md) | VM | 60 min |
 | 09 | [Usuarios, grupos y sudo](clase-09-usuarios-y-sudo.md) | VM | 75 min |

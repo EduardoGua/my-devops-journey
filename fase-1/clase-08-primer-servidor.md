@@ -13,8 +13,11 @@
 > - **máquina virtual (VM)**: un ordenador completo que vive dentro del tuyo.
 > - **hipervisor**: el programa que reparte el hardware real entre las VMs (en tu PC, KVM).
 > - **host** y **guest**: tu PC (el anfitrión) y la VM (el invitado).
-> - **snapshot**: un punto de guardado del disco de la VM.
+> - **snapshot**: una copia del estado del disco de la VM en un momento concreto.
+> - **imagen**: el disco de partida, con el sistema ya instalado, del que nace cada VM.
 > - **instancia**: el nombre que le da AWS a una VM en la nube.
+> - **sudo**: delante de un comando, lo ejecuta como root; te pide **tu** contraseña.
+> - **snap**: un sistema de Ubuntu para instalar programas.
 
 ## Objetivo
 
@@ -29,14 +32,9 @@ En AWS lanzarás instancias EC2: servidores Linux que no ves, que administras po
 | Multipass | AWS EC2 |
 |-----------|---------|
 | `multipass launch` | Launch instance |
-| imagen `lts` | AMI (Amazon Machine Image) |
-| `--cpus`, `--memory` | tipo de instancia (`t3.micro`…) |
-| `--disk` | volumen EBS |
 | `multipass stop` / `start` | Stop / Start instance |
 | `multipass delete --purge` | Terminate instance |
 | `multipass snapshot` | EBS snapshot |
-| `--cloud-init archivo.yaml` | *User data* (clase 37) |
-| `multipass shell` | SSH / Session Manager |
 
 ## Cómo va esta clase
 
@@ -63,21 +61,21 @@ Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (instalar, cre
 
 El **hipervisor** (en tu caso, KVM, que viene en el propio kernel Linux) reparte el hardware real entre máquinas virtuales. Cada VM cree que es un ordenador completo. **AWS EC2 funciona igual**: tu instancia es una VM sobre un hipervisor (*Nitro*) en un servidor físico de Amazon.
 
-Un **contenedor** (Docker, fase 5) es otra cosa: comparte el kernel del host. Por eso una VM aísla más y pesa más. Lo compararás bien en la fase 5.
-
 Ya comprobé que tu equipo soporta virtualización por hardware (`/dev/kvm` existe y la CPU tiene las extensiones). Con 7 GB de RAM puedes mantener **dos VMs de 1 GB** encendidas a la vez sin problema.
 
 **Pruébalo: instala Multipass y crea tu servidor.**
+
+`sudo` delante ejecuta el comando como root y te pide **tu** contraseña (lo verás a fondo en la clase 09). Al escribirla no verás nada en pantalla: es normal. `snap install` instala un programa con *snap*, uno de los sistemas de Ubuntu para instalar programas (el otro, `apt`, lo verás en la clase 10).
 
 ```bash
 sudo snap install multipass
 multipass version
 ```
 
-Si `multipass version` dice que no puede conectar con el demonio, espera 30 segundos y repite: el servicio está arrancando.
+Si `multipass version` dice que no puede conectar con el demonio (el servicio de Multipass que corre por detrás), espera 30 segundos y repite: el servicio está arrancando.
 
 ```bash
-multipass find | head -15             # imágenes disponibles (como el catálogo de AMIs)
+multipass find | head -15             # imágenes disponibles (en AWS se llaman AMIs)
 multipass launch lts --name servidor-01 --cpus 1 --memory 1G --disk 10G
 ```
 
@@ -198,7 +196,7 @@ multipass exec servidor-01 -- cat /home/ubuntu/saludo.txt
 
 ### Pieza 5 — Apagar, borrar y el snapshot
 
-Un **snapshot** congela el disco de la VM tal como está, como un punto de guardado: si después rompes algo, vuelves a ese momento en segundos. Durante todo el bloque B harás uno antes de cada experimento peligroso. Solo se pueden hacer con la VM **parada**. En AWS se hace lo mismo con los discos de las EC2 (*EBS snapshots*).
+Un **snapshot** es una copia del estado del disco de la VM en un momento concreto: si después rompes algo, vuelves a ese estado en segundos. Durante todo el bloque B harás uno antes de cada experimento peligroso. Solo se pueden hacer con la VM **parada**. En AWS se hace lo mismo con los discos de las EC2 (*EBS snapshots*).
 
 Tres comandos que no conviene confundir, porque en AWS uno de ellos te sigue costando dinero:
 
@@ -245,6 +243,8 @@ multipass start servidor-01
 | `multipass snapshot X --name N` · `multipass restore X.N` | crear un snapshot (con la VM parada) · volver a él |
 | `multipass delete X` · `recover X` · `delete --purge X` | marcarla como borrada · recuperarla · destruirla |
 
+**Para reconocerlo** (no hace falta más hoy): un **contenedor** (Docker, fase 5) no es una VM: comparte el kernel del host. Por eso una VM aísla más y pesa más. Lo compararás bien en la fase 5.
+
 ## Rómpelo
 
 **1. Destroza algo y vuelve atrás:**
@@ -275,7 +275,9 @@ multipass list
 multipass start servidor-01
 ```
 
-**3. Borrar sin miedo (y sin prisa):**
+👀 **Qué deberías ver:** puede salir un error de conexión después del `poweroff`: es normal, la VM se apagó mientras Multipass hablaba con ella. Si `multipass list` aún dice `Running`, espera unos segundos y repítelo hasta ver `Stopped`. Después, `start` la vuelve a encender.
+
+**3.** ➕ **Opcional: borrar sin miedo (y sin prisa).**
 ```bash
 multipass launch lts --name desechable --memory 512M --disk 5G
 multipass delete desechable
@@ -290,7 +292,7 @@ En AWS, *Terminate* equivale a `delete --purge`: no hay vuelta atrás.
 
 En tu PC y en la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
-**1.** ¿Cuántas IPs tiene `servidor-01`? ¿Y tu PC? ¿Ves en tu PC alguna interfaz que antes no existía?
+**1.** ¿Cuántas **IPv4** tiene `servidor-01`? ¿Y tu PC? (Las direcciones que llevan `:` son IPv6: no las cuentes, las verás en la clase 27.) ¿Ves en tu PC alguna interfaz que antes no existía?
 
 > 🧩 **Ejemplo resuelto:** ver las interfaces de red de la VM sin entrar en ella.
 > ```bash
@@ -384,7 +386,7 @@ Después, escríbeme `examíname clase-08`.
 
 **4.** Los servicios y el cron arrancan con un entorno mínimo: un PATH reducido, sin `~/.bashrc` ni alias ni tus variables exportadas. Se arregla con rutas completas o definiendo el PATH y las variables dentro del script o del servicio.
 
-**Reto:** 1) La VM tiene `lo` (127.0.0.1) y una interfaz con una IP 10.x.x.x. En tu PC aparece una interfaz nueva tipo `mpqemubr0`: el **puente** (bridge) virtual que conecta tu PC con las VMs, como un switch dentro de tu ordenador. 2) Sí, responde: tu PC y la VM están en la misma red virtual. 3) `multipass exec servidor-01 -- uptime` y `multipass exec servidor-01 -- uname -r`.
+**Reto:** 1) La VM tiene dos IPv4: `lo` (127.0.0.1) y una interfaz con una IP 10.x.x.x. Tu PC suele tener `lo`, la de tu wifi o tu cable (en tu equipo, `wlo1`, con la IP de tu casa, `192.168.x.x`) y `docker0` (`172.17.0.1`, la de Docker). Ahora aparece además una interfaz nueva tipo `mpqemubr0`: el **puente** (bridge) virtual que conecta tu PC con las VMs, como un switch dentro de tu ordenador. 2) Sí, responde: tu PC y la VM están en la misma red virtual. 3) `multipass exec servidor-01 -- uptime` y `multipass exec servidor-01 -- uname -r`.
 </details>
 
 ## Inglés
