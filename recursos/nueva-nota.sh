@@ -68,10 +68,12 @@ main() {
     echo "Lo más dinámico: escríbele a Claude «examíname $nombre». O califica tú con la autocorrección de la clase:"
     echo "✅ la idea clave con tus palabras · 🟡 a medias o sin el porqué · ❌ incorrecta"
     echo
-    echo "$seccion: $(cut -d. -f1 <<< "$preguntas" | paste -sd' ' | sed 's/ / · /g')"
+    if [[ -n $preguntas ]]; then                  # la clase 38 (examen) no tiene cierre
+      echo "$seccion: $(cut -d. -f1 <<< "$preguntas" | paste -sd' ' | sed 's/ / · /g')"
+    fi
     if [[ -n $extra ]]; then
       echo "$extra: "
-    elif [[ $seccion == Cierre ]]; then
+    elif [[ $seccion == Cierre ]] && grep -q '^## Reto' "$origen"; then   # los proyectos no tienen reto
       echo "Reto: (✅ o ❌ por punto)"
     fi
     echo

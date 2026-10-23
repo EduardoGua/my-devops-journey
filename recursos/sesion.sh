@@ -29,9 +29,9 @@ sesiones_txt() {
   if (( $1 == 1 )); then echo "1 sesión"; else echo "$1 sesiones"; fi
 }
 
-# 6 → 06 · repaso-a → repaso-a (10# evita que 08 se lea en octal)
+# 6 → 06 · clase-06 → 06 · repaso-a → repaso-a (10# evita que 08 se lea en octal)
 etiqueta() {
-  local arg=$1
+  local arg=${1#clase-}                        # cerrar-clase.sh suma por número
   if [[ $arg =~ ^[0-9]+$ ]]; then
     printf '%02d' "$((10#$arg))"
   elif [[ $arg =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
@@ -67,7 +67,7 @@ terminar() {
   fin="$(date +%s)"
   if [[ -n ${1:-} ]]; then
     [[ $1 =~ ^[0-9]+$ ]] || die "los minutos tienen que ser un número: '$1'"
-    minutos=$1
+    minutos=$((10#$1))                         # 040 → 40, no 32 (octal)
   else
     minutos=$(( (fin - inicio + 30) / 60 ))   # redondeado al minuto
     if (( minutos > MAX_MIN )); then

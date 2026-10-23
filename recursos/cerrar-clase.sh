@@ -51,14 +51,37 @@ main() {
   (( ${#notas[@]} == 1 )) || die "no encuentro notas/fase-*/$nombre.md. Créala con: bash recursos/nueva-nota.sh $arg"
   local nota="${notas[0]}"
 
-  local marcas
-  marcas="$(grep -m1 "^$seccion:" "$nota" || true)"
-  [[ -n $marcas ]] || die "no encuentro la línea «$seccion: …» en ${nota#"$REPO"/}"
-  # cada pregunta, separada por «·», tiene que llevar ✅, 🟡, ❌ o — (omitida)
-  if ! awk -F'·' '{for (i = 1; i <= NF; i++) if ($i !~ /✅|🟡|❌|—/) exit 1}' <<< "${marcas#*:}"; then
-    die "falta calificar el $seccion: «$marcas». Escríbeme «examíname $nombre» o usa la autocorrección de la clase"
+  # cuántas preguntas tiene la clase (las líneas "N. …" de su sección), para exigir una marca por pregunta
+  local origenes n_preguntas=0
+  if [[ $clase == repaso-* ]]; then
+    origenes=("$REPO"/fase-*/repaso-bloque-"${clase#repaso-}".md)
+  else
+    origenes=("$REPO"/fase-*/"$nombre"-*.md)
   fi
-  if grep -q '^Reto: (✅ o ❌ por punto)' "$nota"; then
+  if (( ${#origenes[@]} == 1 )); then
+    n_preguntas="$(awk -v titulo="## $seccion" '$0 == titulo {dentro = 1; next} /^## / {dentro = 0} dentro && /^[0-9]+\. /' "${origenes[0]}" | wc -l)"
+  fi
+
+  local marcas resto
+  marcas="$(grep -m1 "^$seccion:" "$nota" || true)"
+  resto="${marcas#*:}"
+  if [[ $resto =~ ^[[:space:]]*$ ]] && (( n_preguntas == 0 )); then
+    :                                                   # la clase no tiene cierre (clase 38): nada que calificar
+  elif [[ -z $marcas ]]; then
+    die "no encuentro la línea «$seccion: …» en ${nota#"$REPO"/}"
+  else
+    # cada pregunta, separada por «·», tiene que llevar ✅, 🟡, ❌ o — (omitida)
+    if ! awk -F'·' '{for (i = 1; i <= NF; i++) if ($i !~ /✅|🟡|❌|—/) exit 1}' <<< "$resto"; then
+      die "falta calificar el $seccion: «$marcas». Escríbeme «examíname $nombre» o usa la autocorrección de la clase"
+    fi
+    local n_marcas
+    n_marcas="$(awk -F'·' '{print NF}' <<< "$resto")"
+    if (( n_marcas < n_preguntas )); then
+      die "el $seccion tiene $n_preguntas preguntas y veo $n_marcas marcas: «$marcas». Una por pregunta, separadas por «·»"
+    fi
+  fi
+  # el reto solo existe en las clases que lo tienen; si está la línea, tiene que llevar sus marcas
+  if grep -q '^Reto:' "$nota" && { grep -q '^Reto: (✅ o ❌ por punto)' "$nota" || ! grep -qE '^Reto:.*(✅|❌)' "$nota"; }; then
     die "falta marcar el reto en ${nota#"$REPO"/} (✅ o ❌ por punto)"
   fi
   if grep -qE '^Práctica final:[[:space:]]*$' "$nota"; then
@@ -70,12 +93,12 @@ main() {
   if [[ -z $n_linea ]]; then
     die "no encuentro «${linea_progreso//\\/}» sin marcar en PROGRESO.md (¿ya estaba cerrada?)"
   fi
-  titulo="$(sed -n "${n_linea}p" "$PROGRESO" | sed -E 's/^- \[ \] ([0-9]+ · )?//; s/ ·$//')"
+  titulo="$(sed -n "${n_linea}p" "$PROGRESO" | sed -E 's/^- \[ \] ([0-9]+ · )?//; s/ ·[[:space:]]*$//')"
   ultima="$(awk '/^## Registro/ {r = 1} r && /^\|/ {n = NR} END {print n + 0}' "$PROGRESO")"
   (( ultima > 0 )) || die "no encuentro la tabla de «## Registro» en PROGRESO.md"
 
   local flojas
-  flojas="$(grep -E "^($seccion|Reto):" "$nota" | { grep -oE '🟡|❌' || true; } | wc -l)"
+  flojas="$({ grep -E "^($seccion|Reto):" "$nota" || true; } | { grep -oE '🟡|❌' || true; } | wc -l)"
   if (( flojas > 0 )); then
     local correcciones
     correcciones="$(awk '/^Correcciones/ {dentro = 1; sub(/^[^:]*:/, ""); if ($0 ~ /[^ ]/) n++; next} dentro && /[^ ]/ {n++} END {print n + 0}' "$nota")"
@@ -87,7 +110,13 @@ main() {
     local abierta
     read -r abierta _ < "$ABIERTA"
     if [[ $abierta == "$clase" ]]; then
-      bash "$REPO/recursos/sesion.sh" terminar
+      if ! bash "$REPO/recursos/sesion.sh" terminar; then
+        # más de 4 h abierta: sesion.sh no adivina, así que se apuntan los minutos reales
+        local reales=""
+        [[ -t 0 ]] && { read -rp "¿Cuántos minutos estudiaste de verdad en esa sesión? " reales || reales=""; }
+        [[ $reales =~ ^[0-9]+$ ]] || die "cierra la sesión con «sesion.sh terminar <minutos>» y vuelve a ejecutar cerrar-clase.sh"
+        bash "$REPO/recursos/sesion.sh" terminar "$reales"
+      fi
     else
       aviso "hay una sesión abierta de '$abierta': no la toco"
     fi
@@ -110,8 +139,11 @@ main() {
   # 4. Escribe: el tiempo en la nota (si está vacío), la casilla y la fila del registro
   local hoy
   hoy="$(date +%F)"
+  # [[:space:]]* por si el editor quitó el espacio final, y se comprueba antes de seguir
+  sed -i -E "${n_linea}s/^- \[ \] (.*) ·[[:space:]]*$/- [x] \1 · $hoy/" "$PROGRESO"
+  sed -n "${n_linea}p" "$PROGRESO" | grep -q '^- \[x\]' \
+    || die "no pude marcar la línea $n_linea de PROGRESO.md: tiene que terminar en « ·». Revísala y repite"
   sed -i -E "s/^Tiempo:[[:space:]]*$/Tiempo: $tiempo/" "$nota"
-  sed -i -E "${n_linea}s/^- \[ \] (.*) ·$/- [x] \1 · $hoy/" "$PROGRESO"
 
   local fila="| $hoy | $clase | $tiempo | ${comentario//|/\/} |"
   FILA="$fila" awk -v n="$ultima" '{print} NR == n {print ENVIRON["FILA"]}' "$PROGRESO" > "$PROGRESO.tmp"
@@ -122,22 +154,35 @@ main() {
   echo "✔ PROGRESO.md: [x] $titulo · $hoy"
   echo "✔ Registro: $fila"
 
-  # 5. Git: solo si estás delante y dices que sí
+  # 5. Git: solo si estás delante y dices que sí, y solo los archivos del cierre (nada de git add .)
   cd "$REPO"
+  local archivos=("${nota#"$REPO"/}" PROGRESO.md) labs="labs/$nombre"
+  [[ -f $CSV ]] && archivos+=("notas/horas.csv")
   echo
   git status --short
   if [[ ! -t 0 ]]; then
-    echo "Sin terminal interactiva: no hago commit. Revisa y sube tú: git add . && git commit && git push"
+    echo "Sin terminal interactiva: no hago commit. Revisa y sube tú: git add ${archivos[*]} && git commit && git push"
     return
   fi
+  if [[ -n $(git status --porcelain -- "$labs") ]]; then
+    local con_labs
+    echo
+    git status --short -- "$labs"
+    read -rp "¿Subo también $labs/? Revisa que no haya llaves ni contraseñas. [s/N] " con_labs || con_labs=""
+    [[ $con_labs =~ ^[sS]$ ]] && archivos+=("$labs")
+  fi
   local ok
-  read -rp "Revisa la lista: nunca llaves ni contraseñas. ¿Hago commit y push? [s/N] " ok || ok=""
+  read -rp "Subo solo esto: ${archivos[*]}. ¿Hago commit y push? [s/N] " ok || ok=""
   if [[ $ok =~ ^[sS]$ ]]; then
-    git add .
-    git commit -q -m "$mensaje" && echo "✔ Commit: $mensaje"
-    git push -q && echo "✔ Subido a GitHub" || aviso "el push falló: revisa la conexión y repite con git push"
+    git add -- "${archivos[@]}"
+    if git commit -q -m "$mensaje" -- "${archivos[@]}"; then
+      echo "✔ Commit: $mensaje"
+      git push -q && echo "✔ Subido a GitHub" || aviso "el push falló: revisa la conexión y repite con git push"
+    else
+      aviso "el commit falló: no hago push"
+    fi
   else
-    echo "Sin commit. Cuando quieras: git add . && git commit -m \"$mensaje\" && git push"
+    echo "Sin commit. Cuando quieras: git add ${archivos[*]} && git commit -m \"$mensaje\" && git push"
   fi
 }
 
