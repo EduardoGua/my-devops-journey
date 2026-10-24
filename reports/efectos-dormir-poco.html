@@ -1,0 +1,433 @@
+<title>La deuda de sueño</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: hoja de polisomnografía. Una columna de lectura sobre papel cuadriculado, con un explorador dosis × tiempo como pieza central. */
+:root {
+  --paper: #f3f5f2;
+  --grid: #dde4df;
+  --ink: #17223a;
+  --muted: #56627a;
+  --panel: #ffffff;
+  --line: #c9d2cd;
+  --trace: #c2410c;      /* trazo de EEG */
+  --trace-soft: #fbe3d6;
+  --calm: #2f6f62;
+  --s1: #e9efe9; --s2: #f6e4c8; --s3: #f3c9ae; --s4: #e79c86;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #0f141f; --grid: #1a2232; --ink: #e6e9ef; --muted: #9aa5b8; --panel: #161d2b; --line: #2a3447;
+  --trace: #fb8a52; --trace-soft: #3a2218; --calm: #6cc3ad;
+  --s1: #1c2535; --s2: #3a3220; --s3: #4a2c20; --s4: #5e2a24; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #0f141f; --grid: #1a2232; --ink: #e6e9ef; --muted: #9aa5b8; --panel: #161d2b; --line: #2a3447;
+  --trace: #fb8a52; --trace-soft: #3a2218; --calm: #6cc3ad;
+  --s1: #1c2535; --s2: #3a3220; --s3: #4a2c20; --s4: #5e2a24; color-scheme: dark }
+
+* { box-sizing: border-box }
+body {
+  background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 56px }
+.prose { max-width: 68ch }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.12; margin: 0 }
+h1 { font-size: clamp(2.3rem, 6vw, 4rem); font-weight: 700; letter-spacing: -0.02em }
+h2 { font-size: clamp(1.5rem, 3.4vw, 2.1rem); font-weight: 700 }
+h3 { font-size: 1.15rem; font-weight: 500 }
+p { margin: 0 }
+section { display: grid; gap: 18px }
+.eyebrow { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--trace) }
+.small { font-size: 0.88rem; color: var(--muted) }
+a { color: inherit; text-decoration-color: var(--trace); text-underline-offset: 2px }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--trace); outline-offset: 2px }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums }
+.warn { background: var(--trace-soft); padding: 0 4px; border-radius: 3px }
+
+/* Hero */
+header { display: grid; gap: 20px }
+.trace svg { width: 100%; height: 70px; display: block }
+.lede { font-size: 1.2rem; max-width: 62ch }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px }
+.kpi { background: var(--panel); border: 1px solid var(--line); padding: 14px 16px; display: grid; gap: 4px; align-content: start }
+.kpi b { font-family: var(--display); font-size: 1.9rem; line-height: 1; color: var(--trace) }
+.kpi span { font-size: 0.92rem; color: var(--muted) }
+
+/* Explorador */
+.explorer { background: var(--panel); border: 1px solid var(--line); padding: 20px; display: grid; gap: 18px }
+.controls { display: grid; gap: 14px }
+.seg { display: flex; flex-wrap: wrap; gap: 6px }
+.seg button {
+  font-family: var(--mono); font-size: 0.9rem; padding: 8px 12px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 999px
+}
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink) }
+.ctl-label { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted) }
+.result { display: grid; gap: 10px; border-left: 4px solid var(--sev, var(--line)); padding-left: 16px; min-height: 140px }
+.result h3 { font-size: 1.3rem }
+.result ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px }
+.sevpill { justify-self: start; font-family: var(--mono); font-size: 0.75rem; padding: 3px 10px; border-radius: 999px; background: var(--sevbg, var(--s1)) }
+
+/* Tablas */
+.tablewrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line) }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 0.92rem }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line) }
+th { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500 }
+td:first-child { font-family: var(--mono); white-space: nowrap; font-variant-numeric: tabular-nums }
+tr:last-child td { border-bottom: 0 }
+
+/* Cronología */
+.timeline { display: grid; gap: 0; border-left: 2px solid var(--trace); margin-left: 8px }
+.tl { display: grid; grid-template-columns: 110px 1fr; gap: 16px; padding: 12px 0 12px 18px; position: relative }
+.tl::before { content: ""; position: absolute; left: -7px; top: 19px; width: 12px; height: 12px; border-radius: 50%; background: var(--paper); border: 2px solid var(--trace) }
+.tl .h { font-family: var(--mono); font-weight: 500; color: var(--trace) }
+.tl > div { min-width: 0 }
+@media (max-width: 560px) { .tl { grid-template-columns: 1fr; gap: 2px } }
+
+/* Gráficos */
+.chart { background: var(--panel); border: 1px solid var(--line); padding: 20px; display: grid; gap: 10px }
+.bar-row { display: grid; grid-template-columns: 90px 1fr 52px; gap: 10px; align-items: center; font-size: 0.92rem }
+.bar-row .lbl { font-family: var(--mono); color: var(--muted) }
+.bar-track { height: 18px; background: var(--paper); position: relative }
+.bar { height: 100%; background: var(--trace); }
+.bar.ref { background: var(--calm) }
+.bar-row .val { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 500; text-align: right }
+
+.forest { display: grid; gap: 8px }
+.f-row { display: grid; grid-template-columns: minmax(120px, 190px) 1fr 64px; gap: 10px; align-items: center; font-size: 0.9rem }
+.f-row > span:first-child { min-width: 0 }
+.f-track { position: relative; height: 22px }
+.f-track .ci { position: absolute; top: 10px; height: 2px; background: var(--ink); opacity: 0.55 }
+.f-track .pt { position: absolute; top: 5px; width: 12px; height: 12px; margin-left: -6px; background: var(--trace); border-radius: 2px }
+.f-track .one { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--muted); opacity: 0.6 }
+.f-axis { display: grid; grid-template-columns: minmax(120px, 190px) 1fr 64px; gap: 10px }
+.f-axis .ticks { position: relative; height: 18px; font-family: var(--mono); font-size: 0.72rem; color: var(--muted) }
+.f-axis .ticks span { position: absolute; transform: translateX(-50%) }
+.f-row .v { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right }
+@media (max-width: 560px) { .f-row, .f-axis { grid-template-columns: 96px 1fr 48px; font-size: 0.8rem } }
+
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px }
+.card { background: var(--panel); border: 1px solid var(--line); padding: 16px; display: grid; gap: 8px; align-content: start }
+.card.good h3 { color: var(--calm) }
+.card.bad h3 { color: var(--trace) }
+.card ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; font-size: 0.95rem }
+
+.refs { columns: 2 280px; column-gap: 28px; font-size: 0.85rem; color: var(--muted); padding-left: 1.1em; margin: 0 }
+.refs li { break-inside: avoid; margin-bottom: 4px }
+footer { border-top: 1px solid var(--line); padding-top: 16px }
+@media (prefers-reduced-motion: no-preference) { .bar { transition: width .6s ease } }
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">Informe de investigación · octubre 2026</div>
+  <h1>La deuda de sueño</h1>
+  <div class="trace" aria-hidden="true">
+    <svg viewBox="0 0 900 70" preserveAspectRatio="none">
+      <path d="M0 35 L60 35 L66 20 L72 50 L78 35 L150 35 C170 15 190 55 210 35 C230 15 250 55 270 35 L330 35 L336 10 L342 60 L348 35 L420 35 C450 5 480 65 510 35 C540 5 570 65 600 35 L660 35 L664 28 L668 42 L672 35 L900 35" fill="none" stroke="var(--trace)" stroke-width="2"/>
+    </svg>
+  </div>
+  <p class="lede">Dormir menos de lo necesario daña el organismo según la <strong>dosis</strong> y se <strong>acumula</strong> noche a noche. El cuerpo pierde funciones en menos de una semana y tarda más en recuperarlas. Además, quien duerme poco deja de notar su propio deterioro.</p>
+  <div class="kpis">
+    <div class="kpi"><b class="mono">17–19 h</b><span>despierto: rindes como con 0,05% de alcohol en sangre</span></div>
+    <div class="kpi"><b class="mono">4,2×</b><span>más resfriados con 5–6 h de sueño frente a más de 7 h</span></div>
+    <div class="kpi"><b class="mono">14 noches</b><span>a 4–6 h: déficit cognitivo de hasta 2 noches en vela</span></div>
+    <div class="kpi"><b class="mono">11,5×</b><span>riesgo de accidente de tráfico tras dormir menos de 4 h</span></div>
+  </div>
+  <p class="small">Síntesis de cuatro líneas de investigación paralelas (privación total, restricción parcial, efectos crónicos y mecanismos), unas 100 búsquedas en PubMed, PMC y fuentes oficiales. Las cifras <span class="warn">resaltadas así</span> proceden solo de prensa o no se pudieron verificar en el artículo original.</p>
+</header>
+
+<section aria-labelledby="exp-h">
+  <div class="eyebrow">Explorador</div>
+  <h2 id="exp-h">¿Qué pasa si duermo X horas durante Y tiempo?</h2>
+  <div class="explorer">
+    <div class="controls">
+      <div><div class="ctl-label" id="lbl-h">Horas de sueño por noche</div>
+        <div class="seg" role="group" aria-labelledby="lbl-h" id="ctl-hours"></div></div>
+      <div><div class="ctl-label" id="lbl-t">Durante cuánto tiempo</div>
+        <div class="seg" role="group" aria-labelledby="lbl-t" id="ctl-time"></div></div>
+    </div>
+    <div class="result" id="result" aria-live="polite"></div>
+  </div>
+  <p class="small">Datos de laboratorio miden "horas en cama"; el sueño real suele ser 0,5–1 h menor. Los de "años" son estudios observacionales: asociación, no siempre causa.</p>
+</section>
+
+<section aria-labelledby="tot-h">
+  <div class="eyebrow">0 horas · privación total</div>
+  <h2 id="tot-h">Sin dormir: la atención cae antes de las 24 horas y las alucinaciones llegan a las 48</h2>
+  <p class="prose">Lo que más se degrada es la atención simple. En un metaanálisis de 70 estudios, los lapsos de atención tuvieron el efecto más grande (g = −0,78) y el razonamiento apenas cambió (g = −0,13). Por eso la persona se siente lúcida mientras pierde estímulos durante segundos: el cerebro alterna entre vigilia y microsueños.</p>
+  <div class="timeline">
+    <div class="tl"><div class="h">17–19 h</div><div>Rendimiento igual al de 0,05% de alcohol en sangre; respuestas hasta un 50% más lentas. Más ansiedad e irritabilidad. <span class="small">Williamson &amp; Feyer 2000</span></div></div>
+    <div class="tl"><div class="h">~24 h</div><div>Rendimiento cercano a <span class="warn">0,10% de alcohol</span>. Grelina +22% y el doble de hambre; presión arterial media +4 mmHg; menos células NK; más sensibilidad al dolor. Memoria nueva <span class="warn">~−40%</span>. <span class="small">Dawson &amp; Reid 1997; Schmid 2008; Kato 2000; Krause 2019</span></div></div>
+    <div class="tl"><div class="h">31–36 h</div><div>La amígdala reacciona de más a lo negativo y se desconecta de la corteza prefrontal (el <span class="warn">"60% más reactiva"</span> es cifra de prensa). β-amiloide cerebral +5% en una noche. <span class="small">Yoo 2007; Shokri-Kojori 2018</span></div></div>
+    <div class="tl"><div class="h">~40 h</div><div>Desaparece el pico nocturno de hormona del crecimiento; el cortisol se adelanta ~1 h.</div></div>
+    <div class="tl"><div class="h">48 h</div><div>Distorsiones perceptivas o alucinaciones de forma fiable: aparecen en 20 de 21 estudios (visuales 90%, táctiles 52%, auditivas 33%). Apatía, euforia o ira. <span class="small">Waters 2018</span></div></div>
+    <div class="tl"><div class="h">50–64 h</div><div>Alucinaciones complejas y pensamiento desorganizado. A las 64 h, más leucocitos y actividad NK.</div></div>
+    <div class="tl"><div class="h">72 h</div><div>Delirios. ~14% de los sujetos con lapsos de hasta 30 segundos.</div></div>
+    <div class="tl"><div class="h">Día 5+</div><div>Estado parecido a una psicosis aguda. El sueño de recuperación ocupa ~50% de las horas perdidas; una minoría arrastra síntomas días o semanas.</div></div>
+  </div>
+  <p class="small">Los datos más allá de 72 h vienen de estudios antiguos sin grupo control; los cambios hormonales de una noche, de muestras de 8–20 personas.</p>
+</section>
+
+<section aria-labelledby="par-h">
+  <div class="eyebrow">3–7 horas · restricción parcial</div>
+  <h2 id="par-h">Dormir 4, 5 o 6 horas: el cuerpo responde en menos de una semana</h2>
+  <p class="prose">En el experimento de referencia (Van Dongen 2003), 48 adultos durmieron 4, 6 u 8 h durante 14 días. A 4 y 6 h el déficit cognitivo creció cada día. Los fallos aumentaban casi en línea recta con la vigilia que pasaba de <span class="mono">~15,8 h</span> diarias, lo que implica necesitar unas <span class="mono">8,2 h</span> de sueño. La somnolencia percibida, en cambio, se estancó y no distinguía 4 h de 6 h: los sujetos eran "en gran medida inconscientes" de su deterioro.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Horas en cama</th><th>1–2 noches</th><th>~1 semana</th><th>2 semanas o más</th></tr></thead>
+    <tbody>
+      <tr><td>3 h</td><td>—</td><td>Vigilancia empeora en línea recta, sin meseta</td><td>Sin datos</td></tr>
+      <tr><td>~4 h</td><td>Leptina −18%, grelina +28%, hambre +24%; captación de glucosa −20% tras 1 noche</td><td>Peor tolerancia a la glucosa, más cortisol vespertino; anticuerpos de la vacuna de la gripe <span class="warn">~½</span>; presión sistólica +8 mmHg en mujeres (9 noches)</td><td>Déficit cognitivo ≈ 2 noches en vela; más grasa visceral</td></tr>
+      <tr><td>~5 h</td><td>—</td><td>Sensibilidad a la insulina −11 a −20%; testosterona −10–15%; +0,8 kg en 5 días; resfriados ×4,2</td><td>+221 kcal/día en picoteo nocturno (5,5 h)</td></tr>
+      <tr><td>~6 h</td><td>—</td><td>711 genes alterados en sangre (5,7 h reales); peor respuesta a vacunas</td><td>Déficit cognitivo ≈ <span class="warn">1 noche en vela</span>; presión sistólica +3 mmHg en mujeres (6 semanas)</td></tr>
+      <tr><td>7 h</td><td>—</td><td>Ligera lentitud, sin más fallos; riesgo de resfriado no significativo</td><td>—</td></tr>
+      <tr><td>9 h</td><td>—</td><td>Sin cambios en la vigilancia</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+  <p class="small">Metaanálisis de 11 estudios: la restricción parcial aumenta la ingesta en ~385 kcal/día (IC 95% 252–517) sin cambiar el gasto energético (Al Khatib 2017).</p>
+</section>
+
+<section aria-labelledby="cro-h">
+  <div class="eyebrow">Años de hábito · epidemiología</div>
+  <h2 id="cro-h">Como costumbre, el sueño corto eleva muchos riesgos un 10–50%</h2>
+  <p class="prose">Casi toda esta evidencia es observacional y mide el sueño por cuestionario. Los riesgos son modestos para una persona, pero un 35% de los adultos en EE. UU. duerme menos de 7 h: RAND estimó un coste de hasta 411.000 millones de dólares al año (2,28% del PIB).</p>
+  <div class="chart" role="img" aria-label="Riesgo relativo de distintas enfermedades con sueño corto habitual frente a 7-8 horas">
+    <h3>Riesgo relativo con sueño corto frente a 7–8 h</h3>
+    <div class="forest" id="forest"></div>
+    <div class="f-axis"><span></span><div class="ticks" id="ticks"></div><span></span></div>
+    <p class="small">Cuadrado: estimación; línea: intervalo de confianza 95%. A la derecha de 1,0 = más riesgo. Demencia sin intervalo disponible. Cáncer global: sin asociación.</p>
+  </div>
+  <div class="chart" role="img" aria-label="Riesgo de accidente de tráfico según horas dormidas en las 24 horas previas">
+    <h3>Accidente de tráfico según lo dormido en las 24 h previas</h3>
+    <div id="crash"></div>
+    <p class="small">Respecto a dormir 7 h o más. AAA Foundation, Tefft 2016.</p>
+  </div>
+  <p class="prose">Casi todas las curvas tienen <strong>forma de U con el mínimo en ~7 h</strong>; dormir mucho también se asocia con más riesgo (mortalidad RR 1,30), probablemente porque la enfermedad previa alarga el sueño. La hipertensión es la excepción: solo el sueño corto la eleva. Los estudios genéticos (aleatorización mendeliana) apoyan la causalidad en el infarto y la hipertensión, pero no en la diabetes. En la demencia puede haber causalidad inversa: la enfermedad altera el sueño años antes del diagnóstico. El trabajo nocturno, por la alteración del reloj biológico, es "probablemente carcinógeno" (IARC 2A).</p>
+</section>
+
+<section aria-labelledby="rec-h">
+  <div class="eyebrow">Recuperación</div>
+  <h2 id="rec-h">Recuperar cuesta más noches de las que se perdieron</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Escenario</th><th>Recuperación</th><th>Se normaliza</th><th>No se normaliza</th></tr></thead>
+    <tbody>
+      <tr><td>24–64 h en vela</td><td>1 noche</td><td>Células inmunitarias; rebote de hormona del crecimiento</td><td>Tras 36 h, la memoria de trabajo solo en parte</td></tr>
+      <tr><td>5 noches a 4 h</td><td>1 noche de 10 h</td><td>Mejora parcial</td><td>Vigilancia, somnolencia y fatiga</td></tr>
+      <tr><td>7 noches a 5 h</td><td>3 noches de 8 h</td><td>Somnolencia</td><td>Velocidad de reacción</td></tr>
+      <tr><td>5 noches a 5 h</td><td>2 noches de 10 h</td><td>—</td><td>Pulso +5,5 lpm; presión sistólica +2,9 mmHg</td></tr>
+      <tr><td>9 noches a 4 h</td><td>3 días</td><td>—</td><td>Presión sistólica +4,1 mmHg en mujeres</td></tr>
+      <tr><td>5 h + fin de semana libre</td><td>2 días a demanda</td><td>Picoteo nocturno, solo el fin de semana</td><td>Sensibilidad a la insulina <span class="warn">−9 a −27%</span>; vuelve el aumento de peso</td></tr>
+      <tr><td>6 noches a 4 h</td><td>6–7 noches de 12 h en cama</td><td>Metabolismo y hormonas</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+  <p class="prose">En el estudio del fin de semana (Depner 2019), los participantes solo durmieron ~1,1 h más en total y, al volver a 5 h, el daño metabólico reapareció igual o peor.</p>
+</section>
+
+<section aria-labelledby="mec-h">
+  <div class="eyebrow">Mecanismos</div>
+  <h2 id="mec-h">Por qué hace daño</h2>
+  <div class="cols">
+    <div class="card"><h3>Dos relojes</h3><p>La presión de sueño crece con la vigilia (ligada a la adenosina) y el reloj circadiano fija el momento. La cafeína bloquea la adenosina: <strong>oculta la presión de sueño, no la reduce</strong>.</p></div>
+    <div class="card"><h3>Sueño profundo y REM</h3><p>El sueño profundo concentra la hormona del crecimiento y pasa recuerdos del hipocampo a la corteza. El REM procesa los recuerdos emocionales y les quita carga.</p></div>
+    <div class="card"><h3>Estrés encendido</h3><p>Más tono simpático, cortisol vespertino alto, menos sensibilidad a la insulina e inflamación de bajo grado. Esos motores comunes explican que los daños cardiovasculares, metabólicos e inmunitarios aparezcan juntos.</p></div>
+    <div class="card"><h3>Limpieza cerebral, en debate</h3><p>En ratones, el sueño aceleró la eliminación de β-amiloide (Xie 2013), pero otro estudio en ratones halló la limpieza ~30% <em>menor</em> al dormir (Miao 2024). En humanos no está demostrado el mecanismo.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="vul-h">
+  <div class="eyebrow">Quién es más vulnerable</div>
+  <h2 id="vul-h">Adolescentes, trabajadores nocturnos y mujeres</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Grupo</th><th>Necesidad recomendada</th><th>Por qué importa</th></tr></thead>
+    <tbody>
+      <tr><td>Adolescentes</td><td>8–10 h</td><td>La pubertad retrasa su reloj y el colegio empieza temprano. El riesgo de ideación suicida es mínimo con 8–9 h.</td></tr>
+      <tr><td>Adultos 18–64</td><td>7–9 h (≥7 h)</td><td>Por debajo de ~6 h los daños clínicos se hacen evidentes.</td></tr>
+      <tr><td>Mayores de 65</td><td>7–8 h</td><td>No necesitan claramente menos, pero producen menos sueño profundo.</td></tr>
+      <tr><td>Mujeres</td><td>—</td><td>Mayor subida de presión arterial con la restricción; la respuesta a vacunas se resiente más en hombres.</td></tr>
+      <tr><td>Turnos de noche</td><td>—</td><td>Desalineación circadiana; clasificación IARC 2A.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="prose">La vulnerabilidad es un rasgo individual estable: unas personas se deterioran más que otras. Los "dormidores cortos" genéticos (mutaciones DEC2 o ADRB1) se han descrito en una madre con su hija y en una sola familia. Por eso, "a mí me bastan 5 horas" suele ser falta de percepción del propio deterioro, no un genotipo raro.</p>
+</section>
+
+<section aria-labelledby="ayu-h">
+  <div class="eyebrow">Qué hacer</div>
+  <h2 id="ayu-h">Solo el sueño suficiente y regular repara el déficit</h2>
+  <div class="cols">
+    <div class="card good"><h3>Funciona</h3><ul>
+      <li>Dormir ≥7 h de forma regular: tratar las 7 h como suelo, no como meta.</li>
+      <li>Ampliar el sueño: jugadores de baloncesto con ~111 min más por noche mejoraron ~4,5% en sprint y ~9% en tiro.</li>
+      <li>Terapia cognitivo-conductual para el insomnio (TCC-I): única con recomendación fuerte de la AASM.</li>
+    </ul></div>
+    <div class="card"><h3>Alivia, no salda la deuda</h3><ul>
+      <li>Siestas: en pilotos, 40 min de descanso (25,8 min de sueño) mejoraron alerta y rendimiento. El famoso <span class="warn">+34% / +54%</span> de la NASA viene de prensa.</li>
+      <li>Siestas de ~10 min: beneficio rápido y poca inercia al despertar.</li>
+      <li>Cafeína: útil a corto plazo, por ejemplo antes de conducir.</li>
+    </ul></div>
+    <div class="card bad"><h3>No funciona</h3><ul>
+      <li>Recuperar solo el fin de semana.</li>
+      <li>Café tarde: 400 mg 6 h antes de acostarse quitaron más de 1 h de sueño sin que la gente lo notara.</li>
+      <li>Creer que uno "se ha adaptado".</li>
+      <li>Tratar el insomnio solo con higiene del sueño.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section aria-labelledby="lim-h">
+  <div class="eyebrow">Límites</div>
+  <h2 id="lim-h">Evidencia sólida en la dirección, frágil en la magnitud</h2>
+  <p class="prose">Los experimentos son pequeños (8–48 personas), sobre todo de hombres jóvenes sanos, duran una o dos semanas y miden horas en cama. Las cohortes largas usan cuestionarios, definen "corto" de forma distinta (de &lt;4 h a ≤6 h) y pueden confundirse con nivel socioeconómico, apnea o turnos. No hay ensayos que amplíen el sueño y midan enfermedades graves. La pregunta abierta más importante es cuánto del daño a largo plazo se revierte si se duerme más.</p>
+</section>
+
+<section aria-labelledby="ref-h">
+  <h2 id="ref-h">Fuentes principales</h2>
+  <ol class="refs">
+    <li><a href="https://www.nature.com/articles/40775">Dawson &amp; Reid 1997, Nature</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC1739867/">Williamson &amp; Feyer 2000, Occup Environ Med</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3290659">Lim &amp; Dinges 2010, Psychol Bull</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6048360/">Waters et al. 2018, Front Psychiatry</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6433768">Krause et al. 2019, J Neurosci</a></li>
+    <li><a href="https://pubmed.ncbi.nlm.nih.gov/18564298/">Schmid et al. 2008, J Sleep Res</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC294300">Dinges et al. 1994, J Clin Invest</a></li>
+    <li><a href="https://www.nih.gov/news-events/news-releases/lack-sleep-may-be-linked-risk-factor-alzheimers-disease">Shokri-Kojori et al. 2018, PNAS (vía NIH)</a></li>
+    <li><a href="https://doi.org/10.1093/sleep/26.2.117">Van Dongen et al. 2003, Sleep</a></li>
+    <li><a href="https://doi.org/10.1046/j.1365-2869.2003.00337.x">Belenky et al. 2003, J Sleep Res</a></li>
+    <li><a href="https://doi.org/10.1016/S0140-6736(99)01376-8">Spiegel et al. 1999, Lancet</a></li>
+    <li><a href="https://doi.org/10.2337/db09-0699">Buxton et al. 2010, Diabetes</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4445839/">Leproult &amp; Van Cauter 2011, JAMA</a></li>
+    <li><a href="https://doi.org/10.1073/pnas.1217154110">Möller-Levet et al. 2013, PNAS</a></li>
+    <li><a href="https://doi.org/10.5665/sleep.4968">Prather et al. 2015, Sleep</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8363516/">Covassin et al. 2021, Hypertension</a></li>
+    <li><a href="https://doi.org/10.1038/ejcn.2016.201">Al Khatib et al. 2017, Eur J Clin Nutr</a></li>
+    <li><a href="https://doi.org/10.1093/sleep/33.8.1013">Banks et al. 2010, Sleep</a></li>
+    <li><a href="https://doi.org/10.1016/j.cub.2019.01.069">Depner et al. 2019, Curr Biol</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2864873/">Cappuccio et al. 2010, Sleep (mortalidad)</a></li>
+    <li><a href="https://pubmed.ncbi.nlm.nih.gov/21300732/">Cappuccio et al. 2011, Eur Heart J</a></li>
+    <li><a href="https://pubmed.ncbi.nlm.nih.gov/31488267/">Daghlas et al. 2019, JACC</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11249221/">Hosseini et al. 2024, PLoS One</a></li>
+    <li><a href="https://pubmed.ncbi.nlm.nih.gov/25715415/">Shan et al. 2015, Diabetes Care</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2398749">Cappuccio et al. 2008, Sleep (obesidad)</a></li>
+    <li><a href="https://pubmed.ncbi.nlm.nih.gov/26047492">Zhai et al. 2015 (depresión)</a></li>
+    <li><a href="https://discovery-pp.ucl.ac.uk/10126499/1/Sabia%20-%20Sleep%20and%20dementia%20risk.pdf">Sabia et al. 2021, Nat Commun</a></li>
+    <li><a href="https://aaafoundation.org/acute-sleep-deprivation-risk-motor-vehicle-crash-involvement/">Tefft 2016, AAA Foundation</a></li>
+    <li><a href="https://www.rand.org/news/press/2016/11/30.html">RAND 2016</a></li>
+    <li><a href="https://www.iarc.who.int/news-events/iarc-monographs-volume-124-night-shift-work">IARC Vol. 124, trabajo nocturno</a></li>
+    <li><a href="https://doi.org/10.1126/science.1241224">Xie et al. 2013, Science</a></li>
+    <li><a href="https://alzforum.org/news/research-news/does-sleep-really-speed-clearance-brain">Miao et al. 2024 (vía Alzforum)</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3805807/">Drake et al. 2013, J Clin Sleep Med</a></li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7853203/">Edinger et al. 2021, AASM (insomnio)</a></li>
+    <li><a href="https://www.aasm.org/resources/pdf/adultsleepdurationconsensus.pdf">Watson et al. 2015, consenso AASM/SRS</a></li>
+    <li><a href="https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19950006379.pdf">Rosekind et al. 1994, NASA</a></li>
+  </ol>
+</section>
+
+<footer class="small">Informe divulgativo, no consejo médico. Si duermes mal de forma persistente, consulta a un profesional de la salud.</footer>
+</main>
+
+<script>
+(function () {
+  var hours = ["4 h", "5 h", "6 h", "7 h", "8–9 h"];
+  var times = ["1–2 noches", "1 semana", "2 semanas", "Años"];
+  var sevBg = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"];
+  var sevName = ["Sin efecto claro", "Efecto leve", "Efecto moderado", "Efecto marcado"];
+  var sevLine = ["var(--calm)", "#d9a441", "var(--trace)", "var(--trace)"];
+  // [severidad 0-3, lista de efectos]
+  var D = {
+    "4 h": [
+      [2, ["Leptina −18%, grelina +28%, hambre +24% (2 noches).", "Captación de glucosa ~−20% tras una sola noche.", "Riesgo de accidente al volante ×4,3 (4–5 h en las últimas 24 h)."]],
+      [3, ["Peor tolerancia a la glucosa y más cortisol por la tarde (6 noches).", "Anticuerpos tras la vacuna de la gripe a la mitad (cifra de un resumen universitario).", "Presión sistólica de 24 h +8 mmHg en mujeres (9 noches)."]],
+      [3, ["Déficit cognitivo acumulado ≈ hasta 2 noches sin dormir.", "Más grasa abdominal visceral.", "La somnolencia percibida se estanca: no notas el deterioro."]],
+      [3, ["Con <4 h la noche previa: accidente de tráfico ×11,5.", "Mortalidad total RR 1,12 (sueño corto, <4 a ≤6 h).", "Obesidad en adultos (≤5 h) OR 1,55."]]
+    ],
+    "5 h": [
+      [2, ["Riesgo de accidente al volante ×1,9 (5–6 h) o ×4,3 (4–5 h).", "Más apetito y picoteo nocturno."]],
+      [3, ["Sensibilidad a la insulina −11 a −20%.", "Testosterona diurna −10–15%.", "+0,8 kg en 5 días; ~+385 kcal/día de media en restricción parcial.", "Resfriados ×4,2 frente a más de 7 h."]],
+      [3, ["+221 kcal/día en snacks nocturnos (5,5 h, 14 noches).", "Un fin de semana de recuperación no evita la caída de sensibilidad a la insulina (−9 a −27%)."]],
+      [3, ["Hipertensión HR 1,11 (<5 h).", "Ideación suicida OR 1,46 e intentos OR 2,05 en adultos coreanos (≤5 h, estudio transversal).", "Diabetes tipo 2: +9% por cada hora bajo 7 h."]]
+    ],
+    "6 h": [
+      [1, ["Riesgo de accidente ×1,3–1,9 según si duermes algo más o menos de 6 h.", "Pocos datos fisiológicos de 1–2 noches a 6 h."]],
+      [2, ["711 genes alterados en sangre con 5,7 h reales durante una semana.", "Menor respuesta a vacunas con <6 h medidas con actígrafo."]],
+      [2, ["Déficit cognitivo ≈ 1 noche sin dormir (lectura de las figuras de Van Dongen, no verificada).", "6 semanas con 1,5 h menos: presión sistólica +3 mmHg en mujeres."]],
+      [2, ["Infarto ~+20% (<6 h), con apoyo genético.", "Cardiopatía coronaria RR 1,48.", "Demencia HR 1,22–1,37 si se duermen ≤6 h a los 50–60 años."]]
+    ],
+    "7 h": [
+      [0, ["Sin efectos relevantes descritos."]],
+      [1, ["Ligera lentitud en la vigilancia, sin más fallos (7 h en cama).", "Riesgo de resfriado (6–7 h) no significativo."]],
+      [1, ["Sin datos de 2 semanas; 7 h en cama equivalen a algo menos de sueño real."]],
+      [0, ["Zona de menor riesgo en casi todas las curvas (mínimo en ~7 h).", "Es el mínimo recomendado para adultos (AASM/SRS)."]]
+    ],
+    "8–9 h": [
+      [0, ["Referencia: sin déficit."]],
+      [0, ["9 h en cama: vigilancia sin cambios durante una semana."]],
+      [0, ["Ampliar el sueño mejora el rendimiento (deportistas +111 min/noche: sprint ~4,5% más rápido)."]],
+      [0, ["Dentro del rango recomendado (7–9 h). Dormir mucho más de 9 h se asocia a más riesgo, probablemente por enfermedad previa."]]
+    ]
+  };
+  var state = { h: "5 h", t: "1 semana" };
+  function seg(el, items, key) {
+    items.forEach(function (v) {
+      var b = document.createElement("button");
+      b.type = "button"; b.textContent = v; b.id = "btn-" + key + "-" + items.indexOf(v);
+      b.addEventListener("click", function () { state[key] = v; render(); });
+      el.appendChild(b);
+    });
+  }
+  var hEl = document.getElementById("ctl-hours"), tEl = document.getElementById("ctl-time"), r = document.getElementById("result");
+  seg(hEl, hours, "h"); seg(tEl, times, "t");
+  function render() {
+    [].forEach.call(hEl.children, function (b) { b.setAttribute("aria-pressed", b.textContent === state.h) });
+    [].forEach.call(tEl.children, function (b) { b.setAttribute("aria-pressed", b.textContent === state.t) });
+    var cell = D[state.h][times.indexOf(state.t)], s = cell[0];
+    r.style.setProperty("--sev", sevLine[s]); r.style.setProperty("--sevbg", sevBg[s]);
+    r.innerHTML = '<span class="sevpill">' + sevName[s] + '</span><h3>' + state.h + ' por noche · ' + state.t.toLowerCase() + '</h3><ul>' +
+      cell[1].map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>";
+  }
+  render();
+
+  // Forest plot
+  var F = [
+    ["Cardiopatía coronaria", 1.48, 1.22, 1.80],
+    ["Obesidad (adultos ≤5 h)", 1.55, 1.43, 1.68],
+    ["Demencia (≤6 h a los 60)", 1.37, null, null],
+    ["Depresión", 1.31, 1.04, 1.64],
+    ["Ictus", 1.15, 1.00, 1.31],
+    ["Mortalidad total", 1.12, 1.06, 1.18],
+    ["Hipertensión (<5 h)", 1.11, 1.08, 1.14],
+    ["Diabetes 2 (por hora <7 h)", 1.09, 1.04, 1.15],
+    ["Cáncer global", 1.05, 0.90, 1.24]
+  ];
+  var lo = 0.8, hi = 2.0, pos = function (v) { return ((v - lo) / (hi - lo) * 100) + "%"; };
+  var fe = document.getElementById("forest");
+  F.forEach(function (f) {
+    var row = document.createElement("div"); row.className = "f-row";
+    var ci = f[2] ? '<span class="ci" style="left:' + pos(f[2]) + ';width:calc(' + pos(f[3]) + ' - ' + pos(f[2]) + ')"></span>' : "";
+    row.innerHTML = "<span>" + f[0] + '</span><div class="f-track"><span class="one" style="left:' + pos(1) + '"></span>' + ci +
+      '<span class="pt" style="left:' + pos(f[1]) + '"></span></div><span class="v">' + f[1].toFixed(2).replace(".", ",") + "</span>";
+    fe.appendChild(row);
+  });
+  var tk = document.getElementById("ticks");
+  [0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0].forEach(function (v) {
+    var s = document.createElement("span"); s.style.left = pos(v); s.textContent = v.toFixed(1).replace(".", ","); tk.appendChild(s);
+  });
+
+  // Crash bars
+  var C = [["≥7 h", 1, true], ["6–7 h", 1.3], ["5–6 h", 1.9], ["4–5 h", 4.3], ["<4 h", 11.5]];
+  var ce = document.getElementById("crash");
+  C.forEach(function (c) {
+    var row = document.createElement("div"); row.className = "bar-row";
+    row.innerHTML = '<span class="lbl">' + c[0] + '</span><div class="bar-track"><div class="bar' + (c[2] ? " ref" : "") + '" style="width:' + (c[1] / 11.5 * 100) + '%"></div></div><span class="val">×' + String(c[1]).replace(".", ",") + "</span>";
+    ce.appendChild(row);
+  });
+  ce.style.display = "grid"; ce.style.gap = "8px";
+})();
+</script>
