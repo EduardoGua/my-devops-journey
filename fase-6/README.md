@@ -1,6 +1,6 @@
 # Fase 6 — AWS y Cloud Practitioner
 
-**Horas (Ruta 2.0):** 60–80 h. Unas 40 h son las clases; el resto, el estudio del examen CLF-C02 (clases 80 y 81).
+**Horas (Ruta 2.0):** 60–80 h. Unas 45–60 h son las clases y el proyecto; las otras 15–20 h, el estudio del examen CLF-C02 (clases 80 y 81).
 **Al terminar:** tu cuenta de AWS está protegida y no te da sustos en la factura. Manejas con la consola y con la CLI las piezas básicas: IAM, VPC, EC2, security groups, S3, ECR y CloudWatch. Vigía v3 corre en una EC2 con un rol IAM, sin llaves guardadas en el servidor; sube un informe diario a S3 y manda sus logs a CloudWatch. Y tienes tu primera certificación: **AWS Certified Cloud Practitioner**.
 
 Llevas a la nube lo que ya sabes de Linux, redes y Docker. Primero lo haces a mano, con la consola y la CLI, para entender cada pieza. En la fase 8 lo escribirás como código con Terraform: escribir como código algo que nunca hiciste a mano produce archivos copiados sin entender.

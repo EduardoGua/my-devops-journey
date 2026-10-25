@@ -324,7 +324,7 @@ En la sección de Vigía del CV de la clase 91, añade, con tus números:
 
 En *Skills*, Terraform, Kubernetes, Helm, Prometheus y Grafana. Y en LinkedIn, una publicación corta contando que terminaste la ruta, con el enlace a Vigía y lo que más aprendiste. Las publicaciones de proyectos reales abren conversaciones.
 
-Modelo para adaptar (lo escribió Claude). Cambia los huecos por tus datos, y quita lo que no sea verdad para ti:
+Modelo para adaptar. Cambia los huecos por tus datos, y quita lo que no sea verdad para ti:
 
 ```
 I just finished a ____-month path from Linux basics to cloud and DevOps, and the result is Vigía,
@@ -347,7 +347,7 @@ Lo más tuyo es la línea de la lección: una sola frase, concreta (un fallo que
 - **Sigue postulando** con el ritmo de la clase 91: ahora con un proyecto completo.
 - **Una certificación más**, cuando te la pida el mercado: la *AWS Solutions Architect – Associate* (SAA-C03) es la siguiente natural después del CLF; la *Terraform Associate* (apéndice de la clase 101) o la *CKAD*/*CKA* si las ofertas que te interesan piden Terraform o Kubernetes.
 - **Mantén Vigía vivo:** actualiza versiones cada pocos meses (pídeme `revisa la fase N`), cierra algo de *Limitations*, escribe un postmortem de verdad cuando algo falle.
-- **El siguiente tramo:** el camino de junior a arquitecto está en `~/Documentos/ruta-junior-a-arquitecto-nube.md`. Ábrelo cuando tengas tu primer trabajo, o cuando lleves tres meses postulando con el CV nuevo.
+- **El siguiente tramo:** el camino de junior a arquitecto está en `~/Documentos/ruta-junior-a-arquitecto-nube.md` (para abrir al terminar la fase 8 o cuando lleves meses en un empleo cloud, y de nuevo aquí al cerrar la ruta).
 
 ## Cierre
 

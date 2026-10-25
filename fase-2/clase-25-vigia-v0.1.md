@@ -34,15 +34,16 @@ Es la versión que cierra la fase 2: aplicas a tu propio proyecto todo lo de las
 | R6 | El README explica cómo instalarlo desde cero (`git clone` …) y cómo programarlo con cron | — |
 | R7 | Etiqueta anotada `v0.1` publicada, y una *release* en GitHub | esta clase |
 | R8 | Vigía fijado (*pinned*) en tu perfil de GitHub | — |
+| R9 | Sección *What broke and how I found it (v0.1)* añadida al `README.md` | 21, 23, 24 |
 
 Tres cambios que encajan bien en R4 (puedes elegir otros):
 1. Añadir el `.gitignore`.
 2. Añadir la opción `-h` / `--help` con un `case` (clase 17).
-3. Documentar la instalación y la programación con cron en el README.
+3. Documentar la instalación, la programación con cron y la nota *What broke and how I found it (v0.1)* en el README.
 
 ## Plan de trabajo
 
-Siete pasos. La teoría nueva de hoy, las etiquetas, está en el paso 6, justo donde la usas. Si la haces en dos sesiones, la primera termina después del paso 3 (el primer PR).
+Siete pasos. La teoría nueva de hoy, las etiquetas, está en el paso 6, justo donde la usas. En mañanas de 30–45 min puedes partirla en 5 sesiones: **(1)** pasos 1 y 2; **(2)** paso 3 (el primer PR); **(3)** paso 4 (los otros dos PR); **(4)** pasos 5 a 7; **(5)** Rómpelo y cierre.
 
 ### 1. Publicar el repo
 
@@ -55,13 +56,13 @@ git push origin v0
 git ls-remote --tags origin
 ```
 
-👀 **Qué deberías ver:** el repo creado y subido, y en `git ls-remote --tags origin` una línea con `refs/tags/v0`.
+👀 **Qué deberías ver:** el repo creado y subido, y en `git ls-remote --tags origin` **dos** líneas para la etiqueta anotada: `refs/tags/v0` y `refs/tags/v0^{}` (el commit al que apunta).
 
-`gh repo create … --push` crea el repo en GitHub, lo conecta como `origin` y sube `main`. La etiqueta `v0` necesita su propio `push`.
+`gh repo create … --push` crea el repo en GitHub, lo conecta como `origin` (con `https://` o `git@github.com:` según tengas configurado `gh`) y sube `main`. La etiqueta `v0` necesita su propio `push`.
 
 ### 2. Proteger `main`
 
-En la web del repo, igual que en la clase 24: **Settings → Rules → Rulesets → New branch ruleset**, con *Require a pull request before merging* y *Block force pushes*, aplicado a la rama por defecto y **sin** nadie en *Bypass list*.
+En la web del repo, igual que en la clase 24: **Settings → Rulesets** (en la sección *Code, planning, and automation*) **→ Rulesets → New ruleset → New branch ruleset**, con *Require a pull request before merging* y *Block force pushes*, aplicado a la rama por defecto y **sin** nadie en *Bypass list*.
 
 🔮 **Predice:** ¿qué pasará con este push?
 
@@ -113,7 +114,15 @@ git clone https://github.com/<your-user>/vigia.git
 cd vigia
 ./vigia.sh            # writes results to ~/vigia.log
 ```
+
+## What broke and how I found it (v0.1)
+- **Symptom:** my second PR showed *This branch has conflicts*.
+- **Cause:** both branches changed the same README line.
+- **How I found it:** `git pull origin main` showed the markers in `README.md`.
+- **Fix:** kept the right sentence, removed the markers, committed and pushed.
 ````
+
+*(Adapta la nota a lo que te haya pasado a ti; si quieres provocar ese conflicto primero, haz el Rómpelo 2 antes de abrir el PR del README.)*
 
 ### 5. Comprobar el README desde cero
 
@@ -167,6 +176,25 @@ git log --oneline --decorate -6
 
 En `github.com/<tu-usuario>`, **Customize your pins** y elige `vigia`. Comprueba que la descripción del repo (el texto corto de arriba a la derecha en la página del repo, en el engranaje de *About*) dice qué es Vigía en una frase.
 
+## Pistas
+
+Ábrelas solo si llevas **10 minutos** atascado en un paso.
+
+<details>
+<summary>Pista 1 — <code>-h</code> / <code>--help</code> con <code>case</code> (paso 4)</summary>
+
+Antes de leer el archivo de URLs en `vigia.sh`:
+
+```bash
+case "${1:-}" in
+  -h|--help)
+    echo "Usage: vigia.sh [urls-file]"
+    exit 0
+    ;;
+esac
+```
+</details>
+
 ## Rómpelo
 
 **1. Borrar un archivo por error y recuperarlo con Git.** Un criterio de salida de la fase 2.
@@ -177,17 +205,26 @@ ls urls.txt
 git restore --source=HEAD~1 urls.txt
 cat urls.txt
 ```
-El archivo vuelve desde el commit anterior. Termina el arreglo con un commit (`git add urls.txt && git commit -m "Restore URL list"`) o, mejor aún en una rama compartida, con `git revert HEAD`. Después borra la rama: `git switch main && git branch -D test-recover`.
+El archivo vuelve desde el commit anterior; termina el arreglo con `git add urls.txt && git commit -m "Restore URL list"`. En una rama compartida, **en lugar del** `restore` se usa `git revert HEAD` (si ya restauraste `urls.txt`, bórralo antes con `rm urls.txt` para que `git revert` no choque con un archivo sin seguimiento). Después borra la rama: `git switch main && git branch -D test-recover`.
 
 **2. Un conflicto a propósito.** Otro criterio de salida.
-Crea dos ramas desde el mismo `main` que cambien **la misma línea** del README (la frase de descripción, por ejemplo). Abre un PR para cada una y fusiona la primera. La segunda dirá *This branch has conflicts*. Resuélvelo en local como en la clase 23:
+Crea dos ramas desde el mismo `main` que cambien **la misma línea** del README (por ejemplo, el título), abre un PR para cada una y fusiona la primera:
 ```bash
-git switch <segunda-rama>
+git switch main && git pull
+git switch -c conflicto-a && sed -i '1s/.*/# Vigia — uptime monitor/' README.md && git commit -am "Update title A" && git push -u origin conflicto-a && gh pr create --fill
+git switch main
+git switch -c conflicto-b && sed -i '1s/.*/# Vigia (Bash uptime monitor)/' README.md && git commit -am "Update title B" && git push -u origin conflicto-b && gh pr create --fill
+gh pr merge conflicto-a --squash --delete-branch
+```
+El PR de `conflicto-b` dirá *This branch has conflicts*. Resuélvelo en local como en la clase 23:
+```bash
+git switch conflicto-b
 git pull origin main          # aparece el conflicto
 # edita el README, deja la versión buena y quita las marcas <<<<<<< ======= >>>>>>>
 git add README.md && git commit --no-edit && git push
+gh pr merge conflicto-b --squash --delete-branch
+git switch main && git pull
 ```
-El PR se actualiza solo y vuelve a poder fusionarse.
 
 **3. La etiqueta en el commit equivocado.**
 ```bash
@@ -197,6 +234,16 @@ git tag -d v0.1-mal
 git push origin --delete v0.1-mal
 ```
 Se puede borrar, pero si alguien ya la había descargado, en su clon sigue existiendo. Por eso, con una versión real ya publicada, no se mueve: se crea `v0.1.1`.
+
+## Entregable
+
+Antes de dar la clase por cerrada, comprueba que se cumple todo:
+- [ ] `github.com/<tu-usuario>/vigia` es público, con el README (incluida la nota *What broke and how I found it (v0.1)*) y la release `v0.1`.
+- [ ] Un push directo a `main` es rechazado.
+- [ ] En *Pull requests → Closed* hay al menos tres PR fusionados con descripción (*What / Why / How I tested*).
+- [ ] `git ls-remote --tags origin` muestra `v0` y `v0.1`.
+- [ ] Un clon limpio funciona siguiendo solo el README.
+- [ ] Vigía aparece fijado (*pinned*) en tu perfil.
 
 ## Cierre
 

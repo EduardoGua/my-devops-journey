@@ -36,7 +36,7 @@ Cuatro piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a 
 
 Si la haces en dos mañanas: el primer día, la preparación y las **piezas 1 y 2** (unos 40 min); el segundo, las **piezas 3 y 4**, el Rómpelo, el reto y el cierre.
 
-**Preparación: completa tu instalación.** Docker ya está en tu Ubuntu desde la fase 0, pero le faltan dos complementos que usarás en esta fase: Compose (varios contenedores a la vez, clase 62) y `buildx` (el constructor moderno de imágenes).
+**Preparación: completa tu instalación.** Docker ya está en tu Ubuntu desde la fase 1, pero le faltan dos complementos que usarás en esta fase: Compose (varios contenedores a la vez, clase 62) y `buildx` (el constructor moderno de imágenes).
 
 ```bash
 mkdir -p ~/my-devops-journey/labs/clase-56 && cd ~/my-devops-journey/labs/clase-56

@@ -197,7 +197,7 @@ Añade una marca de borrado encima de las versiones. Las versiones siguen ahí; 
 
 > ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, recupera el nombre del bucket: `cd ~/my-devops-journey/labs/clase-74 && B=$(aws s3 ls | awk '/lab-s3-/{print $3; exit}') && echo "$B"`.
 
-### Pieza 4 — El ciclo de vida y las clases de almacenamiento
+### Pieza 4a — Clases de almacenamiento y reglas de ciclo de vida
 
 Las reglas de **ciclo de vida** automatizan lo que harías a mano: **expirar** objetos (los temporales, al día), **borrar** versiones antiguas y **mover** objetos a clases más baratas cuando ya no se leen.
 
@@ -210,16 +210,6 @@ Las reglas de **ciclo de vida** automatizan lo que harías a mano: **expirar** o
 | **S3 Glacier Instant Retrieval** | archivo que se lee pocas veces, pero al instante | |
 | **S3 Glacier Flexible Retrieval** | archivo | recuperar tarda de minutos a horas |
 | **S3 Glacier Deep Archive** | archivo de años (normativas, cumplimiento) | la más barata (unos 0,001 USD/GB-mes); recuperar tarda hasta 12 h o más |
-
-Para el examen, conviene conocer también: **MFA Delete** (exige MFA para borrar versiones; solo lo activa el raíz), **Object Lock** (objetos que nadie puede borrar durante un plazo, *WORM*) y la **replicación** (copia automática a otro bucket, en la misma región o en otra). Y otros servicios de almacenamiento:
-
-| Servicio | Qué es |
-|----------|--------|
-| **EBS** | disco de bloque de una EC2 (clase 72) |
-| **EFS** | sistema de archivos NFS compartido entre muchas instancias Linux |
-| **FSx** | sistemas de archivos gestionados: Windows File Server, Lustre… |
-| **Storage Gateway** | conecta el almacenamiento de tu centro de datos con S3, con una caché local |
-| **AWS Backup** | copias de seguridad centralizadas de varios servicios |
 
 **Pruébalo.** Crea `ciclo.json`:
 
@@ -241,7 +231,7 @@ aws s3api put-bucket-lifecycle-configuration --bucket "$B" --lifecycle-configura
 aws s3api get-bucket-lifecycle-configuration --bucket "$B" --query 'Rules[].[ID,Status]' --output text
 ```
 
-👀 **Qué deberías ver:** las tres reglas con `Enabled`. **`borrar-temporales`**: lo que esté en `tmp/` se borra al día. **`informes-a-acceso-infrecuente`**: los informes pasan a Standard-IA a los 30 días. **`versiones-viejas`**: las versiones antiguas desaparecen a los 7 días de dejar de ser las actuales. S3 aplica las reglas una vez al día, en segundo plano: no verás el efecto hoy. Lo que importa es saber escribirlas, porque sin ellas el versionado acumula versiones (y coste) para siempre.
+👀 **Qué deberías ver:** las tres reglas con `Enabled`. **`borrar-temporales`**: lo que esté en `tmp/` se borra al día. **`informes-a-acceso-infrecuente`**: los informes pasan a Standard-IA a los 30 días. **`versiones-viejas`**: las versiones antiguas desaparecen a los 7 días de dejar de ser las actuales. S3 aplica las reglas una vez al día, en segundo plano: no verás el efecto hoy. Lo que importa es saber escribirlas, porque sin ellas el versionado acumula objetos y coste para siempre.
 
 ✋ **Sin mirar:** tienes que guardar 7 años unos registros que casi nadie leerá. ¿Qué clase usas?
 
@@ -252,6 +242,28 @@ S3 Glacier Deep Archive: la más barata, con recuperación de hasta 12 horas o m
 </details>
 
 **En resumen:** reglas por prefijo que expiran, mueven y limpian versiones; la clase depende de cuánto y con qué prisa se lee.
+
+### Pieza 4b — Protección extra y otros servicios de almacenamiento
+
+Para el examen, conviene conocer también: **MFA Delete** (exige MFA para borrar versiones; solo lo activa el raíz), **Object Lock** (objetos que nadie puede borrar durante un plazo, *WORM*) y la **replicación** (copia automática a otro bucket, en la misma región o en otra). Y otros servicios de almacenamiento:
+
+| Servicio | Qué es |
+|----------|--------|
+| **EBS** | disco de bloque de una EC2 (clase 72) |
+| **EFS** | sistema de archivos NFS compartido entre muchas instancias Linux |
+| **FSx** | sistemas de archivos gestionados: Windows File Server, Lustre… |
+| **Storage Gateway** | conecta el almacenamiento de tu centro de datos con S3, con una caché local |
+| **AWS Backup** | copias de seguridad centralizadas de varios servicios |
+
+**Pruébalo, en papel.** ¿Qué servicio o función elegirías para: 1) una carpeta compartida entre cuatro EC2 Linux; 2) impedir por ley que alguien borre un contrato en S3 durante 5 años; 3) un centro de datos propio que quiere usar S3 con caché local?
+
+<details>
+<summary>Comprueba</summary>
+
+1) **EFS** · 2) **S3 Object Lock** (*WORM*) · 3) **Storage Gateway**.
+</details>
+
+**En resumen:** Object Lock y MFA Delete protegen contra borrados; EFS comparte archivos en Linux, EBS es el disco de una EC2 y Storage Gateway une tu centro de datos con S3.
 
 ### Pieza 5 — Compartir sin hacer público: URLs prefirmadas
 

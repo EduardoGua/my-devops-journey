@@ -69,7 +69,7 @@ MI_IP=$(curl -s https://checkip.amazonaws.com)
 
 ### Pieza 1 — La instancia que recibe los despliegues: su rol y su firewall
 
-Es la receta de las clases 72, 73 y 78, con un rol propio para esta instancia: **SSM** para recibir órdenes y **ECR** para descargar imágenes. Su security group solo deja entrar el 80 desde tu IP.
+Son los mismos pasos de las clases 72, 73 y 78, con un rol propio para esta instancia: **SSM** para recibir órdenes y **ECR** para descargar imágenes. Su security group solo deja entrar el 80 desde tu IP.
 
 **Pruébalo:**
 

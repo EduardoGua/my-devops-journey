@@ -3,11 +3,13 @@
 # AWS exige: instancias, NAT Gateways, IP elásticas, endpoints, tablas de rutas,
 # subredes, Internet Gateway, security groups, NACLs y, por último, la VPC.
 # Uso: bash borrar-vpc.sh
-set -uo pipefail
+set -euo pipefail
 export AWS_PAGER=""
 
 # Algunas dependencias tardan unos segundos en soltarse: reintenta antes de rendirte
 reintentar() { for _ in 1 2 3 4 5 6; do "$@" 2>/dev/null && return 0; sleep 5; done; "$@"; }
+
+aws sts get-caller-identity >/dev/null 2>&1 || { echo "Error: no hay sesión activa de AWS (ejecuta 'aws login'). No se pudo comprobar ni borrar lab-vpc." >&2; exit 1; }
 
 VPC=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=lab-vpc --query 'Vpcs[0].VpcId' --output text)
 if [[ -z $VPC || $VPC == None ]]; then echo "No hay ninguna lab-vpc: nada que borrar."; exit 0; fi
@@ -35,7 +37,9 @@ for a in $(aws ec2 describe-addresses --filters Name=tag:Proyecto,Values=lab --q
 done
 
 EPS=$(aws ec2 describe-vpc-endpoints --query "VpcEndpoints[?VpcId=='$VPC'].VpcEndpointId" --output text)
-[[ -n $EPS ]] && aws ec2 delete-vpc-endpoints --vpc-endpoint-ids $EPS >/dev/null && echo "  endpoints borrados: $EPS"
+if [[ -n $EPS ]]; then
+  aws ec2 delete-vpc-endpoints --vpc-endpoint-ids $EPS >/dev/null && echo "  endpoints borrados: $EPS"
+fi
 
 # Las tablas de rutas propias se desasocian de sus subredes y se borran (la principal se va con la VPC)
 for r in $(aws ec2 describe-route-tables --filters "$F" \
@@ -61,7 +65,9 @@ done
 SGS=$(aws ec2 describe-security-groups --filters "$F" --query "SecurityGroups[?GroupName!='default'].GroupId" --output text)
 for g in $SGS; do
   REGLAS=$(aws ec2 describe-security-groups --group-ids "$g" --query 'SecurityGroups[0].IpPermissions' --output json)
-  [[ $REGLAS != "[]" ]] && aws ec2 revoke-security-group-ingress --group-id "$g" --ip-permissions "$REGLAS" >/dev/null
+  if [[ $REGLAS != "[]" ]]; then
+    aws ec2 revoke-security-group-ingress --group-id "$g" --ip-permissions "$REGLAS" >/dev/null
+  fi
 done
 for g in $SGS; do reintentar aws ec2 delete-security-group --group-id "$g" && echo "  security group borrado: $g"; done
 

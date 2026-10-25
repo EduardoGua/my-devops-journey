@@ -1,6 +1,6 @@
 # Clase 21 — Proyecto: Vigía v0
 
-**Dónde:** tu Ubuntu · **Tiempo:** 2 bloques largos (unas 4–6 h) · **Bloque:** D. Proyecto · **Proyecto de portafolio**
+**Dónde:** tu Ubuntu · **Tiempo:** 7 sesiones de unos 35 min (o 2 bloques largos, unas 4 h) · **Bloque:** D. Proyecto · **Proyecto de portafolio**
 
 > 💡 **La idea de hoy:** juntas todo el bloque C en una herramienta de verdad: un script que revisa tus webs, anota cada resultado y se ejecuta solo. La meta no es un script perfecto, sino uno **probado**: que aguante los casos difíciles y que sepas explicar en una entrevista.
 
@@ -45,7 +45,7 @@ Un script `vigia.sh` que lee una lista de URLs, prueba cada una con `curl` (cód
 
 | # | Requisito | Clases |
 |---|-----------|--------|
-| R1 | Repo propio en `~/vigia`, **fuera** del repo del curso, con Git desde el primer commit | receta de `COMO-ESTUDIAR` |
+| R1 | Repo propio en `~/vigia`, **fuera** del repo del curso, con Git desde el primer commit | comandos de «Para empezar» |
 | R2 | `vigia.sh` empieza con `set -euo pipefail` y `shellcheck` no da ningún aviso | 19 |
 | R3 | Lee las URLs de `urls.txt` (junto al script) o del archivo que reciba como argumento. Ignora líneas vacías y comentarios `#` | 16, 18 |
 | R4 | Por cada URL escribe **una** línea: `fecha url código tiempo estado`. Ejemplo: `2026-10-20T21:05:01-05:00 https://example.com 200 0.261431 UP` | 16, 17 |
@@ -55,14 +55,21 @@ Un script `vigia.sh` que lee una lista de URLs, prueba cada una con `curl` (cód
 | R8 | Sale con 0 si todas están `UP` y con 1 si alguna está `DOWN`. Con 2 si no puede leer la lista | 17 |
 | R9 | Cron lo ejecuta cada 5 minutos con rutas absolutas, y funciona igual desde cron que desde tu terminal | 20 |
 | R10 | `README.md` en **inglés**: qué hace, cómo se ejecuta, tu `crontab -l`, un extracto del log y la sección *What broke and how I found it* | — |
-| R11 | Commits pequeños y una etiqueta `v0` al terminar | receta |
+| R11 | Commits pequeños y una etiqueta `v0` al terminar | comandos de «Cierra la versión» |
 
-La fecha en formato ISO 8601 la da `date -Is`. El tiempo, tal cual lo escribe `curl` (segundos con decimales).
+La fecha en formato ISO 8601 (fecha y hora con la zona horaria, como `2026-10-20T21:05:01-05:00`) la da `date -Is`. El tiempo, tal cual lo escribe `curl` (segundos con decimales).
 
 ## Plan de trabajo
 
-**Bloque 1 (2–3 h):** R1 a R6. Repo, lista de URLs y un script que revisa cada URL y escribe su línea en el log.
-**Bloque 2 (2–3 h):** R7 a R11. Código de salida, robustez (Rómpelo), cron, README y etiqueta.
+Pensado para tus mañanas en **7 sesiones de unos 35 min**, cada una cerrada con su commit (si tienes un día libre, puedes juntar varias):
+
+- **S1:** R1 y `urls.txt` («Para empezar» y primer commit).
+- **S2:** la línea de **una** URL con `curl` y `date -Is` (R4, R6; pista 1) y commit.
+- **S3:** el bucle sobre `urls.txt` (R3) y que una URL caída no detenga el script (R5; pistas 2–3), y commit.
+- **S4:** variable `VIGIA_LOG` (R7), códigos de salida 0/1/2 (R8), `shellcheck` sin avisos (R2) y commit.
+- **S5:** el **Rómpelo** con la lista de casos difíciles y commit si ajustas algo.
+- **S6:** cron (R9; pista 4) y las tres comprobaciones (`journalctl -u cron`, `~/vigia.log` y `~/logs/vigia-cron.log`).
+- **S7:** `README.md` en inglés (R10), commit final y etiqueta `v0` (R11).
 
 Trabaja en pasos pequeños y haz commit cada vez que algo funcione. Si te atascas más de 30 minutos, abre **una** pista.
 
@@ -80,7 +87,7 @@ EOF
 git add urls.txt && git commit -m "Add initial list of URLs to monitor"
 ```
 
-Añade a la lista 2–3 sitios que te importen de verdad. Los mensajes de commit de Vigía van en inglés: es tu proyecto público.
+Añade a la lista 2–3 sitios que te importen de verdad. Los mensajes de commit y el README de Vigía van en inglés desde la v0 (fin de la fase 1): es tu proyecto público.
 
 Todavía no lo subes a GitHub. Eso es la v0.1 (clase 25), cuando ya sepas trabajar con ramas y pull requests.
 
@@ -176,6 +183,8 @@ time VIGIA_LOG=/tmp/prueba.log ./vigia.sh /tmp/urls-dificiles.txt ; echo "códig
 cat /tmp/prueba.log
 ```
 
+`time` delante de un comando mide cuánto tarda: mira la línea `real`.
+
 🔮 **Predice** antes de ejecutar: qué línea saldrá para cada URL, cuánto tardará en total y qué código devolverá.
 
 | URL | Qué simula | Debe salir |
@@ -190,6 +199,7 @@ Y además:
 1. Sin argumento y sin `urls.txt`, o con un archivo que no existe: un mensaje claro y código 2.
 2. Desde **otra carpeta** (`cd /tmp && ~/vigia/vigia.sh`): debe encontrar su `urls.txt`.
 3. Suspende el portátil 15 minutos con Vigía en cron y mira el log después: verás un **hueco**. Cron no ejecuta lo que se perdió. Es una limitación real de la v0: anótala en el README.
+4. Simula el entorno de cron: `env -i HOME="$HOME" PATH=/usr/bin:/bin /bin/sh -c '/home/educo/vigia/vigia.sh'; echo $?`.
 
 ## Programarlo
 

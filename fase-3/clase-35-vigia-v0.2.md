@@ -1,6 +1,6 @@
 # Clase 35 — Proyecto: Vigía v0.2
 
-**Dónde:** tu Ubuntu + GitHub · **Tiempo:** 1 bloque largo (unas 3 h) · **Bloque:** B. Proyectos y examen · **Proyecto de portafolio**
+**Dónde:** tu Ubuntu + GitHub · **Tiempo:** unas 3 h (en 4 sesiones de 35–45 min) · **Bloque:** B. Proyectos y examen · **Proyecto de portafolio**
 
 > 💡 **La idea de hoy:** Vigía ya sabe si una web responde; hoy aprende a medir **dos capas más**: cuánto tarda la **resolución DNS** y cuántos días le quedan al **certificado TLS**. Un certificado caducado tumba una web igual que un servidor apagado, y con este aviso te enteras dos semanas antes.
 
@@ -55,6 +55,12 @@ dig +noall +stats example.com | awk '/Query time/ {print $4}'
 
 🔮 **Predice:** ejecuta la segunda línea tres veces seguidas. ¿Dará siempre lo mismo? ¿Por qué?
 
+<details>
+<summary>Compruébalo</summary>
+
+La primera tarda unos ms; las siguientes, 0: salen de la caché de `systemd-resolved` (pista 3).
+</details>
+
 ### Certificado con `openssl`
 
 ```bash
@@ -90,6 +96,12 @@ Cada valor es el tiempo **acumulado** desde el principio. Restando uno del anter
 
 ## Plan de trabajo
 
+En sesiones cortas de 35–45 min (cada `⏸️` marca dónde parar):
+- **Sesión 1:** las herramientas de arriba + paso 1. ⏸️
+- **Sesión 2:** paso 2 (funciones sueltas). ⏸️
+- **Sesión 3:** pasos 3 y 4 (integrar y Rómpelo). ⏸️
+- **Sesión 4:** paso 5 (README, PR, etiqueta y cierre).
+
 1. Rama nueva: `git switch main && git pull && git switch -c measure-dns-and-tls`.
 2. Escribe `host_de`, `medir_dns` y `dias_certificado` en un archivo de pruebas aparte (`/tmp/funciones.sh`, con unas llamadas de ejemplo al final) y pruébalas **sueltas**. Cuando den lo esperado, cópialas a `vigia.sh`.
 3. Intégralas en `revisar` y en el formato del log.
@@ -113,7 +125,7 @@ Con `set -o pipefail`, si `openssl s_client` o `openssl x509` fallan (no hay con
 Tu Ubuntu pregunta a `systemd-resolved` (`127.0.0.53`, clase 31), que guarda las respuestas en caché durante el TTL. La primera consulta viaja por la red; las siguientes salen de la caché local. Decide qué quieres medir y escríbelo en el README: lo que vive un usuario de tu equipo (con caché) o lo que tarda un resolvedor público (`dig @1.1.1.1 …`), que también tiene su propia caché.
 </details>
 
-<details><summary>Pista 4 — comparar con decimales</summary>
+<details><summary>Pista 4 — `-` no es un número</summary>
 
 Los días del certificado son enteros, así que `(( dias < 14 ))` basta. Pero `-` no es un número: compruébalo antes (`[[ $dias != "-" ]] && (( dias < 14 ))`).
 </details>
@@ -154,7 +166,7 @@ Si `badssl.com` no responde el día que lo pruebes, busca otro sitio de pruebas 
   - *What broke and how I found it* de esta versión, con los cuatro campos de abajo.
 - PR fusionado, etiqueta `v0.2` y release.
 
-### Modelo para adaptar (lo escribió Claude)
+### Modelo para adaptar
 
 Cópialo en tu README y rellena los huecos con tu desglose de `curl -w` de uno de tus sitios. No hace falta escribir más.
 
@@ -251,7 +263,7 @@ Probado en Ubuntu 26.04: `expired.badssl.com` da `000 … DOWN 6 -4198` (su cert
 1. Depende de tu sitio. Lo habitual: en uno lejano o con TLS, el saludo TLS y el primer byte pesan más; en uno con caché DNS, el DNS es casi 0. Si el primer byte tarda mucho, el servidor es lento generando la respuesta; si lo que tarda es la conexión, la distancia o la red.
 2. Porque `systemd-resolved` guarda la respuesta en caché hasta que vence su TTL. No es un error: es lo que vive un usuario. Pero si quieres detectar un DNS lento o roto, tienes que preguntar sin caché o a otro resolvedor, y explicar en el README qué mides.
 3. El navegador bloquea la página con un aviso de seguridad a pantalla completa ("La conexión no es privada"), y las APIs y `curl` rechazan la conexión: para el usuario, el sitio está caído. Con 14 días de margen hay tiempo de renovarlo sin prisas, o de descubrir que la renovación automática está rota.
-4. Desde fuera hacia dentro, o de abajo arriba: ¿qué dice el cliente (código, refused o timeout)? → ¿resuelve el DNS? → ¿hay ruta y llega (`ping`, `traceroute`)? → ¿está abierto el puerto (`nc -zv`, firewall o security group)? → ¿escucha el proceso, y en qué IP (`ss -tlnp`)? → ¿qué dicen los logs del servicio y del proxy?
+4. Los 10 pasos de la clase 34, del cliente al backend: 1. Qué devuelve el cliente. 2. nginx vivo y escuchando. 3. `error.log` de nginx. 4. ¿Resuelve el nombre? 5. ¿Llega al puerto? 6. ¿Responde la app? 7. ¿Servicio vivo? 8. ¿Escucha dónde debe? 9. ¿Responde en local? 10. ¿Firewall?
 </details>
 
 ## Inglés

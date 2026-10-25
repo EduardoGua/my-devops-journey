@@ -77,7 +77,7 @@ En Colombia, muchas ofertas filtran por "técnico, tecnólogo o profesional en s
 
 | Opción | Coste | Qué te da | En contra |
 |--------|-------|-----------|-----------|
-| **Tecnólogo del SENA en Gestión de Redes de Datos** (virtual) | gratis | un título tecnológico oficial. La **etapa productiva** (unos 6 meses, al final) suele hacerse con un **contrato de aprendizaje**: experiencia formal en una empresa, con un pago mensual. Las empresas con 15 o más trabajadores están obligadas a tener aprendices, así que hay plazas | unas 4 h diarias en la etapa lectiva: compite con la ruta y con el trabajo |
+| **Tecnólogo del SENA en Gestión de Redes de Datos** (virtual) | gratis | un título tecnológico oficial. La **etapa productiva** (unos 6 meses, al final) suele hacerse con un **contrato de aprendizaje** (Ley 2466 de 2025, art. 21: contrato laboral especial a término fijo con el 75 % del SMMLV en la etapa lectiva y el 100 % en la práctica, con todas las prestaciones). Las empresas con 15 o más trabajadores están obligadas a tener aprendices, así que hay plazas | unas 4 h diarias en la etapa lectiva: compite con la ruta y con el trabajo |
 | **Homologar después a Ingeniería de Sistemas** en la UNAD (universidad pública a distancia) | la UNAD abre convocatorias de **gratuidad de la matrícula** para estratos 1 a 3 sin título universitario previo; cubre parte de los créditos de cada periodo | el título profesional en menos tiempo: la UNAD tiene un acuerdo de homologación para ese tecnólogo desde 2020 | varios años de estudio; tiene sentido cuando ya trabajes en TI |
 | **Solo la ruta y las certificaciones** | lo de `PLAN.md` | lo más rápido para el primer empleo | algunas empresas grandes te descartarán por filtro |
 
@@ -137,7 +137,7 @@ Los tiempos dependen de tus horas reales (con unas 3 clases por semana, más des
 
 | Etapa | Puesto | Qué tiene que pasar para subir | Tiempo orientativo |
 |-------|--------|--------------------------------|--------------------|
-| 0 | estudiante (fases 1–3 y NOC) | CCST, P1 a P3, Vigía v0.2 y postular | hasta el hito NOC |
+| 0 | estudiante (fases 1–3 y NOC) | CCST, P1 y P2, Vigía v0.2 y empezar a postular (el P3 se termina mientras postulas) | hasta el hito NOC |
 | 1 | NOC N1, soporte N1 o aprendiz | incidentes reales, una automatización medida, fases 4 a 7 y el CLF | 6–18 meses |
 | 2 | N2, sysadmin, analista de infraestructura o soporte cloud | ser responsable de algo (un servicio, un proceso), Terraform, la SAA y Vigía v5 o más | 1–2 años |
 | 3 | junior cloud, DevOps o SRE | operar producción con supervisión, guardias, revisar el código de otros y que revisen el tuyo | desde 1–3 años en TI |
@@ -183,7 +183,7 @@ Una vez por trimestre, unos 20 minutos, pídeme `revisa la carrera` y repasamos:
 | Salario mínimo de 2026 | 1.750.905 COP | 2026-10-20 | Moving to Colombia (blog) |
 | Soporte técnico bilingüe en Bogotá | unos 2,0–3,3 millones COP brutos al mes; inglés B2 | 2026-10-20 | oferta de Foundever en Computrabajo; Moving to Colombia |
 | DevOps junior en Colombia | unos 3–5 millones COP al mes, con muestras pequeñas; unos 2.800 USD de media en remoto | 2026-10-20 | Glassdoor, Indeed y Talently |
-| Contrato de aprendizaje del SENA | lo paga la empresa; es incompatible con el apoyo de sostenimiento del SENA | 2026-10-20 | SENA y blogs; las cifras exactas, por confirmar |
+| Contrato de aprendizaje del SENA | Ley 2466 de 2025, art. 21 (desde el 25-06-2025): contrato laboral especial a término fijo; en formación tradicional, 75 % del SMMLV en la etapa lectiva y 100 % en la práctica, con todas las prestaciones; incompatible con el apoyo de sostenimiento del SENA | 2026-10-22 | normograma.sena.edu.co (Ley 2466 de 2025) |
 | Homologación del tecnólogo en Gestión de Redes de Datos a Ingeniería de Sistemas | Acuerdo 065 de 2020 de la UNAD | 2026-10-20 | sgeneral.unad.edu.co |
 | Gratuidad de la matrícula en la UNAD | estratos 1 a 3, sin título universitario previo, por convocatorias | 2026-10-20 | RTVC Noticias, Caracol |
 | AWS re/Start con Colsubsidio | 12 semanas, 420 h, voucher del CLF; para afiliados | 2026-10-20 | awsrestart-colsubsidio.com |

@@ -17,6 +17,11 @@
 > - **ARP**: el protocolo que pregunta «¿quién tiene esta IP?» para averiguar su MAC.
 > - **handshake TCP**: los tres paquetes (SYN, SYN-ACK, ACK) con los que empieza una conexión.
 > - **tcpdump**: la herramienta que captura los paquetes y te los enseña.
+- **router**: la máquina que pasa paquetes de una red a otra.
+- **ICMP**: los mensajes de control de IP; `ping` usa ICMP.
+- **encapsulación**: envolver los datos de una capa dentro de la cabecera de la capa de abajo.
+- **OSI**: el modelo teórico de 7 capas; de él salen «capa 4» y «capa 7».
+- **`nc` (netcat)**: prueba si un puerto acepta conexiones (`-z` solo prueba, `-v` cuenta qué pasó).
 
 ## Objetivo
 
@@ -26,13 +31,13 @@
 
 ## Por qué importa
 
-"No conecta" es el problema más frecuente de la nube, y tiene muchas causas: ruta, firewall, security group, proceso caído, DNS, certificado. Quien piensa en capas lo resuelve en minutos: *"¿llega el paquete? ¿responde el puerto? ¿responde la app?"*. Además, AWS habla en capas: un **NLB** es de capa 4, un **ALB** es de capa 7, y un **security group** filtra en las capas 3 y 4.
+"No conecta" es el problema más frecuente de la nube, y tiene muchas causas: ruta, firewall, proceso caído, DNS, certificado. Quien piensa en capas lo resuelve en minutos: *"¿llega el paquete? ¿responde el puerto? ¿responde la app?"*. En AWS oirás "balanceador de capa 7" (ALB) y "de capa 4" (NLB); un *security group* es el firewall de cada instancia (fase 6).
 
 ## Cómo va esta clase
 
-Cuatro piezas. En cada una lees **una** idea (en la 3 y la 4, dos que van juntas) y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. Hoy trabajas con **dos terminales**: una en tu PC y otra dentro de la VM (`ssh servidor-01`). Mira el prompt antes de cada comando.
+Cinco piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. Hoy trabajas con **dos terminales**: una en tu PC y otra dentro de la VM (`ssh servidor-01`). Mira el prompt antes de cada comando.
 
-Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 40 min); el segundo, la **pieza 4**, el Rómpelo, el reto y el cierre.
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 35 min); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
 
 En **tu PC**, guarda la IP de la VM (repítelo cada vez que abras una terminal nueva):
 
@@ -45,13 +50,15 @@ IP=$(multipass info servidor-01 | awk '/IPv4/ {print $2}'); echo $IP
 ### Pieza 1 — Cada capa resuelve un problema
 
 ```
- Capa (TCP/IP)        ¿Qué problema resuelve?                Dirección        Ejemplos
+ Capa                 ¿Qué problema resuelve?                Dirección        Ejemplos
  ─────────────────────────────────────────────────────────────────────────────────────────────
- 4 Aplicación         ¿Qué quiere decir el programa?          URL, nombres     HTTP, DNS, SSH, TLS
- 3 Transporte         ¿A qué PROGRAMA va, y llega entero?     PUERTO           TCP, UDP
- 2 Red (Internet)     ¿A qué MÁQUINA va, cruzando redes?      IP               IP, ICMP (ping)
- 1 Enlace             ¿Cómo llega al vecino del mismo cable?  MAC              Ethernet, Wi-Fi, ARP
+ 7 Aplicación         ¿Qué quiere decir el programa?          URL, nombres     HTTP, DNS, SSH, TLS
+ 4 Transporte         ¿A qué PROGRAMA va, y llega entero?     PUERTO           TCP, UDP
+ 3 Red (Internet)     ¿A qué MÁQUINA va, cruzando redes?      IP               IP, ICMP (ping)
+ 2 Enlace             ¿Cómo llega al vecino del mismo cable?  MAC              Ethernet, Wi-Fi, ARP
 ```
+
+*(Los números 2, 3, 4 y 7 vienen del modelo OSI, pieza 5; son los que se usan en todo el sector).*
 
 Para entenderlo, compáralo con el correo postal: la carta (HTTP) va en un sobre con el nombre del departamento (puerto), dentro de un paquete con la dirección del edificio (IP). El cartero del barrio lo lleva de casa en casa usando la dirección del portal (MAC). En cada oficina de correos (router) se cambia de cartero (de MAC), pero la dirección del edificio (IP) no cambia en todo el viaje.
 
@@ -106,15 +113,9 @@ ip neigh | grep $IP
 
 **En resumen:** dentro de una red, ARP traduce IP → MAC, y la tabla `ip neigh` guarda las respuestas.
 
-### Pieza 3 — Encapsulación, y el viaje de un `curl`
+### Pieza 3 — El viaje de un `curl` y el *handshake* TCP
 
-Al enviar, cada capa **envuelve** lo de la de arriba con su cabecera. Al recibir, cada capa quita la suya:
-
-```
-[ Ethernet: MAC origen→destino [ IP: 10.0.0.1→10.0.0.5 [ TCP: puerto 51234→80 [ HTTP: GET / ] ] ] ]
-```
-
-Y este es el viaje completo de `curl http://10.x.x.x/`:
+Este es el viaje completo de `curl http://10.x.x.x/`:
 
 ```
  1. ¿Está en mi red? Sí → necesito su MAC → ARP: "¿Quién tiene 10.x.x.x?" → "Yo, mi MAC es 52:54:..."
@@ -132,7 +133,7 @@ Y este es el viaje completo de `curl http://10.x.x.x/`:
 **Pruébalo.** En la VM, captura todo lo que pase por el puerto 80:
 
 ```bash
-sudo tcpdump -i any -nn port 80
+sudo tcpdump -i any -nn port 80   # -i any: todas las interfaces · -nn: números, sin traducir a nombres
 ```
 
 🔮 **Predice:** ¿cuántos paquetes verás para un solo `curl`? ¿Qué flags crees que tendrán los tres primeros?
@@ -154,15 +155,23 @@ En la salida de `tcpdump` busca los *flags* entre corchetes:
 | `[F.]` | FIN: cierre |
 | `[R]` o `[R.]` | RST: rechazo o corte brusco |
 
-👀 **Qué deberías ver:** unos diez paquetes: `[S]`, `[S.]` y `[.]` (el handshake); dos `[P.]` (la petición y la respuesta) con sus `[.]`; y los `[F.]` del cierre.
+👀 **Qué deberías ver:** unos diez paquetes: `[S]`, `[S.]` y `[.]` (el handshake); dos `[P.]` (la petición y la respuesta) con sus `[.]`; y los `[F.]` del cierre. Para con `Ctrl+C`.
 
-Para con `Ctrl+C`. Ahora mira el **contenido**:
+**En resumen:** una petición HTTP empieza con ARP y el handshake TCP (`[S]`, `[S.]`, `[.]`), envía datos (`[P.]`) y cierra con `[F.]`.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+
+### Pieza 4 — Lo que viaja dentro: HTTP en texto claro (`-A`)
+
+Con `-A`, `tcpdump` imprime como texto el contenido de cada paquete.
+
+**Pruébalo.** En la VM:
 
 ```bash
 sudo tcpdump -i any -nn -A port 80
 ```
 
-Repite el `curl` desde tu PC.
+Repite el `curl -s http://$IP/ > /dev/null` desde tu PC y para con `Ctrl+C`.
 
 👀 **Qué deberías ver:** `GET / HTTP/1.1`, las cabeceras (`Host:`, `User-Agent: curl/…`) y el HTML de la respuesta, en texto legible. **Cualquiera en el camino puede leer HTTP**: por eso existe HTTPS (clase 32).
 
@@ -174,11 +183,9 @@ Repite el `curl` desde tu PC.
 Porque HTTP viaja en texto claro, sin cifrar: `-A` solo enseña los bytes del paquete como texto.
 </details>
 
-**En resumen:** cada capa envuelve a la de arriba; una petición HTTP es ARP, el handshake (`[S]`, `[S.]`, `[.]`), los datos (`[P.]`) y el cierre (`[F.]`).
+**En resumen:** HTTP viaja sin cifrar; `-A` enseña el contenido del paquete en texto.
 
-> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
-
-### Pieza 4 — Diagnóstico de abajo arriba, con los nombres de OSI
+### Pieza 5 — Diagnóstico de abajo arriba, con los nombres de OSI
 
 En entrevistas y en AWS te hablarán de "capa 7" o "capa 4". Eso viene del modelo **OSI**, más teórico:
 
@@ -192,7 +199,7 @@ En entrevistas y en AWS te hablarán de "capa 7" o "capa 4". Eso viene del model
 | 2 | Enlace de datos | Enlace |
 | 1 | Física | Enlace |
 
-"**Capa 7**" = entiende HTTP (rutas, cabeceras) → **ALB**, WAF. "**Capa 4**" = solo ve IPs y puertos → **NLB**, **security groups**. "**Capa 3**" = IPs y rutas → **tablas de rutas**, NACLs.
+En AWS oirás "balanceador de capa 7" (ALB) y "de capa 4" (NLB); un *security group* es el firewall de cada instancia (fase 6).
 
 Con esos nombres, el método para "no conecta":
 
@@ -325,12 +332,12 @@ SSH usa el puerto 22. `grep -c` cuenta las líneas en las que aparece `hola`. ¿
 <details>
 <summary>Pista</summary>
 
-Mira la tabla del método en la pieza 4.
+Mira la tabla del método en la pieza 5.
 </details>
 
-**4.** Escribe la encapsulación de tu `curl` con las IPs, los puertos y las MACs **reales** de hoy.
+**4.** Al enviar, cada capa **envuelve** (*encapsula*) lo de la de arriba con su cabecera; al recibir, cada capa quita la suya. Escribe la encapsulación de tu `curl` con las IPs, los puertos y las MACs **reales** de hoy.
 
-> 🧩 **Ejemplo resuelto:** la de la pieza 3, con datos inventados:
+> 🧩 **Ejemplo resuelto:** con datos inventados:
 > ```
 > [ Ethernet: MAC aa:aa:aa:aa:aa:01→52:54:00:12:34:56 [ IP: 10.0.0.1→10.0.0.5 [ TCP: puerto 51234→80 [ HTTP: GET / ] ] ] ]
 > ```
@@ -366,7 +373,7 @@ Después, escríbeme `examíname clase-26`.
 
 **2.** El cliente envía **SYN** (quiere conectar), el servidor responde **SYN-ACK** (acepta) y el cliente confirma con **ACK**. En `tcpdump`: `[S]`, `[S.]`, `[.]`. Después, paquetes `[P.]` con la petición y la respuesta, y el cierre con `[F.]`.
 
-**3.** **Refused**: el paquete llegó y el kernel respondió con RST porque nadie escucha en ese puerto. Hay que mirar el **servicio**: ¿está activo? ¿en qué puerto y en qué IP escucha? (`ss -tlnp`, clase 29). **Timeout**: no llegó respuesta. Algo **descarta** el paquete o no hay camino: en AWS se revisa el **security group** (regla de entrada para ese puerto y origen), la **NACL**, la **tabla de rutas** (¿hay Internet Gateway?), si la instancia tiene IP pública y si está encendida.
+**3.** **Refused**: el paquete llegó y el kernel respondió con RST porque nadie escucha en ese puerto. Hay que mirar el **servicio**: ¿está activo? ¿en qué puerto y en qué IP escucha? (`ss -tlnp`, clase 12; a fondo en la 29). **Timeout**: no llegó respuesta. Algo **descarta** el paquete o no hay camino: en AWS se revisa el **security group** (regla de entrada para ese puerto y origen), la **tabla de rutas** (¿hay salida a internet?), si la instancia tiene IP pública y si está encendida.
 
 **4.** Porque si la configuración nueva tiene un error, las conexiones **nuevas** fallan, pero la sesión que ya está abierta sigue funcionando y permite deshacer el cambio. Sin ella, puedes perder el acceso al servidor.
 

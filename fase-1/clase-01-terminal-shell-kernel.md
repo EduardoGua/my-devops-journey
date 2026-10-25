@@ -63,8 +63,6 @@ Abre una terminal: `Ctrl+Alt+T`. Hoy no hace falta ninguna carpeta.
 - El **shell** (en Ubuntu, `bash`) es **un programa más**. Su trabajo: leer tu línea, entenderla y pedirle al kernel que ejecute lo que pediste.
 - El **kernel** es el único que toca el hardware. Ningún programa lee el disco directamente: se lo pide al kernel.
 
-> **Analogía:** un restaurante. Tú (cliente) hablas con el camarero (shell), que lleva la comanda a la cocina (kernel), que es la única que toca los fogones (hardware). La terminal es la mesa donde te sientas.
-
 **Pruébalo.** El shell es un programa, con su ruta y su número de proceso:
 
 ```bash
@@ -194,7 +192,7 @@ which ls
 ls -l /usr/bin/ls
 ```
 
-👀 **Qué deberías ver:** `/usr/bin/ls` o `/bin/ls`: en Ubuntu, `/bin` es un enlace a `/usr/bin`, así que son el mismo archivo. Y en `ls -l`, una flecha `->` hacia `../lib/cargo/bin/coreutils/ls`. Ubuntu 26.04 usa **uutils**, las herramientas básicas reescritas en Rust. Se comportan casi igual que las clásicas (GNU coreutils). Si algún día un servidor responde distinto a tu PC, esa puede ser la razón: Amazon Linux, por ejemplo, usa las GNU.
+👀 **Qué deberías ver:** `/usr/bin/ls` o `/bin/ls`: en Ubuntu, `/bin` es un enlace a `/usr/bin`, así que son el mismo archivo. Y en `ls -l`, una flecha `->` hacia `../lib/cargo/bin/coreutils/ls`. Ubuntu 26.04 usa **uutils** (las herramientas básicas reescritas en Rust) para la mayoría de comandos como `ls` o `cat`, aunque algunos como `cp`, `mv`, `rm` o `df` siguen siendo los clásicos de **GNU**. Se comportan casi igual; si algún día un servidor responde distinto a tu PC, esa puede ser la razón (Amazon Linux, por ejemplo, usa siempre GNU).
 
 ✋ **Sin mirar:** `lsss` falla. ¿En qué paso de la cadena?
 

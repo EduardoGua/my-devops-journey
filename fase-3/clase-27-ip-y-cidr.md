@@ -9,15 +9,18 @@
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - La capa de red usa **IPs** para llevar el paquete de máquina a máquina (clase 26, pieza 1).
 > - `ip -br addr` enseña tus IPs con su `/prefijo` (clase 26).
-> - Un bucle `for` y `python3 -c "…"` para comprobar resultados (clases 18 y 06).
+> - Un bucle `for` y `python3 -c "…"` para comprobar resultados (clases 18 y 14).
 
 > 🔤 **Palabras nuevas de hoy:**
+> - **host** (en redes): cualquier máquina con IP en una red. Ojo: no es el "host" de la clase 08 (tu PC frente a la VM).
 > - **octeto**: cada uno de los 4 grupos de 8 bits de una IPv4 (de 0 a 255).
 > - **prefijo** (`/24`): cuántos bits, desde la izquierda, son de red.
 > - **máscara** (`255.255.255.0`): el prefijo escrito como una IP.
+> - **subred**: un trozo de una red, con su propio CIDR.
 > - **dirección de red** y **broadcast**: la primera y la última de una subred; no se asignan a máquinas.
 > - **CIDR**: la forma `IP/prefijo` de escribir una red, como `10.0.0.0/16`.
 > - **rango privado**: direcciones que no se enrutan por internet; las de casas, empresas y VPCs.
+> - **VPC**: tu red privada en AWS (la verás en la fase 6).
 
 ## Objetivo
 
@@ -34,7 +37,7 @@ Al crear una VPC en AWS, lo primero que te pide es un bloque CIDR (`10.0.0.0/16`
 
 Seis piezas. En cada una lees **una** idea, la calculas **en papel** y después la compruebas en la terminal; no pases a la siguiente sin haber hecho la anterior. Las herramientas (`python3`, `ipcalc`) son para **comprobar**, no para pensar.
 
-Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 40 min); el segundo, las **piezas 4 a 6**, los ejercicios del Rómpelo, el reto y el cierre.
+Si la haces en sesiones de 35–45 min: el primer día, las **piezas 1 a 3b**; el segundo, las **piezas 4 a 6** y los ejercicios 1 a 6 del Rómpelo; el tercero, los ejercicios 7 a 12, el reto y el cierre (o lleva los ejercicios 7–12 al calentamiento de la clase 28).
 
 ## Las piezas
 
@@ -114,7 +117,7 @@ ip -br addr
 
 **En resumen:** el prefijo dice cuántos bits son de red; el resto, `32 − prefijo`, son para las máquinas.
 
-### Pieza 3 — Las tres cifras que se calculan siempre, y la tabla que conviene memorizar
+### Pieza 3a — Red, broadcast y hosts útiles
 
 Con `n` bits de host (`n = 32 - prefijo`):
 - **Direcciones totales** = 2ⁿ
@@ -122,7 +125,15 @@ Con `n` bits de host (`n = 32 - prefijo`):
 - **Broadcast**: todos los bits de host a 1. Es la última y **no se asigna**.
 - **Hosts útiles** = 2ⁿ − 2 (en una red normal)
 
-> **En AWS** se reservan **5** direcciones por subred: la de red, `.1` (router de la VPC), `.2` (DNS), `.3` (reservada) y el broadcast. Una `/24` en AWS tiene **251** IPs útiles, no 254.
+**Pruébalo.** En papel, con la red de Multipass (la `10.x.x.x/24` de la pieza 2): ¿cuál es su dirección de red, su broadcast y cuántos hosts útiles tiene? ¿Tu PC y la VM están en la misma red? Después compruébalo (cambia la IP por la de tu VM):
+
+```bash
+python3 -c "import ipaddress as i; n=i.ip_interface('10.x.x.y/24').network; print(n, n.broadcast_address, n.num_addresses-2)"
+```
+
+👀 **Qué deberías ver:** algo como `10.x.x.0/24 10.x.x.255 254`: la red termina en `.0`, el broadcast en `.255` y hay 254 hosts. Tu PC (`.1`) y la VM están en esa misma red.
+
+### Pieza 3b — La tabla de prefijos y las 5 IPs de AWS
 
 | Prefijo | Máscara | Direcciones | Uso típico |
 |---------|---------|-------------|------------|
@@ -139,20 +150,14 @@ Con `n` bits de host (`n = 32 - prefijo`):
 
 Truco: cada bit menos de prefijo **duplica** el tamaño. `/24` = 256, `/23` = 512, `/25` = 128.
 
-**Pruébalo.** En papel, con la red de Multipass (la `10.x.x.x/24` de la pieza 2): ¿cuál es su dirección de red, su broadcast y cuántos hosts útiles tiene? ¿Tu PC y la VM están en la misma red? Después compruébalo (cambia la IP por la de tu VM):
+> **En AWS** se reservan **5** direcciones por subred: la de red, `.1` (router de la VPC), `.2` (DNS), `.3` (reservada) y el broadcast. Una `/24` en AWS tiene **251** IPs útiles, no 254.
 
-```bash
-python3 -c "import ipaddress as i; n=i.ip_interface('10.x.x.y/24').network; print(n, n.broadcast_address, n.num_addresses-2)"
-```
-
-👀 **Qué deberías ver:** algo como `10.x.x.0/24 10.x.x.255 254`: la red termina en `.0`, el broadcast en `.255` y hay 254 hosts. Tu PC (`.1`) y la VM están en esa misma red.
-
-✋ **Sin mirar:** ¿cuántas direcciones tiene una `/23`?
+✋ **Sin mirar:** ¿cuántas direcciones tiene una `/23`, y cuántas son útiles en AWS?
 
 <details>
 <summary>Comprueba</summary>
 
-512: un bit menos que una `/24`, el doble de direcciones.
+512 direcciones (un bit menos que una `/24`, el doble de tamaño), y 512 − 5 = 507 útiles en AWS.
 </details>
 
 **En resumen:** 2ⁿ direcciones, la primera es la red, la última el broadcast; en AWS, resta 5 en lugar de 2.
@@ -222,7 +227,7 @@ python3 -c "import ipaddress as i; print(i.ip_address('10.0.200.7') in i.ip_netw
 
 ### Pieza 6 — Rangos privados y direcciones especiales
 
-Los rangos privados (RFC 1918) no se enrutan por internet. Se usan dentro de casas, empresas y **VPCs**:
+Los rangos privados no se enrutan por internet. Se usan dentro de casas, empresas y **VPCs**:
 
 | Rango | CIDR |
 |-------|------|
@@ -230,18 +235,21 @@ Los rangos privados (RFC 1918) no se enrutan por internet. Se usan dentro de cas
 | `172.16.0.0` – `172.31.255.255` | `172.16.0.0/12` ⚠️ no todo `172.x` |
 | `192.168.0.0` – `192.168.255.255` | `192.168.0.0/16` |
 
-Y unas direcciones especiales que verás a menudo:
+Y tres direcciones especiales que verás a menudo:
 
 | Dirección | Significado |
 |-----------|-------------|
 | `127.0.0.1` (`127.0.0.0/8`) | *loopback*: la propia máquina |
 | `0.0.0.0` | en un servidor: "escucho en todas las interfaces". En una regla o ruta (`0.0.0.0/0`): "cualquier destino u origen" |
-| `169.254.0.0/16` | *link-local*. En AWS, `169.254.169.254` es el **servicio de metadatos** de cada instancia |
-| `100.64.0.0/10` | CGNAT: la IP "privada" que te da a veces tu operador |
+| `169.254.169.254` | los **metadatos** de cada instancia en AWS (fase 6) |
 
-Dentro de una EC2 (fase 6), `curl http://169.254.169.254/latest/meta-data/` (con un token, por IMDSv2) le dice a la instancia su IP, su región y **sus credenciales temporales**. Por eso un fallo que permita a un atacante hacer peticiones desde tu servidor (SSRF) contra esa IP es tan grave. Recuerda este número.
+<details>
+<summary>Para más adelante: metadatos de AWS, CGNAT e IPv6</summary>
 
-IPv6, en una línea: 128 bits en hexadecimal (`2001:db8::1`). Hay tantas direcciones que no hace falta NAT. AWS lo soporta. En este curso nos centramos en IPv4, pero un `::/0` en un security group significa "cualquier IPv6": revísalo igual que `0.0.0.0/0`.
+- En una instancia de AWS (fase 6), `169.254.169.254` entrega a la máquina su región y sus credenciales temporales.
+- `100.64.0.0/10` es el rango privado que usan muchos operadores de internet para compartir IPs públicas entre clientes (CGNAT).
+- IPv6 usa 128 bits en hexadecimal (`2001:db8::1`). En un security group, `::/0` significa «cualquier IPv6», igual que `0.0.0.0/0` en IPv4.
+</details>
 
 **Pruébalo.** 🔮 **Predice** cuáles son privadas:
 
@@ -314,9 +322,9 @@ Escribe los dos rangos completos, uno debajo del otro. AWS no te deja crear dos 
 
 **2.** ¿Cuál es el CIDR más pequeño que contiene `10.0.0.0` y `10.0.3.255` a la vez?
 
-> 🧩 **Ejemplo resuelto:** de `10.0.0.0` a `10.0.1.255` hay 2 × 256 = 512 direcciones = 2⁹ → 9 bits de host → `/32 − 9` = **`/23`**: `10.0.0.0/23`.
+> 🧩 **Ejemplo resuelto:** de `10.0.0.0` a `10.0.1.255` hay 2 × 256 = 512 direcciones = 2⁹ → 9 bits de host → 32 − 9 = 23 → **`/23`**: `10.0.0.0/23`.
 
-**Ahora tú, con huecos:** de `10.0.0.0` a `10.0.3.255` hay ____ × 256 = ____ direcciones = 2^__ → `/32 − __` = `/__`
+**Ahora tú, con huecos:** de `10.0.0.0` a `10.0.3.255` hay ____ × 256 = ____ direcciones = 2^__ → `32 − __ = __` → `/__`
 
 <details>
 <summary>Pista</summary>
@@ -342,7 +350,7 @@ En `notas/fase-3/clase-27.md`:
 
 1. Explica qué significa el `/24` de `10.0.1.0/24`. ¿Qué parte es fija y qué parte varía? *(2 líneas. Empieza así: «Los primeros 24 bits, `10.0.1`, son la red y son fijos… Los 8 últimos…»)*
 2. Describe paso a paso el método del tamaño de bloque con `10.0.0.200/28`. *(3 líneas, una por paso. Empieza así: «`/28` corta en el 4.º octeto, con máscara 240, así que el bloque es… Las redes empiezan en… 200 cae en…»)*
-3. ¿Por qué `0.0.0.0/0` en un security group es peligroso en el puerto 22, pero normal en el 443 de una web pública? *(2 líneas. Empieza así: «`0.0.0.0/0` es todo internet. En el 22 expone… En el 443, que te visite todo internet…»)*
+3. ¿Por qué `0.0.0.0/0` en un security group es peligroso en el puerto 22, pero normal en el 443 (HTTPS, la web cifrada; clase 29) de una web pública? *(2 líneas. Empieza así: «`0.0.0.0/0` es todo internet. En el 22 expone… En el 443, que te visite todo internet…»)*
 4. **Repaso (clase 26, sin mirar):** ¿qué significa `Connection refused` frente a un `timeout`? *(2 líneas. Empieza así: «Refused: llegué a la máquina, pero… Timeout:…»)*
 
 Después, escríbeme `examíname clase-27`.
@@ -371,7 +379,7 @@ Después, escríbeme `examíname clase-27`.
 **Cierre:**
 1. Los primeros 24 bits (`10.0.1`) son la **red** y son fijos para toda la subred. Los 8 últimos son el **host** y varían de `.0` a `.255`: 256 direcciones, 254 asignables (251 en AWS).
 2. `/28` → corte en el 4.º octeto, máscara 240 → bloque 256 − 240 = 16 → redes en 0, 16, 32… 192, 208… → 200 cae en 192–207 → red `.192`, broadcast `.207`, hosts `.193`–`.206`.
-3. `0.0.0.0/0` = todo internet. En el 22 expone el acceso **administrativo** a bots y fuerza bruta: debe limitarse a tu IP, a una VPN o a un bastión (o usar SSM y no abrir el 22). En el 443 de una web pública, que te visite todo internet **es el objetivo**.
+3. `0.0.0.0/0` = todo internet. En el 22 expone el acceso **administrativo** a bots y fuerza bruta: debe limitarse a tu IP (`/32`). En el 443 de una web pública, que te visite todo internet **es el objetivo**.
 4. **Refused**: llegaste a la máquina, pero nadie escucha en ese puerto (respondió con RST). **Timeout**: no hubo respuesta: firewall o security group que descarta, sin ruta o máquina apagada.
 
 **Reto:** 1) `10.0.0.0`–`10.0.0.255` y `10.0.0.128`–`10.0.0.255`: **sí** comparten (se **solapan**): la `/24` ya incluye toda la `/25`. 2) 4 × 256 = 1.024 = 2¹⁰ → **`/22`**: `10.0.0.0/22`. 3) `/23` = 512 − 5 = 507 ≥ 500 ✅; `/24` = 251 no alcanza.

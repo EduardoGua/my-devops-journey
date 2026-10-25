@@ -65,7 +65,7 @@ main() {
     fi
     echo "## Autocorrección"
     echo
-    echo "Lo más dinámico: escríbele a Claude «examíname $nombre». O califica tú con la autocorrección de la clase:"
+    echo "Lo más dinámico: escríbeme «examíname $nombre». O califica tú con la autocorrección de la clase:"
     echo "✅ la idea clave con tus palabras · 🟡 a medias o sin el porqué · ❌ incorrecta"
     echo
     if [[ -n $preguntas ]]; then                  # la clase 38 (examen) no tiene cierre

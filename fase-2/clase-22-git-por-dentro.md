@@ -16,6 +16,8 @@
 > - **hash**: el identificador de un commit (`a1b2c3d…`), calculado a partir de su contenido.
 > - **rama**: un puntero con nombre a un commit; avanza sola con cada commit nuevo.
 > - **HEAD**: el puntero a «dónde estás ahora», normalmente una rama.
+> - **tree** (árbol): la lista de archivos de un commit, con el hash de cada uno.
+> - **blob**: el contenido de un archivo guardado dentro de `.git`.
 
 ## Objetivo
 
@@ -32,9 +34,9 @@ Llevas usando la receta `add` / `commit` / `push` desde la clase 01. Hoy aprende
 
 ## Cómo va esta clase
 
-Seis piezas. En cada una lees **una** idea (en la 3 y la 4, dos que van juntas) y la pruebas enseguida en un repositorio de prácticas; no pases a la siguiente sin haber ejecutado la anterior.
+Seis piezas (la 3 partida en dos pasos cortos). En cada una lees **una** idea y la pruebas enseguida en un repositorio de prácticas; no pases a la siguiente sin haber ejecutado la anterior.
 
-Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 40 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3b** (unos 40 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre (unos 50 min).
 
 Trabaja **fuera** de tu repo del curso, para no meter un repositorio dentro de otro:
 
@@ -118,12 +120,12 @@ git commit -m "Cambia el puerto a 8080 para no requerir root"
 
 **En resumen:** `git diff` = lo que aún no añadiste; `git diff --staged` = lo que entrará en el commit.
 
-### Pieza 3 — Qué es un commit y qué es una rama, mirando dentro de `.git`
+### Pieza 3a — Rama y HEAD
 
 Un commit es una **instantánea completa** del proyecto (no un "diff"), más:
 - autor, fecha y mensaje,
 - un puntero al commit **padre** (o dos, en un merge),
-- un identificador: el **hash SHA** de todo su contenido.
+- un identificador: el **hash** de todo su contenido.
 
 Si cambias **un solo bit** del contenido, del mensaje o de un padre, el hash cambia. Por eso la historia de Git es **inmutable**: "modificar" un commit en realidad **crea uno nuevo**.
 
@@ -150,19 +152,20 @@ git log --oneline -1
 
 👀 **Qué deberías ver:** `HEAD` contiene `ref: refs/heads/main`, y `refs/heads/main` contiene un hash largo que **empieza igual** que el del último commit de `git log`: **eso es una rama**.
 
-Ahora, el commit por dentro:
+**En resumen:** una rama es un archivo con el hash de un commit, y `HEAD` apunta a la rama en la que estás.
+
+### Pieza 3b — Un commit por dentro
+
+Dentro de `.git`, cada commit guarda un **tree** (la lista de archivos de ese momento, con el hash de cada uno) y cada archivo es un **blob** (su contenido):
 
 ```bash
 git cat-file -p HEAD                 # el commit: tree, parent, autor, mensaje
 git cat-file -p HEAD^{tree}          # el árbol: archivos y sus blobs
-git cat-file -p $(git rev-parse HEAD:app.conf)   # el contenido de app.conf en ese commit
 ```
 
-👀 **Qué deberías ver:** el commit con sus líneas `tree`, `parent`, `author` y el mensaje; el árbol con `README.md` y `app.conf`, cada uno con su hash (`blob`); y `server_port=8080`.
+👀 **Qué deberías ver:** el commit con sus líneas `tree`, `parent`, `author` y el mensaje; y el árbol con `README.md` y `app.conf`, cada uno con su hash (`blob`).
 
-`HEAD^` o `HEAD~1` es el padre del commit actual.
-
-**En resumen:** un commit es una foto completa con un hash que depende de todo su contenido; una rama es un archivo con el hash de un commit, y `HEAD` apunta a la rama en la que estás.
+**En resumen:** un commit es una foto completa (su `tree` y sus `blob`) con un hash que depende de todo su contenido.
 
 > ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana vuelve con `cd ~/git-lab/practica`.
 
@@ -171,13 +174,15 @@ git cat-file -p $(git rev-parse HEAD:app.conf)   # el contenido de app.conf en e
 La historia sirve para responder preguntas: qué cambió, cuándo y por qué. Por eso cada commit necesita un buen mensaje:
 
 ```
-Añade health check al servicio backend          ← resumen: imperativo, ≤ 50 caracteres
+Corrige permisos de /srv/miapp para appsvc       ← resumen: imperativo, ≤ 50 caracteres
                                                  
-El ALB necesita un endpoint que compruebe       ← cuerpo (opcional): el PORQUÉ, no el qué
-también la conexión a la base de datos.
+appsvc no podía escribir su log y el servicio    ← cuerpo (opcional): el PORQUÉ, no el qué
+no arrancaba.
 ```
 
 ❌ `cambios`, `fix`, `asdf`, `actualizo cosas`. ✅ `Corrige permisos de /srv/miapp para appsvc`.
+
+`HEAD^` o `HEAD~1` es el padre del commit actual.
 
 **Pruébalo:**
 
@@ -210,7 +215,7 @@ git add .gitignore && git commit -m "Ignora secretos y logs"
 
 👀 **Qué deberías ver:** primero, `.env` y `app.log` como archivos sin seguimiento; después del `.gitignore`, solo `.gitignore`.
 
-Mira el `.gitignore` de tu repo del curso: `cat ~/my-devops-journey/.gitignore`. Ahora sabes por qué está cada línea.
+Mira el `.gitignore` de tu repo del curso: `cat ~/my-devops-journey/.gitignore`. Un `!` delante vuelve a incluir lo que otra línea ignoraba (y `**` vale por cualquier carpeta intermedia). Ahora sabes por qué está cada línea.
 
 **En resumen:** lo que está en `.gitignore` no entra en los commits; los secretos van ahí **antes** del primer `git add`.
 
@@ -251,6 +256,7 @@ cat README.md
 | `git init -b main` | crear un repositorio con la rama `main` |
 | `git status` | en qué zona está cada cambio |
 | `git add archivo` · `git commit -m "…"` | al staging · del staging al repositorio |
+| `git commit -am "…"` | `add` de los archivos ya seguidos que cambiaron + `commit -m` (los nuevos no entran) |
 | `git diff` · `git diff --staged` | lo que aún no añadiste · lo que entrará en el commit |
 | `git log --oneline --graph --all` · `git show <hash>` | la historia · un commit concreto |
 | `git log -- archivo` · `git blame archivo` | los commits de un archivo · quién cambió cada línea |
@@ -274,7 +280,8 @@ cat README.md
 ```bash
 echo "AWS_SECRET_ACCESS_KEY=abc123-esto-es-un-ejemplo" > credenciales.txt
 git add credenciales.txt && git commit -m "Añade configuración"
-git rm credenciales.txt && git commit -m "Quita credenciales"
+git rm credenciales.txt      # borra el archivo y deja el borrado en el staging
+git commit -m "Quita credenciales"
 ls credenciales.txt 2>/dev/null || echo "ya no está en la carpeta"
 git log --oneline
 git show HEAD~1:credenciales.txt
@@ -301,6 +308,9 @@ git log --oneline
 Los commits "perdidos" siguen en `.git` durante semanas. Casi nada se pierde de verdad en Git **si llegó a hacerse commit**. Lo que nunca llegó a un commit (como el cambio que descartaste con `git restore` en la pieza 6), sí se pierde.
 
 **4. `revert`: deshacer en público:**
+
+`git commit -am "…"` = `git add` de los archivos **ya seguidos** que cambiaron + `git commit -m`. Los archivos nuevos no entran.
+
 ```bash
 echo "server_port=9999" > app.conf && git commit -am "Puerto 9999"
 git revert --no-edit HEAD
@@ -310,13 +320,18 @@ cat app.conf
 
 Hay un commit nuevo que **invierte** el anterior. La historia queda intacta y es honesta: así se deshace un cambio que ya está en `main` compartido.
 
-**5. HEAD separado (*detached HEAD*):**
+**5. HEAD separado (*detached HEAD*, opcional):**
+
+`git switch --detach <commit>` te lleva a un commit sin rama (*HEAD separado*); `git switch main` te devuelve.
+
 ```bash
-git switch --detach HEAD~2
+git switch --detach HEAD~1
 git status
 cat app.conf
 git switch main
 ```
+
+👀 **Qué deberías ver:** `HEAD desacoplada en …` y `server_port=9999`: el archivo como estaba en ese commit.
 
 Estabas mirando el pasado sin rama. Si haces commits ahí y te vas, quedan huérfanos (aunque `reflog` los conserva un tiempo).
 
@@ -379,9 +394,9 @@ Relee la pieza 3: ¿de qué depende el hash de un commit? ¿El mensaje forma par
 > ```bash
 > cd ~/my-devops-journey
 > git log --oneline | head -20
-> git shortlog -sn
+> git shortlog -sn            # cuántos commits ha hecho cada autor
 > ```
-> `actualizo cosas` no dice nada; `Clase 05: cierre, reto y labs de buscar y filtrar` dice qué cambió, y en menos de 50 caracteres si quitas los labs.
+> `actualizo cosas` no dice nada; `Clase 05: cierre, reto y labs de buscar y filtrar` dice qué cambió, y en 49 caracteres.
 
 **Ahora tú, con huecos:** escribe en tu nota el mensaje de tu próximo commit: `Clase 22: ____`
 
@@ -397,7 +412,7 @@ En `notas/fase-2/clase-22.md`:
 
 1. Explica las tres zonas de Git y qué comando mueve cambios entre ellas. *(3 líneas, una por zona. Empieza así: «El directorio de trabajo son… y `git add` lo pasa al… El staging es… y `git commit`… El repositorio…»)*
 2. ¿Qué es una rama, físicamente? ¿Y `HEAD`? *(2 líneas. Empieza así: «Una rama es un archivo en `.git/refs/heads/` que contiene… `HEAD` es…»)*
-3. ¿Por qué `git rm` de un secreto no lo elimina? ¿Qué hay que hacer? *(2–3 líneas. Empieza así: «Porque `git rm` crea un commit nuevo, pero los anteriores… Hay que rotar el secreto…»)*
+3. ¿Por qué `git rm` de un secreto no lo elimina? ¿Qué hay que hacer? *(2–3 líneas. Empieza así: «Porque el commit que hice después de `git rm` es nuevo, pero los anteriores… Hay que rotar el secreto…»)*
 4. **Repaso (clase 21, sin mirar):** en Vigía, ¿por qué una URL caída no detiene el script, aunque uses `set -e`? *(2 líneas. Empieza así: «Porque el fallo de `curl` se trata dentro de un `if` o con `|| true`, y ahí `set -e`…»)*
 
 Después, escríbeme `examíname clase-22`.
@@ -411,7 +426,7 @@ Después, escríbeme `examíname clase-22`.
 
 **2.** Una rama es un archivo en `.git/refs/heads/` que contiene el hash de un commit: un **puntero** que avanza con cada commit nuevo. `HEAD` es el puntero a "dónde estás": normalmente apunta a una rama (`ref: refs/heads/main`); en *detached HEAD*, apunta directamente a un commit.
 
-**3.** Porque `git rm` crea un commit **nuevo** sin el archivo, pero los commits anteriores (inmutables) lo siguen conteniendo, y ya pueden estar en clones, forks o en caché de GitHub. Hay que **rotar** el secreto (invalidarlo y emitir uno nuevo), revisar si se usó, y después limpiar la historia (`git filter-repo` o BFG) y forzar el push, avisando al equipo.
+**3.** Porque el commit que haces después de `git rm` es un commit **nuevo** sin el archivo (`git rm` solo deja el borrado en el staging), pero los commits anteriores (inmutables) lo siguen conteniendo, y ya pueden estar en clones, forks o en caché de GitHub. Hay que **rotar** el secreto (invalidarlo y emitir uno nuevo), revisar si se usó, y después limpiar la historia (`git filter-repo` o BFG) y forzar el push, avisando al equipo.
 
 **4.** Porque el fallo se trata de forma explícita: el resultado de `curl` se captura con `|| true` (o dentro de un `if`), y la función que revisa cada URL se llama a la izquierda de `||` o en la condición de un `if`. En esas posiciones `set -e` no actúa, así que la caída queda registrada como `DOWN` y el script sigue con las demás URLs.
 

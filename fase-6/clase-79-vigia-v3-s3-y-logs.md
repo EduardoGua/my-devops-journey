@@ -283,7 +283,7 @@ README en inglés, secciones nuevas:
 ## Limitations
 ````
 
-### Modelo para adaptar (lo escribió Claude)
+### Modelo para adaptar
 
 Cópialo en tu README y rellena los huecos (`____`). En *Destroy*, cada comentario se convierte en los comandos reales que usaste.
 

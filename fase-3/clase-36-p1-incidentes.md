@@ -1,6 +1,6 @@
 # Clase 36 — P1: Runbook de incidentes
 
-**Dónde:** VM nueva `incidentes` + tu PC · **Tiempo:** 2 bloques largos (unas 4–6 h) · **Bloque:** B. Proyectos y examen · **Laboratorio integrador**
+**Dónde:** VM nueva `incidentes` + tu PC · **Tiempo:** unas 4–6 h (en sesiones de 35–45 min) · **Bloque:** B. Proyectos y examen · **Laboratorio integrador**
 
 > 💡 **La idea de hoy:** siete averías reales en una tienda online, sin saber qué se rompió. Las resuelves con tu checklist de la clase 34, **capa a capa**, y apuntas cada una en una ficha corta: síntoma, qué comprobaste, causa, arreglo y prevención. Esas fichas son tu **runbook** y tus historias para las entrevistas.
 
@@ -37,7 +37,7 @@ Un **runbook** es la guía que usa la persona de guardia cuando salta una alerta
                      │     └── /api/   → proxy a http://api.shop.internal:8080
                      ├── /etc/hosts: api.shop.internal → 127.0.0.1
                      └── shopapp.service (python, usuario shopapp) en 127.0.0.1:8080
-                           ├── necesita la variable DB_HOST
+                           ├── necesita la variable DB_HOST (p. ej. db.shop.internal)
                            └── escribe cada petición en /var/lib/shop/requests.log
 ```
 
@@ -70,6 +70,8 @@ Añade la llave y una entrada `incidentes` en tu `~/.ssh/config` (como en la cla
 
 ## Cómo trabajar cada incidente
 
+En sesiones de 35–45 min: **sesión 1**, preparación + incidente 1 (⏸️); después, **un incidente por sesión** (⏸️); y en **la última**, el README, el PR y el cierre.
+
 ```bash
 ssh incidentes sudo ./incidentes.sh lista            # los 7 avisos, como los reportaría un usuario
 ssh incidentes sudo ./incidentes.sh romper 1          # provoca el incidente 1 sobre una tienda sana
@@ -81,7 +83,7 @@ Después:
 3. Formula una hipótesis, compruébala y **arréglalo tú**, a mano. El script no lo arregla por ti.
 4. Verifica: `ssh incidentes sudo ./incidentes.sh comprobar` → `✅`. **Y además desde tu PC con `curl`**: algunos fallos solo se ven desde fuera.
 5. Rellena la ficha del incidente (plantilla y modelo, más abajo).
-6. Siguiente incidente: `sudo ./incidentes.sh romper N` ya parte de una tienda sana.
+6. Siguiente incidente: `ssh incidentes sudo ./incidentes.sh romper N` ya parte de una tienda sana.
 
 Si te quedas atascado **más de 30 minutos** en uno, usa las pistas graduales del final. Una sola pista cada vez.
 
@@ -123,7 +125,7 @@ managed by systemd, behind ufw), diagnosed blind and documented as an on-call ru
 
 ### Una ficha por incidente: `incident-01.md` … `incident-07.md`
 
-Una línea por campo, con datos: el comando y lo que enseñó, no un texto. Primero el modelo (lo escribió Claude, con una avería de la clase 34):
+Una línea por campo, con datos: el comando y lo que enseñó, no un texto. Primero el modelo (con una avería de la clase 34):
 
 ```markdown
 # Incident 00 — Backend down behind nginx (example)
@@ -202,10 +204,10 @@ En `notas/fase-3/clase-36.md`:
 
 1. ¿Qué incidente te costó más y por qué? ¿Qué harías distinto la próxima vez? *(2 líneas. Empieza así: «El que más me costó fue el…, porque… La próxima vez empezaría por…»)*
 2. ¿En cuántos incidentes la causa estaba en una capa distinta de donde se veía el síntoma? Pon un ejemplo. *(2 líneas. Empieza así: «En… de los 7. Por ejemplo, en el… el síntoma era…, pero la causa estaba en…»)*
-3. Prepara **un** incidente para contarlo en una entrevista con el formato **STAR** (Situación, Tarea, Acción, Resultado). *(Cuatro líneas en inglés, una por letra, con datos de tu ficha; después lo practicas en voz alta. Mira el modelo de abajo.)*
+3. Prepara **un** incidente para contarlo en una entrevista con el formato **STAR** (Situación, Tarea, Acción, Resultado). *(No se califica: lee el modelo de abajo en voz alta cambiando los datos por los de tu incidente. Si te apetece, escríbelo.)*
 4. **Repaso (clase 24, sin mirar):** ¿por qué no se hace `git push --force` a una rama compartida? *(2 líneas. Empieza así: «Porque reescribe la rama remota con mi versión y borra…»)*
 
-Modelo de la pregunta 3, con el incidente de ejemplo (lo escribió Claude):
+Modelo de la pregunta 3, con el incidente de ejemplo:
 
 > **S:** Our small shop on a Linux server returned `502` for every API call. · **T:** I was on call and had to bring the API back. · **A:** I followed my checklist from the client to the backend: nginx's `error.log` said *connection refused*, `nc` to port 8080 was refused, and `systemctl status` showed the backend stopped. · **R:** I started it and the API answered `200` in 6 minutes; then I added `Restart=on-failure` so it restarts by itself.
 
@@ -220,13 +222,13 @@ Después, escríbeme `examíname clase-36`.
 |---|------------|----------------|---------|
 | 1 | `index.html` con dueño root y permisos `600`: los workers (`www-data`) no pueden leerlo | `403` + `Permission denied` en `error.log` | `chmod 644 /var/www/shop/index.html` |
 | 2 | La unit pone `PORT=8081`, pero nginx envía al 8080 | `502` + `Connection refused` en `error.log`; `ss -tlnp` → `:8081` | corregir `Environment=PORT=8080`, `daemon-reload`, `restart` |
-| 3 | Falta `DB_HOST` en la unit: la app muere al arrancar (`KeyError: 'DB_HOST'`) y systemd la reintenta en bucle (`activating (auto-restart)`), y puede acabar en `failed` | `502`; `journalctl -u shopapp` con la traza | restaurar `Environment=DB_HOST=db.shop.internal` (mejor con un drop-in), `daemon-reload`, `reset-failed`, `restart` |
-| 4 | Disco lleno por archivos ocultos en `/var/lib/shop/.cache/` | `500` en `/api/`; log: `No space left on device`; `df -h` al 100 %; `du -sh /var/lib/shop/.[!.]*` | borrar `/var/lib/shop/.cache` |
+| 3 | Falta `DB_HOST` en la unit: la app muere al arrancar (`KeyError: 'DB_HOST'`) y systemd la reintenta en bucle (`activating (auto-restart)`), y puede acabar en `failed` | `502`; `journalctl -u shopapp` con la traza | restaurar `Environment=DB_HOST=db.shop.internal` (cualquier valor sirve; el original era `db.shop.internal`; mejor con un drop-in), `daemon-reload`, `reset-failed`, `restart` |
+| 4 | Disco lleno por archivos ocultos en `/var/lib/shop/.cache/` | `500` en `/api/`; log: `No space left on device`; `df -h` al 100 %; `sudo du -xh /var/lib/shop --max-depth=1` | borrar `/var/lib/shop/.cache` |
 | 5 | Falta `api.shop.internal` en `/etc/hosts`: nginx no arranca (`host not found in upstream`) | tienda entera caída (refused); `nginx -t` | volver a añadir `127.0.0.1 api.shop.internal`, `nginx -t`, `start nginx` |
 | 6 | ufw con `DENY` en el 80 | **timeout** desde fuera, OK desde dentro; `ufw status` | `ufw delete deny 80/tcp && ufw allow 80/tcp` |
 | 7 | Un `tail -f` mantiene abierto un log de varios GB ya borrado | `df` lleno, `du` no lo encuentra; `lsof +L1` | matar ese proceso (`kill <PID>`) |
 
-**Prevenciones que valen nota:** gestionar la configuración como código y revisarla en PRs (2, 3 y 5); validar antes de aplicar (`nginx -t`, `systemd-analyze verify`); alarmas de disco al 80 % y rotación de logs (4 y 7); health checks **externos**, no solo locales (6); DNS interno real en lugar de `/etc/hosts` (5); permisos aplicados por una herramienta, no a mano (1).
+**Prevenciones que valen nota:** gestionar la configuración como código y revisarla en PRs (2, 3 y 5); validar antes de aplicar (`nginx -t`, `systemd-analyze verify` —revisa una unit sin aplicarla, como `nginx -t`—); alarmas de disco al 80 % y rotación de logs (4 y 7); health checks **externos**, no solo locales (6); DNS interno real en lugar de `/etc/hosts` (5); permisos aplicados por una herramienta, no a mano (1).
 
 **4.** Porque reescribe la rama remota con tu versión y **borra** los commits que otros subieron y tú no tenías. Se pierde su trabajo y se rompe la historia de quien ya la descargó.
 </details>

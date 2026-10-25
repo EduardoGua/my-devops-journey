@@ -59,7 +59,7 @@ REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 [[ $(gh repo view --json visibility -q .visibility) == PUBLIC ]] && ok "$REPO es público" || mal "$REPO no es público"
 CHECKS=$(gh api "repos/$REPO/rules/branches/main" --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context] | join(" ")' 2>/dev/null)
 CON_PR=$(gh api "repos/$REPO/rules/branches/main" --jq 'any(.[]; .type == "pull_request")' 2>/dev/null)
-if [[ -z $CHECKS ]]; then  # quizá con la protección clásica de ramas en lugar de reglas
+if [[ -z $CHECKS && ${CON_PR:-} != true ]]; then  # quizá con la protección clásica de ramas en lugar de reglas
   CHECKS=$(gh api "repos/$REPO/branches/main/protection" --jq '[(.required_status_checks.checks // [])[].context] | join(" ")' 2>/dev/null)
   CON_PR=$(gh api "repos/$REPO/branches/main/protection" --jq '.required_pull_request_reviews != null' 2>/dev/null)
 fi
@@ -78,11 +78,11 @@ done
 gh api "repos/$REPO/environments/production" >/dev/null 2>&1 && ok "existe el entorno production" || mal "no existe el entorno production"
 git fetch -q origin main 2>/dev/null
 HEAD=$(git rev-parse origin/main)
-CORRIDAS=$(gh run list --branch main --event push --limit 30 --json headSha,conclusion \
-  -q "[.[] | select(.headSha == \"$HEAD\") | .conclusion] | join(\" \")")
+CORRIDAS=$(gh run list --branch main --event push --limit 30 --json headSha,status,conclusion \
+  -q "[.[] | select(.headSha == \"$HEAD\") | if .status == \"completed\" then (.conclusion // \"unknown\") else .status end] | join(\" \")")
 if [[ -z $CORRIDAS ]]; then
   mal "no hay ejecuciones del pipeline para el último commit de main ($HEAD)"
-elif [[ $CORRIDAS =~ ^(success ?)+$ ]]; then
+elif [[ $CORRIDAS =~ ^success(\ success)*$ ]]; then
   ok "el pipeline del último commit de main terminó en verde"
 else
   mal "el pipeline del último commit de main no está en verde: $CORRIDAS"
@@ -124,9 +124,13 @@ for st in [s for s in doc["Statement"] if s.get("Effect") == "Allow"]:
         problemas.append("no exige aud = sts.amazonaws.com")
     por_id = cond.get("repository_id", ("", []))[1] == [repo_id]
     subs = cond.get("sub", ("", []))[1]
-    por_sub = bool(subs) and all(s.startswith((f"repo:{repo}:", f"repo:{dueno}@{owner_id}/{nombre}@{repo_id}:")) for s in subs)
+    prefijos = (f"repo:{repo}:", f"repo:{dueno}@{owner_id}/{nombre}@{repo_id}:")
+    por_sub = bool(subs) and all(
+        s.startswith(prefijos) and not s.endswith(":*")
+        for s in subs
+    )
     if not (por_id or por_sub):
-        problemas.append(f"no limita el rol a {repo} (por repository_id o por un sub exacto)")
+        problemas.append(f"no limita el rol a {repo} y su rama/entorno (sin comodín ':*' abierto a cualquier rama)")
 print("; ".join(problemas) or "OK")
 PY
 )

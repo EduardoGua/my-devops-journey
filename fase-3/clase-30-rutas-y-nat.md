@@ -17,6 +17,7 @@
 > - **prefijo más largo**: la regla que elige la ruta más específica cuando coinciden varias.
 > - **salto**: cada router por el que pasa el paquete.
 > - **NAT**: cambiar la IP de origen (o de destino) de un paquete al pasar por un router.
+- **masquerade**: el NAT de salida que usa Linux.
 > - **Internet Gateway / NAT Gateway**: en AWS, la salida a internet en los dos sentidos / solo hacia fuera.
 
 ## Objetivo
@@ -34,7 +35,7 @@ En AWS, lo que hace **pública** una subred no es su nombre: es una ruta `0.0.0.
 
 Cuatro piezas. En cada una lees **una** idea (en la 1, dos que van juntas) y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. Necesitas una terminal en tu PC y otra en la VM (`ssh servidor-01`).
 
-Si la haces en dos mañanas: el primer día, las **piezas 1 y 2** (unos 30 min); el segundo, las **piezas 3 y 4**, el Rómpelo, el reto y el cierre.
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 45 min); el segundo, la **pieza 4**, el Rómpelo, el reto y el cierre.
 
 En **tu PC**:
 
@@ -53,7 +54,7 @@ Cada máquina tiene una tabla que dice, para cada destino, **por dónde enviar**
 
 ```
 default via 192.168.1.1 dev wlo1          ← todo lo demás: al router de casa, por el wifi
-172.17.0.0/16 dev docker0                 ← la red de Docker: directamente
+172.17.0.0/16 dev docker0                 ← la red de Docker (si tienes Docker instalado): directamente
 192.168.1.0/24 dev wlo1                   ← tu red de casa: directamente, sin router
 10.x.x.0/24 dev mpqemubr0                 ← la red de Multipass (cuando está activa)
 ```
@@ -115,8 +116,6 @@ traceroute -n -m 8 8.8.8.8        # instalado en la clase 10
 
 **En resumen:** cada router decide solo el siguiente salto; `traceroute -n` los enseña uno por uno.
 
-> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
-
 ### Pieza 3 — NAT: traducir direcciones
 
 Las IPs privadas (`10.x`, `192.168.x`) **no existen en internet**. Para salir, un router **reemplaza la IP de origen** por la suya pública y recuerda la conversión para devolver las respuestas:
@@ -127,8 +126,7 @@ Las IPs privadas (`10.x`, `192.168.x`) **no existen en internet**. Para salir, u
  ◄── la respuesta deshace el camino, traducción a traducción ──────────────────────────────────────────────┘
 ```
 
-- **SNAT / masquerade**: muchas máquinas privadas salen con una sola IP pública. Las conexiones solo se pueden **iniciar desde dentro**: desde internet no se puede llegar a la VM.
-- **DNAT / port forwarding**: "lo que llegue al puerto 8080 de mi IP pública, mándalo a 10.x.x.5:80". Así se publican servicios internos.
+- **NAT de salida (*masquerade*)**: muchas máquinas privadas salen con una sola IP pública. Las conexiones solo se pueden **iniciar desde dentro**: desde internet no se puede llegar a la VM. (Lo contrario, abrir hacia dentro, lo verás en la fase 6).
 
 **Pruébalo, primero tu IP pública vista desde fuera:**
 
@@ -152,7 +150,7 @@ En la VM: `ping -c 3 8.8.8.8`.
 
 👀 **Qué deberías ver:** en `mpqemubr0`, el origen es la IP de la VM (`10.x.x.5 > 8.8.8.8`); en `wlo1`, el origen es **la IP de tu PC** (`192.168.1.7 > 8.8.8.8`). Acabas de ver el NAT reescribiendo paquetes.
 
-La regla está en el firewall de tu PC:
+➕ **Opcional:** si quieres ver la regla en el firewall de tu PC:
 
 ```bash
 sudo nft list ruleset 2>/dev/null | grep -i -B2 -A2 masquerade | head -20
@@ -166,10 +164,12 @@ sudo iptables -t nat -S 2>/dev/null | grep -i masquerade      # si lo anterior n
 <details>
 <summary>Comprueba</summary>
 
-No: el NAT solo traduce conexiones **iniciadas desde dentro**. Para entrar haría falta un DNAT (*port forwarding*) explícito.
+No: el NAT de salida solo traduce conexiones **iniciadas desde dentro**.
 </details>
 
 **En resumen:** al salir, el NAT cambia tu IP privada por la del router; las respuestas vuelven, pero nadie de fuera puede iniciar una conexión.
+
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
 
 ### Pieza 4 — Lo mismo en AWS: route tables, Internet Gateway y NAT Gateway
 
@@ -264,27 +264,29 @@ ping -c 2 8.8.8.8
 **2. Una ruta más específica gana.** En la VM:
 ```bash
 sudo ip route add blackhole 1.1.1.1/32
+ip route
 ip route get 1.1.1.1
 ping -c 2 -W 2 1.1.1.1
 ping -c 2 -W 2 1.0.0.1
 sudo ip route del blackhole 1.1.1.1/32
 ```
-La `/32` gana a `default` (`/0`) solo para esa IP. Una ruta demasiado amplia o mal puesta en una tabla de AWS puede desviar tráfico de esta forma.
+
+👀 **Qué deberías ver:** `ip route` enseña `blackhole 1.1.1.1`; `ip route get 1.1.1.1` responde `RTNETLINK answers: Invalid argument` y `ping`, `connect: Invalid argument`: el kernel descarta el paquete antes de enviarlo. `1.0.0.1` sigue por `default` y responde. La `/32` gana a `default` (`/0`) solo para esa IP.
 
 ## Reto
 
 Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo reto **con huecos** y, si te atascas 5 minutos, la **pista**.
 
-**1.** Con `ip route get`, explica por qué un paquete de tu PC a `172.17.0.5` iría por `docker0` y uno a `172.18.0.5` por el wifi.
+**1.** Con `ip route get`, explica por qué un paquete de tu PC a `$IP` (tu VM) va por `mpqemubr0` y uno a `10.250.0.5` sale por el wifi (o, si tienes Docker instalado, `172.17.0.5` por `docker0` frente a `172.18.0.5`).
 
 > 🧩 **Ejemplo resuelto:** `ip route get 192.168.1.50` → `dev wlo1`, sin `via`: cae en la ruta `192.168.1.0/24`, que es más específica que `default`.
 
-**Ahora tú, con huecos:** `ip route get 172.17.0.5` → cae en la ruta `____`, así que sale por `____`. `ip route get 172.18.0.5` → no cae en ninguna ruta específica, así que usa `____` y sale por `____`.
+**Ahora tú, con huecos:** `ip route get $IP` → cae en la ruta `____`, así que sale por `____`. `ip route get 10.250.0.5` → no cae en ninguna ruta específica, así que usa `____` y sale por `____`.
 
 <details>
 <summary>Pista</summary>
 
-Mira tu `ip route`: ¿qué rango cubre la ruta de `docker0`? ¿Entra en él `172.18.x.x`?
+Mira tu `ip route`: ¿qué rango `/24` cubre la ruta de `mpqemubr0`? ¿Entra en él `10.250.0.5`?
 </details>
 
 **2.** Una instancia EC2 está en una subred cuya tabla tiene solo `10.0.0.0/16 → local`. Le asignas una IP pública. ¿Puedes entrar por SSH desde tu casa?
@@ -355,7 +357,7 @@ Después, escríbeme `examíname clase-30`.
 
 **4.** `127.0.0.1`: solo aceptan conexiones de la propia máquina. `0.0.0.0`: por cualquier interfaz, incluidas las de red, así que otras máquinas pueden conectar (si el firewall lo permite).
 
-**Reto:** 1) `172.17.0.0/16`, sale por `docker0`; `172.18.0.5` no cae en esa ruta, así que usa `default` y sale por `wlo1`. 2) **No**, porque la subred no tiene ruta `0.0.0.0/0` hacia un **Internet Gateway**; la respuesta no tendría **ruta** hacia tu casa. 3) **No**, porque el NAT solo traduce conexiones **iniciadas desde dentro**: desde fuera no existe ninguna traducción hacia esa instancia. 4) Tu PC → router: origen, la IP de tu PC (por ejemplo `192.168.1.7`); router → internet: origen, tu IP pública (la de `checkip.amazonaws.com`).
+**Reto:** 1) `10.x.x.0/24`, sale por `mpqemubr0` (o `172.17.0.0/16` por `docker0`); `10.250.0.5` (o `172.18.0.5`) no cae en esa ruta, así que usa `default` y sale por `wlo1`. 2) **No**, porque la subred no tiene ruta `0.0.0.0/0` hacia un **Internet Gateway**; la respuesta no tendría **ruta** hacia tu casa. 3) **No**, porque el NAT solo traduce conexiones **iniciadas desde dentro**: desde fuera no existe ninguna traducción hacia esa instancia. 4) Tu PC → router: origen, la IP de tu PC (por ejemplo `192.168.1.7`); router → internet: origen, tu IP pública (la de `checkip.amazonaws.com`).
 </details>
 
 ## Inglés

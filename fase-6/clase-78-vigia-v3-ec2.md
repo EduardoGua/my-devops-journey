@@ -15,7 +15,7 @@
 > - ***override* de Compose**: un segundo archivo que cambia partes del primero sin tocarlo (`-f compose.yaml -f compose.aws.yaml`).
 > - **ECR Public**: el registro público de AWS, con copias de las imágenes oficiales de Docker Hub.
 > - **marcador**: un texto como `__IMAGE__` que se sustituye por el valor real antes de usar el archivo.
-> - **infraestructura desechable**: recrear un servidor desde su receta en lugar de repararlo a mano.
+> - **infraestructura desechable**: recrear un servidor desde su configuración en lugar de repararlo a mano.
 
 ## Objetivo
 
@@ -162,7 +162,7 @@ Los culpables más comunes:
 - el PR sin fusionar (el clon no trae `compose.aws.yaml`);
 - el rol sin la política de ECR (`no basic auth credentials`).
 
-Arregla el repo o el comando de lanzamiento y **recrea la instancia**, en lugar de parchearla a mano: así compruebas que la receta funciona.
+Arregla el repo o el comando de lanzamiento y **recrea la instancia**, en lugar de parchearla a mano: así compruebas que la configuración de arranque funciona.
 </details>
 
 <details><summary>Pista 6 — funciona dentro, pero no desde tu navegador</summary>
@@ -221,7 +221,7 @@ Prerequisites: AWS CLI v2 signed in with `aws login`, Docker, and a VPC with a p
 (each step with its exact commands)
 ````
 
-### Modelo para adaptar (lo escribió Claude)
+### Modelo para adaptar
 
 Cópialo en tu README y rellena los huecos (`____`); cambia los marcadores por los que use tu `deploy/cloud-init.yaml`. `VPC`, `SUBNET` y `AMI` se obtienen como en las clases 71 y 72.
 
@@ -320,7 +320,7 @@ Después, escríbeme `examíname clase-78`.
 **Cierre:**
 1. Porque el *user-data* lo puede leer cualquiera con permiso para describir la instancia (Rómpelo 3), y además lo escribes desde tu portátil, que lo dejaría en tu historial o en tus archivos. Generada dentro con `openssl rand`, la contraseña nace y vive solo en `/opt/vigia/.env`, con permisos 600.
 2. La instancia tiene un rol (`vigia-ec2`) con `AmazonEC2ContainerRegistryPullOnly`. El *credential helper* de ECR está configurado en `/root/.docker/config.json` para tu registro. Cuando Compose descarga la imagen, Docker le pide credenciales al helper, el helper consigue las credenciales temporales del rol en el IMDS, pide a ECR un token y se lo devuelve a Docker. Nada guardado, nada que caduque a mano.
-3. **Se conserva** todo lo que está **fuera**: el código en GitHub, la imagen en ECR, el rol, el SG y la receta (`cloud-init.yaml`), así que la instancia nueva es idéntica. **Se pierde** lo que estaba **dentro**: la contraseña generada (sale otra) y los datos de PostgreSQL. Es una ventaja porque cualquier avería se arregla recreando; es un límite porque el historial no sobrevive. La solución es sacar los datos de la instancia: RDS, o un volumen EBS aparte.
+3. **Se conserva** todo lo que está **fuera**: el código en GitHub, la imagen en ECR, el rol, el SG y la configuración de arranque (`cloud-init.yaml`), así que la instancia nueva es idéntica. **Se pierde** lo que estaba **dentro**: la contraseña generada (sale otra) y los datos de PostgreSQL. Es una ventaja porque cualquier avería se arregla recreando; es un límite porque el historial no sobrevive. La solución es sacar los datos de la instancia: RDS, o un volumen EBS aparte.
 4. **Multi-AZ:** copia síncrona en espera en otra zona, para la **disponibilidad**; no atiende consultas. **Réplica de lectura:** copia asíncrona que atiende lecturas, para el **rendimiento**.
 </details>
 

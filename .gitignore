@@ -48,5 +48,12 @@ htmlcov/
 *~
 .DS_Store
 
-# Sesión de estudio en marcha (sesion.sh)
+# Sesión de estudio en marcha (sesion.sh) y estado local de calentamiento
 notas/.sesion-abierta
+notas/.calentamiento.json
+
+# Configuración local de agentes de IA (no se sube al portafolio público)
+AGENTS.md
+GEMINI.md
+.agents/
+.agent/

@@ -102,9 +102,9 @@ Que no hace falta otra llamada al API: el log que ya escribes lleva la métrica 
 
 **En resumen:** con EMF, el log estructurado lleva su métrica dentro.
 
-### Pieza 3 — Lo que cuesta, y lo gestionado frente a lo tuyo
+### Pieza 3a — Lo que cuesta CloudWatch y el precio de las dimensiones
 
-Precios de us-east-1, verificados el 2026-10-10 (están en la tabla "Datos que caducan" de la fase):
+Precios de `us-east-1`, verificados el 2026-10-10 (están en la tabla "Datos que caducan" de la fase):
 
 | Pieza | Gratis cada mes | Después |
 |-------|-----------------|---------|
@@ -114,6 +114,18 @@ Precios de us-east-1, verificados el 2026-10-10 (están en la tabla "Datos que c
 | dashboards | 3, de hasta 50 métricas | precio por dashboard |
 
 Cuidado con las **dimensiones**: cada combinación distinta es una métrica facturada aparte. Una dimensión con el id de usuario es la cardinalidad de la clase 116 convertida en factura.
+
+**Pruébalo, en papel.** La tienda publica en CloudWatch una métrica de compras con la dimensión `Path` (3 rutas) y otra de latencia con `Path` y `Status` (3 rutas × 4 códigos). ¿Cuántas métricas facturas, y cuánto al mes después de la capa gratuita?
+
+<details>
+<summary>Comprueba</summary>
+
+3 + 12 = 15 métricas. Menos las 10 gratuitas, 5 × 0,30 = **1,50 USD al mes**. Con una dimensión `Usuario`, serían miles.
+</details>
+
+**En resumen:** CloudWatch tiene una capa gratuita permanente, pero cobra por cada combinación de dimensiones, por alarma y por GB de logs.
+
+### Pieza 3b — Lo gestionado frente a lo tuyo
 
 | | Prometheus + Grafana tuyos | CloudWatch |
 |-|----------------------------|------------|
@@ -125,12 +137,12 @@ Cuidado con las **dimensiones**: cada combinación distinta es una métrica fact
 
 En medio están **Amazon Managed Service for Prometheus** (Prometheus gestionado, que se consulta con PromQL) y **Amazon Managed Grafana**: tu forma de trabajar, sin servidores que mantener. Lo normal en una empresa mediana: CloudWatch para la infraestructura de AWS, y Prometheus (propio o gestionado) con Grafana para las aplicaciones.
 
-**Pruébalo, en papel.** La tienda publica en CloudWatch una métrica de compras con la dimensión `Path` (3 rutas) y otra de latencia con `Path` y `Status` (3 rutas × 4 códigos). ¿Cuántas métricas facturas, y cuánto al mes después de la capa gratuita?
+**Pruébalo, en papel.** ¿Qué combinación propondrías para un equipo pequeño en AWS con una sola aplicación en EC2 y RDS, y cuál para una empresa con Kubernetes en dos nubes?
 
 <details>
 <summary>Comprueba</summary>
 
-3 + 12 = 15 métricas. Menos las 10 gratuitas, 5 × 0,30 = **1,50 USD al mes**. Con una dimensión `Usuario`, serían miles.
+Para el equipo pequeño en AWS: **CloudWatch**, porque ya recibe las métricas de EC2 y RDS y no añade servidores que mantener. Para Kubernetes en dos nubes: **Prometheus + Grafana** (propios o gestionados), porque funcionan igual en cualquier nube.
 </details>
 
 ✋ **Sin mirar:** ¿qué tiene CloudWatch que tu Prometheus no trae de serie?
@@ -141,7 +153,7 @@ En medio están **Amazon Managed Service for Prometheus** (Prometheus gestionado
 Las métricas de los servicios de AWS (EC2, RDS, los balanceadores, Lambda), que llegan solas, y no hay nada que instalar ni mantener.
 </details>
 
-**En resumen:** CloudWatch cobra por métrica, alarma y GB; lo gestionado ahorra trabajo, lo tuyo ahorra a escala.
+**En resumen:** lo gestionado ahorra trabajo y trae las métricas de AWS; lo tuyo es portable y ahorra a escala.
 
 > ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Mañana, las piezas opcionales en tu cuenta, de un tirón y destruyendo al final.
 

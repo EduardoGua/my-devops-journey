@@ -17,7 +17,7 @@ Es la rutina de la Ruta 2.0, adaptada a las clases:
 | Cuándo | Qué | Tiempo |
 |--------|-----|--------|
 | Todos los días | Anki: tu mazo de DevOps y tu mazo de inglés | 10 min |
-| 4 días entre semana | Sesión corta: 5 min de calentamiento (escribe **sin mirar** lo que recuerdes de la última sesión y después compruébalo en tu nota), 35 min de clase y 5 min para anotar dónde te quedaste | 45 min |
+| 4 días entre semana | Sesión corta: 5 min de calentamiento (escríbeme `calentamiento` o escribe **sin mirar** lo que recuerdes de la última sesión y después compruébalo en tu nota), 35 min de clase y 5 min para anotar dónde te quedaste | 45 min |
 | Tu día libre | Bloque largo: la versión de Vigía que toca o, si no toca ninguna, la clase más pesada de la semana | 3 h |
 | Una vez al mes | `bash ~/my-devops-journey/recursos/sesion.sh mes` te da tus horas del mes: apúntalas en la Ruta 2.0 y recalcula las fechas de los hitos (NOC y Cloud/DevOps) | 20 min |
 
@@ -107,6 +107,8 @@ Lo que puedes pedirme, tal cual:
 
 | Pídeme | Y hago |
 |--------|--------|
+| `calentamiento` | te hago 3 preguntas vencidas de cierres anteriores (repaso espaciado), de una en una y sin mirar |
+| `¿qué toca hoy?` | te muestro tu fase, la clase de hoy, deudas abiertas y tu tiempo medido (`sesion.sh hoy`) |
 | `examíname clase-XX` | califico tu cierre y te pregunto por lo que falla hasta que lo encuentres tú |
 | `revisa clase-XX` | reviso tu cierre y tus notas de esa clase |
 | `revisa la fase N` | **antes de empezar cada fase:** compruebo que sus versiones, precios y comandos siguen al día y corrijo lo que haya cambiado |
@@ -123,13 +125,13 @@ Una **deuda** es un 🟡 o ❌ sin corrección escrita, o una parte de la clase 
 ## Repaso
 
 - **La pregunta 4 del cierre** es de una clase anterior y se responde **sin mirar tus notas**. Si fallas, esa clase vuelve a ser deuda.
-- **Repaso de bloque** (fase 1: al terminar los bloques A, B y C): unas 12 preguntas que mezclan todas las clases del bloque y algunas de los anteriores, sin mirar, y al final tu propia chuleta de memoria. Entre 45 y 60 minutos. Lo que falles va a Anki y te dice qué clase repasar.
+- **Repaso de bloque** (fase 1: al terminar los bloques A, B y C): entre 12 y 15 preguntas que mezclan todas las clases del bloque y algunas de los anteriores, sin mirar, y al final tu propia chuleta de memoria. Entre 45 y 60 minutos. Lo que falles va a Anki y te dice qué clase repasar.
 - **Anki, cada día:** las tarjetas que vas creando en el paso 5. En un día pesado, 10 minutos de Anki cuentan como día cumplido.
 - **Antes de cambiar de fase:** una sesión para repasar y marcar los criterios de salida en `PROGRESO.md`, solo los que cumples sin mirar.
 
 ## Proyecto, inglés y portafolio
 
-- **Vigía** vive en su propio repositorio (`~/vigia`), fuera de este. Desde la fase 2, sus mensajes de commit y su README van en **inglés**: es práctica diaria sin tiempo extra, y quien revise tu GitHub lo verá.
+- **Vigía** vive en su propio repositorio (`~/vigia`), fuera de este. Desde la v0 (fin de la fase 1), sus mensajes de commit y su README van en **inglés**: es práctica diaria sin tiempo extra, y quien revise tu GitHub lo verá.
 - Las notas del curso siguen en español.
 
 ## Guardar en GitHub al terminar cada clase
@@ -144,7 +146,7 @@ git commit -m "Clase 03: archivos y directorios"
 git push
 ```
 
-La clase 22 explica qué pasa por dentro. Hasta entonces, usa esta receta tal cual. Tu repo público también es tu portafolio: un historial de commits constante dice mucho de ti.
+La clase 22 explica qué pasa por dentro. Hasta entonces, usa estos comandos tal cual. Tu repo público también es tu portafolio: un historial de commits constante dice mucho de ti.
 
 ## ¿Tu Ubuntu o el servidor?
 
@@ -175,7 +177,7 @@ Lo que **no** se hace: buscar la solución del reto o pedirle a una IA que lo re
 |------|--------|
 | [`PLAN.md`](PLAN.md) | El mapa: las 10 fases y la fase NOC, Vigía, certificaciones y empleo |
 | [`PROGRESO.md`](PROGRESO.md) | Dónde vas, qué toca hoy, criterios de salida y el registro de clases |
-| [`fase-1/`](fase-1/README.md) … [`fase-10/`](fase-10/README.md) | Las 125 clases, una carpeta por fase. Cada README dice qué necesitas, sus criterios de salida y sus datos que caducan |
+| [`fase-1/`](fase-1/README.md) … [`fase-10/`](fase-10/README.md) | Las 125 clases, una carpeta por fase. Cada README dice qué necesitas y sus criterios de salida (y, en las fases con herramientas o precios que cambian, sus datos que caducan) |
 | [`fase-noc/`](fase-noc/README.md) | La fase NOC, entre la 3 y la 4: CCST, Zabbix, ITIL y la búsqueda del empleo NOC |
 | `notas/fase-N/` | **Tus** cierres, uno por clase |
 | `labs/` | Lo que creas al practicar en tu Ubuntu |

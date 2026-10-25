@@ -1,6 +1,6 @@
 # El mapa — de cero a Cloud & DevOps (AWS)
 
-**Versión:** 5.3 · 2026-10-20 · alineada con la *Ruta Cloud & DevOps 2.0*, más la fase NOC
+**Versión:** 5.4 · 2026-10-25 · alineada con la *Ruta Cloud & DevOps 2.0*, más la fase NOC
 **Alumno:** Eduardo · Ubuntu 26.04 · unas 7 h por semana
 **Meta:** primero, un empleo de Analista NOC N1 o de soporte / mesa de ayuda N1 (el hito NOC); después, un empleo en Cloud / DevOps o soporte cloud (el hito Cloud/DevOps), con un proyecto de portafolio que lo respalde.
 
@@ -57,7 +57,7 @@ Las fases, su orden, sus horas y sus criterios de salida son **los mismos** en l
 | 9 · Kubernetes | 55–75 h | [clases 102–115](fase-9/README.md) | v6 |
 | 10 · Observabilidad | 25–35 h | [clases 116–125](fase-10/README.md), con el examen final y la defensa | v7 |
 
-Las horas son estimaciones de la Ruta para alguien que empieza de cero, con práctica y proyecto incluidos; las de la fase NOC salen del plan NOC, descontando lo que ya cubren las fases 1 y 3. A 7 h por semana, desde el 12 de octubre de 2026, el **hito NOC** llega entre febrero y marzo de 2027, y el **hito Cloud/DevOps** entre agosto y diciembre de 2027: la fase NOC lo retrasa unos 3 meses a cambio de poder trabajar en TI mucho antes. La Ruta explica cómo recalcularlos cada mes con tus horas reales; la columna *Tiempo* del registro de `PROGRESO.md` te da el número.
+Las horas son estimaciones de la Ruta para alguien que empieza de cero, con práctica y proyecto incluidos; las de la fase NOC salen del plan NOC, descontando lo que ya cubren las fases 1 y 3. El curso empezó el 4 de octubre de 2026 y el calendario de hitos se cuenta desde el lunes 12 de octubre de 2026; a 7 h por semana, el **hito NOC** llega entre febrero y marzo de 2027, y el **hito Cloud/DevOps** entre agosto y diciembre de 2027: la fase NOC lo retrasa unos 3 meses a cambio de poder trabajar en TI mucho antes. La Ruta explica cómo recalcularlos cada mes con tus horas reales; la columna *Tiempo* del registro de `PROGRESO.md` te da el número.
 
 Saltarse una fase hace que la siguiente parezca magia, y en una entrevista eso se nota.
 
@@ -72,7 +72,7 @@ Vigía es un monitor de disponibilidad de sitios web: revisa una lista de URLs c
 | 3 | v0.2 | mide la resolución DNS con `dig` y el vencimiento del certificado TLS con `openssl` | sección del README: qué pasa desde que escribes una URL hasta que ves la página |
 | 4 | v1 | reescritura en Python con `requests`, configuración en YAML, resultados en SQLite y una API mínima que devuelve el estado en JSON | pruebas con `pytest` que pasan |
 | 5 | v2 | Dockerfile con usuario no root y `docker compose` con la API, el chequeo y una base de datos | `docker compose up` levanta todo desde cero |
-| 6 | v3 | despliegue en EC2 con un rol IAM (sin llaves guardadas en el servidor), imagen en un registro (Docker Hub o ECR), reporte diario en S3 y logs en CloudWatch | diagrama y capturas en el README; todo destruido al cerrar cada sesión |
+| 6 | v3 | despliegue en EC2 con un rol IAM (sin llaves guardadas en el servidor), imagen en ECR, reporte diario en S3 y logs en CloudWatch | diagrama y capturas en el README; todo destruido al cerrar cada sesión |
 | 7 | v4 | GitHub Actions: pruebas en cada PR, imagen construida y publicada al unir a `main`, despliegue automático | insignia del pipeline en verde en el README |
 | 8 | v5 | toda la infraestructura de AWS en código, con estado remoto en S3 y `use_lockfile = true` | `terraform plan` limpio y `terraform destroy` documentado |
 | 9 | v6 | cluster local con kind: Deployment para la API, CronJob para el chequeo, Service, ConfigMap, Secret y sondas | manifiestos en `k8s/` y la salida de `kubectl get all` |
@@ -124,14 +124,14 @@ Al cerrarla sigue la fase NOC, que te prepara para postular a Analista NOC N1 y 
 El puesto de entrada más cercano a DevOps y SRE es el de Analista NOC: monitoreo, alertas, incidentes, Linux y redes. Esta fase sale de tu *Plan 6 meses: Analista NOC N1*. Su Linux y su red base ya están en las fases 1 y 3, así que aquí solo entra lo que piden las ofertas NOC y la ruta no tenía. Detalle, entregables y datos que caducan en [`fase-noc/`](fase-noc/README.md):
 - **A. Redes de Cisco y CCST (30–40 h):** switches, VLANs, DHCP, Wi-Fi, cableado y Cisco IOS, con Networking Basics de NetAcad y Packet Tracer. Cierra con la **CCST Networking**.
 - **B. Monitoreo con Zabbix (25–30 h):** server y agente en dos VMs, un trigger con aviso y un incidente simulado de la alerta al cierre.
-- **C. Operación con tickets (8–10 h):** ITIL a nivel práctico (incidente, problema, solicitud y cambio; prioridad, SLA y escalado a N2) y una hoja de troubleshooting.
+- **C. Operación con tickets (7–10 h):** ITIL a nivel práctico (incidente, problema, solicitud y cambio; prioridad, SLA y escalado a N2) y una hoja de troubleshooting.
 - **D. ★ Hito NOC (8–10 h, y después 2–3 h por semana aparte):** CV, LinkedIn, cinco historias de entrevista y postulaciones desde que apruebas la CCST, sin esperar a B y C.
 
 Lo que construyes queda publicado como **P3 — NOC lab**: la red de Packet Tracer, el laboratorio de Zabbix con su incidente y la hoja de troubleshooting. No sustituye a Vigía: es la evidencia para las ofertas NOC, que piden Zabbix por su nombre.
 
 **Criterios de salida:** CCST aprobada · explicar qué es una VLAN y para qué sirve DHCP, con tu red de Packet Tracer · Zabbix vigila un servidor y la alerta de un servicio caído llega, probada · explicar incidente, problema, solicitud y cambio, y cómo se calcula la prioridad · diagnosticar en voz alta "no hay internet", paso a paso.
 
-📋 = plan y entregables escritos; las clases se escriben al llegar a la fase (pídeme `escribe la fase NOC` al terminar la clase 38).
+📋 = plan y entregables escritos; las clases de los bloques B y C se escriben al llegar a la fase (pídeme `escribe la fase NOC` al terminar la clase 38).
 
 ### ★ Hito NOC: postular a NOC N1 y mesa de ayuda N1
 
@@ -236,7 +236,7 @@ En producción no basta con que algo funcione: hay que saber cuándo deja de fun
 | CCNA (200-301) | opcional, ya con el empleo NOC, solo si tu trabajo la valora: compite en tiempo con el CLF |
 | CKA | cuando ya trabajes con Kubernetes |
 
-Precios, idiomas, horarios de supervisión en español y políticas de cada examen: en la Ruta 2.0, revisados el 9 de octubre de 2026; los de la CCST, en los datos que caducan de la [fase NOC](fase-noc/README.md#datos-que-caducan). Compruébalos de nuevo antes de pagar. Ninguna certificación sustituye a un proyecto.
+Precios, idiomas, horarios de supervisión en español y políticas de cada examen: en la Ruta 2.0, revisados el 20 de octubre de 2026; los de la CCST, en los datos que caducan de la [fase NOC](fase-noc/README.md#datos-que-caducan). Compruébalos de nuevo antes de pagar. Ninguna certificación sustituye a un proyecto.
 
 El orden recomendado, lo gratuito que tiene peso y lo que falta preparar para cada examen están en la sección 9, opcional.
 
@@ -270,7 +270,7 @@ La entrada más realista no siempre es un puesto llamado "DevOps". Empieza por s
 
 ## 8. Lo que este plan deja fuera a propósito
 
-Una segunda nube, Jenkins, Ansible a fondo, *service mesh*, EKS en producción, las certificaciones Professional y coleccionar certificaciones en general. Son valiosos más adelante; antes del primer empleo diluyen el foco. El camino de junior a arquitecto está en `~/Documentos/ruta-junior-a-arquitecto-nube.md`, cerrado hasta terminar esta ruta.
+Una segunda nube, Jenkins, Ansible a fondo, *service mesh*, EKS en producción, las certificaciones Professional y coleccionar certificaciones en general. Son valiosos más adelante; antes del primer empleo diluyen el foco. El camino de junior a arquitecto está en `~/Documentos/ruta-junior-a-arquitecto-nube.md`, cerrado hasta terminar la fase 8 o hasta que lleves meses en un empleo cloud.
 
 ## 9. Opcional: certificaciones con peso
 
@@ -304,7 +304,7 @@ No se añaden, a propósito: KCNA, CKAD, LFCS, Security+, Google ACE, una segund
 
 ### 9.3 Lo que falta preparar para cada examen
 
-- **Terraform Associate:** lo que el apéndice de la clase 101 marca como no visto (HCP Terraform, Vault, `precondition` y `postcondition`, `TF_LOG`) y un simulacro: unas cuatro sesiones.
+- **Terraform Associate:** lo que el apéndice de la clase 101 marca como no visto (HCP Terraform, Vault, `precondition` y `postcondition`, `TF_LOG`) y un simulacro: unas 15–20 h (unas cuatro sesiones de repaso y práctica).
 - **SAA:**
   - alta disponibilidad multi-AZ, ELB y Auto Scaling a fondo;
   - RDS, Aurora y DynamoDB; las clases de almacenamiento de S3;
@@ -346,3 +346,4 @@ Al llegar a cada una, pídeme `escribe la preparación de <examen>`: la escribo 
 | 5.1 | 2026-10-10 | Las fases 4 a 10 escritas completas: clases 39–125, cada fase con su README, criterios de salida y "Datos que caducan"; Vigía v1 a v7 con pruebas de aceptación sin solución (`recursos/vigia/`), probadas contra una implementación de referencia privada; examen del hito (clase 91) y examen final con defensa (clase 125) |
 | 5.2 | 2026-10-19 | Integrado el *Plan 6 meses: Analista NOC N1* (`~/Plan 6 meses Analista NOC N1.md`): fase NOC entre la 3 y la 4 (CCST Networking, Zabbix, ITIL práctico y el P3), con su hito NOC para postular a NOC N1 y mesa de ayuda N1 al aprobar la CCST. Lo que el plan NOC repetía de las fases 1 y 3 no se duplica. El hito de la fase 7 pasa a llamarse hito Cloud/DevOps |
 | 5.3 | 2026-10-20 | Sección 9, opcional: certificaciones con peso, gratis primero, con su preparación y sus datos que caducan; notas opcionales en el hito NOC y en las fases 6, 8 y 9; y [`CARRERA.md`](CARRERA.md), con la experiencia laboral, la formación formal, el inglés, los contactos y lo práctico a largo plazo |
+| 5.4 | 2026-10-25 | Revisión integral de las fases 1 a 10 y NOC: salidas y comandos comprobados en Ubuntu 26.04, piezas densas partidas, coherencia entre documentos, pruebas de aceptación de Vigía y scripts de `recursos/` reforzados, y calentamiento con repaso espaciado en `sesion.sh` |

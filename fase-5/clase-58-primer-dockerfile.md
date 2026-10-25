@@ -28,7 +28,7 @@
 
 ## Por qué importa
 
-Hasta ahora usabas imágenes de otros. Un Dockerfile es la receta de **tu** imagen: código, dependencias y la forma de arrancarlo, todo versionado en Git. Esa imagen es el artefacto que viajará por el pipeline de la fase 7 y se desplegará en AWS (fase 6) y en Kubernetes (fase 9). Un Dockerfile bien ordenado reconstruye en segundos; uno mal ordenado reinstala todas las dependencias por cambiar una línea de código.
+Hasta ahora usabas imágenes de otros. Un Dockerfile contiene las instrucciones de **tu** imagen: código, dependencias y la forma de arrancarlo, todo versionado en Git. Esa imagen es el artefacto que viajará por el pipeline de la fase 7 y se desplegará en AWS (fase 6) y en Kubernetes (fase 9). Un Dockerfile bien ordenado reconstruye en segundos; uno mal ordenado reinstala todas las dependencias por cambiar una línea de código.
 
 ## Cómo va esta clase
 
@@ -389,7 +389,7 @@ Después, escríbeme `examíname clase-58`.
 
 | Término | Significado |
 |---------|-------------|
-| Dockerfile / build | receta / construir |
+| Dockerfile / build | instrucciones de la imagen / construir |
 | layer / build cache | capa / caché de construcción |
 | build context | contexto de construcción |
 | exec form / shell form | forma de lista / forma de shell |

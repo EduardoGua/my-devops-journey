@@ -1,6 +1,6 @@
 # Clase 37 — P2: Servidor reproducible con cloud-init
 
-**Dónde:** tu PC + VMs que crearás y destruirás · **Tiempo:** 2 bloques largos (unas 4–6 h) · **Bloque:** B. Proyectos y examen · **Laboratorio integrador**
+**Dónde:** tu PC + VMs que crearás y destruirás · **Tiempo:** unas 4–6 h (en sesiones de 35–45 min) · **Bloque:** B. Proyectos y examen · **Laboratorio integrador**
 
 > 💡 **La idea de hoy:** en vez de configurar un servidor a mano, escribes **un archivo** que lo describe entero (usuarios, SSH endurecido, paquetes, nginx, firewall) y **cloud-init** lo aplica en el primer arranque. Si el servidor se rompe, lo destruyes y lo recreas idéntico en minutos. Es lo mismo que el *user-data* de una EC2, y el primer paso hacia la infraestructura como código.
 
@@ -47,7 +47,7 @@ El servidor `web-01` debe cumplir **todo** esto nada más arrancar, sin interven
 
 ## Plan de trabajo
 
-Cinco pasos. La teoría de cloud-init está en el paso 2, justo donde empiezas a usarla. Si la haces en dos sesiones, la primera termina con el paso 3 (todos los requisitos en el YAML) y la segunda empieza con `verify.sh`.
+Cinco pasos. La teoría de cloud-init está en el paso 2, justo donde empiezas a usarla. En sesiones de 35–45 min: haz **un requisito por sesión** en los pasos 2 y 3 (`⏸️` al terminar cada uno), otra sesión para `verify.sh` (paso 4, `⏸️`) y la última para el paso 5, el Rómpelo, el README y el PR.
 
 ### 1. Estructura
 
@@ -100,15 +100,16 @@ users:
   - default
   - name: deploy
     shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
     lock_passwd: true
     ssh_authorized_keys:
       - __SSH_PUBKEY__
 ```
 
-Lanza una VM de prueba con la llave sustituida:
+Lanza una VM de prueba con la llave sustituida (guardamos el archivo temporal en `~/p2-lanzar.yaml` y no en `/tmp`, porque Multipass es un paquete *snap* con su propio `/tmp` aislado y no vería un archivo en `/tmp`):
 ```bash
-sed "s|__SSH_PUBKEY__|$(cat ~/.ssh/lab_ed25519.pub)|" cloud-init.yaml > /tmp/p2.yaml
-multipass launch lts --name web-01 --memory 1G --disk 8G --cloud-init /tmp/p2.yaml
+sed "s|__SSH_PUBKEY__|$(cat ~/.ssh/lab_ed25519.pub)|" cloud-init.yaml > ~/p2-lanzar.yaml
+multipass launch lts --name web-01 --memory 1G --disk 8G --timeout 900 --cloud-init ~/p2-lanzar.yaml
 IPW=$(multipass info web-01 | awk '/IPv4/ {print $2}')
 ssh -i ~/.ssh/lab_ed25519 -o IdentitiesOnly=yes deploy@$IPW 'whoami; hostname'
 ```
@@ -119,7 +120,7 @@ ssh -i ~/.ssh/lab_ed25519 -o IdentitiesOnly=yes deploy@$IPW 'whoami; hostname'
 
 Añade, uno a uno, lanzando y verificando cada vez:
 - **R3**: `package_update`, `package_upgrade`, `packages` con `nginx`, `ufw`, `fail2ban`, `unattended-upgrades`.
-- **R2**: `ssh_pwauth: false`, `disable_root: true` y un `write_files` con `/etc/ssh/sshd_config.d/00-hardening.conf` (como en la clase 15). Recuerda que `AllowUsers` debe incluir `deploy` **y** `ubuntu`, o Multipass dejará de poder entrar.
+- **R2**: `ssh_pwauth: false`, `disable_root: true` y un `write_files` con `/etc/ssh/sshd_config.d/00-hardening.conf` (como en la clase 15). Recuerda que `AllowUsers` debe incluir `deploy` **y** `ubuntu`, o Multipass dejará de poder entrar. Asegúrate de que `deploy` tenga `sudo: "ALL=(ALL) NOPASSWD:ALL"` en `users`: `verify.sh` lo necesita para `sudo sshd -T`.
 - **R4**: `write_files` con la página y el sitio de nginx (`location = /health { return 200 "ok\n"; }`), y en `runcmd`, enlazar el sitio, quitar el `default`, `nginx -t` y recargar.
 - **R5**: en `runcmd`, las reglas de ufw (¡OpenSSH primero!) y `ufw --force enable`.
 - **R6**: en `runcmd`, `systemctl enable --now fail2ban`.
@@ -131,7 +132,7 @@ multipass exec web-01 -- cloud-init status --long
 multipass exec web-01 -- sudo tail -50 /var/log/cloud-init-output.log
 ```
 
-Valida la sintaxis **antes** de lanzar:
+Valida la sintaxis **antes** de lanzar (ignora las líneas `WARNING` sobre permisos o *datasource*: lo que cuenta es la última línea, `Valid schema …` o `Invalid user-data …`):
 ```bash
 cloud-init schema -c cloud-init.yaml
 ```
@@ -174,15 +175,15 @@ Completa las comprobaciones. Y aquí está la lección más importante del proye
 - **"root no puede entrar"**: si intentas `ssh root@...` con tu llave, falla siempre, porque tu llave no está en la cuenta de root, haya o no `PermitRootLogin no`. Comprueba la configuración efectiva: `sudo sshd -T | grep -x 'permitrootlogin no'`.
 - **"El 8080 está cerrado"**: si no hay nada escuchando en el 8080, cualquier conexión falla, **haya o no firewall**. Para probar el firewall, levanta **algo** que escuche en otro puerto (`sudo systemd-run --unit=verify-probe python3 -m http.server 8081 --bind 0.0.0.0`), comprueba que desde dentro responde, que desde fuera **no** se llega, y páralo.
 
-Prueba tus pruebas: lanza una VM **sin** cloud-init (`multipass launch lts --name sin-config`) y pásale `verify.sh`. La mayoría de las comprobaciones deben salir ❌ y el código de salida debe ser 1. Si algo sale ✅ en esa VM, pregúntate si tu test mide lo que crees.
+Prueba tus pruebas: lanza una VM **sin** cloud-init (`multipass launch lts --name sin-config`) y pásale `verify.sh`. Esperado en `sin-config`: **9 ❌ y 2 ✅** con código de salida 1 (salen ✅ «R2 no ofrece contraseñas», porque la imagen de Ubuntu ya las trae desactivadas, y «R5 el 8081 NO es accesible desde fuera», porque sin `deploy` no se pudo levantar la sonda y no hay nada escuchando: por eso hacen falta las dos comprobaciones de R5 juntas).
 
 ### 5. La prueba de fuego: reproducibilidad
 
 ```bash
 time (
   multipass delete --purge web-01
-  sed "s|__SSH_PUBKEY__|$(cat ~/.ssh/lab_ed25519.pub)|" cloud-init.yaml > /tmp/p2.yaml
-  multipass launch lts --name web-01 --memory 1G --disk 8G --cloud-init /tmp/p2.yaml
+  sed "s|__SSH_PUBKEY__|$(cat ~/.ssh/lab_ed25519.pub)|" cloud-init.yaml > ~/p2-lanzar.yaml
+  multipass launch lts --name web-01 --memory 1G --disk 8G --timeout 900 --cloud-init ~/p2-lanzar.yaml
   IPW=$(multipass info web-01 | awk '/IPv4/ {print $2}')
   multipass exec web-01 -- cloud-init status --wait
   ssh-keygen -R "$IPW" >/dev/null 2>&1      # servidor nuevo = host key nueva (clase 15)
@@ -190,7 +191,7 @@ time (
 )
 ```
 
-Todo en verde y en menos de 5 minutos: **R7 cumplido**. Guarda la salida para el README.
+Todo en verde y en menos de 5 minutos: **R7 cumplido**. Guarda la salida para el README (y borra `~/p2-lanzar.yaml` al terminar).
 
 El `ssh-keygen -R` no es un truco: un servidor recreado tiene **otra** host key. Si recibe la misma IP, SSH se negará a conectar (clase 15). Con servidores "ganado" esto es normal, y en la nube se resuelve publicando las host keys o usando certificados de SSH; aquí basta con olvidar la vieja.
 
@@ -201,7 +202,7 @@ Opcional: convierte ese bloque en un script `rebuild.sh`.
 1. Mete un **tabulador** en la indentación del YAML y lanza. ¿Qué detecta `cloud-init schema`? ¿Y qué pasa si no lo validas?
 2. Quita `- default` de `users` y lanza. Prueba `multipass shell web-01`. ¿Por qué falla? (Pista: ¿con qué usuario entra Multipass?)
 3. Pon `ufw --force enable` **antes** de `ufw allow OpenSSH` en `runcmd`. ¿Te quedas fuera? Razona por qué podría no pasar aquí (piensa en el orden y en el tiempo) y por qué en otro contexto sí pasaría.
-4. Desde **servidor-01** (no desde tu PC: si baneas a tu PC, también dejará de funcionar `multipass shell` durante los 10 minutos del baneo), haz 6 intentos de SSH seguidos contra `web-01` con un usuario inexistente: `for i in 1 2 3 4 5 6; do ssh -o BatchMode=yes noexiste@<IP de web-01> true; done`. Después mira `sudo fail2ban-client status sshd` en `web-01`. ¿Aparece la IP de servidor-01 en *Banned IP list*? ¿Puede servidor-01 conectar ahora a cualquier puerto de web-01? Desbanéala: `sudo fail2ban-client set sshd unbanip <IP>`.
+4. Desde **servidor-01** (no desde tu PC: si baneas a tu PC, también dejará de funcionar `multipass shell` durante los 10 minutos del baneo), haz 6 intentos de SSH seguidos contra `web-01` con un usuario inexistente: `for i in 1 2 3 4 5 6; do ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new noexiste@<IP de web-01> true; done`. Después mira `sudo fail2ban-client status sshd` en `web-01`. ¿Aparece la IP de servidor-01 en *Banned IP list*? ¿Puede servidor-01 conectar ahora a cualquier puerto de web-01? Desbanéala: `sudo fail2ban-client set sshd unbanip <IP>`.
 
 ## Entregable
 
@@ -209,7 +210,7 @@ Opcional: convierte ese bloque en un script `rebuild.sh`.
 - `cloud-init.yaml`: con el marcador `__SSH_PUBKEY__`, **nunca** con una llave real.
 - `verify.sh`: ejecutable, código 0 solo si todo pasa.
 - `rebuild.sh` (opcional).
-- `README.md` **en inglés**, a partir de este modelo (lo escribió Claude). Copia y rellena los huecos: no hace falta escribir más.
+- `README.md` **en inglés**, a partir de este modelo. Copia y rellena los huecos: no hace falta escribir más.
 
 ````markdown
 # P2 — Reproducible hardened server (cloud-init)
@@ -227,8 +228,8 @@ checks it from outside. Rebuild time: ____ minutes.
 
 ## How to use it
 ```bash
-sed "s|__SSH_PUBKEY__|$(cat ~/.ssh/lab_ed25519.pub)|" cloud-init.yaml > /tmp/p2.yaml
-multipass launch lts --name web-01 --cloud-init /tmp/p2.yaml
+sed "s|__SSH_PUBKEY__|$(cat ~/.ssh/lab_ed25519.pub)|" cloud-init.yaml > ~/p2-lanzar.yaml
+multipass launch lts --name web-01 --timeout 900 --cloud-init ~/p2-lanzar.yaml
 ./verify.sh <IP>
 ```
 On AWS, the same file goes in **User data** when you launch an EC2 instance
@@ -253,7 +254,7 @@ En `notas/fase-3/clase-37.md`:
 1. ¿Qué significa *cattle, not pets*? ¿Qué ganas al definir un servidor en un archivo? *(2–3 líneas. Empieza así: «Que los servidores se tratan como ganado y no como mascotas: si uno se rompe, no se cura a mano, se… Definirlo en un archivo me da…»)*
 2. ¿Qué equivalencia hay entre este proyecto y lanzar una EC2? ¿Qué partes cambiarían en AWS (piensa en el firewall y en las llaves)? *(2–3 líneas. Empieza así: «El YAML es el user-data de la EC2… En AWS, el firewall sería… y la llave…»)*
 3. ¿Por qué `verify.sh` comprueba desde **fuera** y no con comandos dentro de la VM? *(2 líneas. Empieza así: «Porque así compruebo lo que ve un cliente de verdad: algo puede funcionar dentro y fallar fuera, como…»)*
-4. **Repaso (clase 36, sin mirar):** cuenta en voz alta tu incidente favorito del P1 con el formato STAR. *(Después, escribe sus 4 líneas, una por letra. Empieza así: «S: … T: … A: … R: …»)*
+4. **Repaso (clase 36, sin mirar):** ¿por qué el incidente 6 del P1 daba *timeout* desde fuera y no *connection refused*? *(1 línea. Empieza así: «Porque ufw…»)*
 
 Después, escríbeme `examíname clase-37`.
 
@@ -372,12 +373,19 @@ echo "Fallos: $FALLOS"
 exit $(( FALLOS > 0 ))
 ```
 
-Este script se probó contra un servidor endurecido (11 ✅, código 0) y contra uno sin endurecer (fallan R2, R4 y R5, código 1). `unattended-upgrades` ya viene activo en Ubuntu, así que R3 pasa casi siempre: tu cloud-init lo **garantiza** también en otras imágenes.
+Este script se probó contra un servidor endurecido (11 ✅, código 0), contra `sin-config` (9 ❌ y 2 ✅, código 1) y contra un servidor donde `deploy` sí existe pero aún no se endurecieron SSH, nginx ni ufw (fallan R2, R4 y R5, código 1). `unattended-upgrades` ya viene activo en Ubuntu, así que R3 pasa casi siempre: tu cloud-init lo **garantiza** también en otras imágenes.
+
+**Rómpelo:**
+1. `cloud-init schema` avisa del error de sintaxis YAML (un tabulador no vale para indentar). Si lanzas sin validar, cloud-init falla al parsear el user-data y no aplica tus cambios (lo ves en `cloud-init status --long` y `/var/log/cloud-init.log`).
+2. Sin `- default`, cloud-init solo crea a `deploy` y **no** crea al usuario `ubuntu`, que es el que usa Multipass para `multipass shell` y `multipass exec`.
+3. En `runcmd` ambos comandos corren localmente dentro de la VM con milisegundos de diferencia: no se corta a sí mismo y para cuando conectas desde fuera ya ejecutó `allow OpenSSH`. En cambio, si lo haces por SSH interactivo (o si un comando intermedio falla antes del `allow`), te quedas fuera al instante.
+4. Sí aparece la IP de `servidor-01` en *Banned IP list*. Con la configuración por defecto de `fail2ban` en Ubuntu (`sshd`), solo se bloquea el puerto **22** (SSH): `servidor-01` no puede entrar por SSH, pero el puerto **80** sigue respondiendo.
 
 **Cierre:**
 1. Las mascotas se cuidan a mano y son irremplazables; el ganado se define en código y se reemplaza sin drama. Ganas reproducibilidad, documentación viva (el archivo **es** la documentación), revisión en PRs, recuperación rápida y entornos idénticos.
 2. El YAML va tal cual en *user-data*. En AWS: el firewall de entrada sería sobre todo el **security group** (ufw puede quedarse como segunda capa); la llave la inyecta el *key pair* o, mejor aún, no se abre el 22 y se usa **SSM Session Manager**; la imagen sería una AMI; y después todo eso se escribiría en **Terraform**.
 3. Porque es lo que experimenta un usuario o un atacante: dentro de la VM, `curl localhost` funciona aunque el firewall bloquee el exterior (incidente 6 del P1). Las pruebas desde fuera validan el **resultado**, no la intención.
+4. Porque `ufw` tenía una regla `DENY` (DROP) en el puerto 80: descartaba los paquetes en silencio sin responder.
 </details>
 
 ## Siguiente

@@ -61,20 +61,14 @@ Ten **dos** sesiones abiertas en la VM (`ssh servidor-01`): una para trabajar y 
 - **Primera regla que coincide, gana** (en ufw e iptables, y en las NACLs de AWS por su número).
 - **Política por defecto segura:** denegar todo lo **entrante** y permitir lo **saliente**. Después abres solo lo necesario.
 
-`ufw` (*uncomplicated firewall*) es la interfaz sencilla de Ubuntu sobre el filtro de paquetes del kernel (nftables):
+`ufw` (*uncomplicated firewall*) es la interfaz sencilla de Ubuntu sobre el filtro de paquetes del kernel (nftables). Los cuatro comandos para empezar (el resto salen en las piezas siguientes y en la chuleta):
 
 | Comando | Efecto |
 |---------|--------|
 | `ufw status verbose` / `numbered` | estado y reglas |
-| `ufw default deny incoming` | política de entrada |
+| `ufw default deny incoming` · `default allow outgoing` | políticas por defecto |
 | `ufw allow 22/tcp` · `ufw allow OpenSSH` | permitir un puerto o una app |
-| `ufw allow from 10.0.0.5 to any port 5432 proto tcp` | permitir solo desde un origen |
-| `ufw deny 80/tcp` | descartar (DROP) |
-| `ufw reject 8080/tcp` | rechazar (REJECT) |
-| `ufw delete <n>` | borrar la regla número n (solo esa: la copia IPv6 tiene otro número) |
-| `ufw delete allow 80/tcp` | borrar una regla escribiéndola igual que se creó (borra IPv4 e IPv6 a la vez) |
 | `ufw enable` / `disable` | activar / desactivar |
-| `ufw logging on` | registrar bloqueos (`[UFW BLOCK]` en el log del kernel) |
 
 **Pruébalo, primero el estado inicial.** En la VM:
 
@@ -83,7 +77,7 @@ sudo ufw status verbose
 sudo ss -tlnp
 ```
 
-👀 **Qué deberías ver:** `Estado: inactivo` (o `Status: inactive`) y los puertos que escuchan: 22, 80 y 8080. Haz el inventario: ¿cuáles **deben** ser accesibles desde fuera?
+👀 **Qué deberías ver:** `Status: inactive` (la VM responde en inglés: no tiene instalado el español) y los puertos que escuchan: 22, 80 y 8080. Haz el inventario: ¿cuáles **deben** ser accesibles desde fuera?
 
 **Ahora, actívalo sin quedarte fuera.** El orden importa: **primero permitir SSH, después activar**.
 
@@ -96,7 +90,7 @@ sudo ufw enable
 sudo ufw status verbose
 ```
 
-👀 **Qué deberías ver:** en `show added`, la regla `ufw allow OpenSSH`; después del `enable`, `Firewall is active…`; y en el estado, `Default: deny (incoming), allow (outgoing)` con `OpenSSH ALLOW IN Anywhere` (y su copia `(v6)`).
+👀 **Qué deberías ver:** en `show added`, la regla `ufw allow OpenSSH`; al hacer `enable`, te preguntará `Command may disrupt existing ssh connections. Proceed with operation (y|n)?` (como ya permitiste OpenSSH, responde `y`) y dirá `Firewall is active…`; y en el estado, `Default: deny (incoming), allow (outgoing)` con `OpenSSH ALLOW IN Anywhere` (y su copia `(v6)`).
 
 Desde tu PC, en una terminal **nueva**: `ssh servidor-01 hostname`. Si responde `servidor-01`, puedes seguir.
 
@@ -128,13 +122,13 @@ nc -zv -w 5 $IP 8080
 
 👀 **Qué deberías ver:** los dos esperan 5 segundos y fallan: **timeout**. La política por defecto descarta. Es exactamente lo que verías con un security group sin la regla del puerto.
 
-Mira la evidencia en la VM:
+Mira la evidencia en la VM (`logging on` hace que ufw apunte los bloqueos en el log del kernel):
 
 ```bash
 sudo ufw logging on
 ```
 
-Repite el `curl` desde tu PC y en la VM:
+Repite el `curl` desde tu PC. Después, en la VM:
 
 ```bash
 sudo journalctl -k -n 5 --no-pager | grep "UFW BLOCK"
@@ -315,7 +309,7 @@ sudo ufw allow OpenSSH
 Ahora el caso sin sesión abierta. Vuelve a borrar la regla de SSH y **cierra todas tus sesiones**. Estás fuera. La única salida:
 ```bash
 multipass stop servidor-01
-multipass restore servidor-01.pre-firewall --destructive
+multipass restore servidor-01.pre-firewall --destructive   # --destructive: no te pregunta si quieres guardar antes el estado actual
 multipass start servidor-01
 ```
 

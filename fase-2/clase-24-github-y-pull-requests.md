@@ -16,10 +16,11 @@
 > - **pull request (PR)**: la petición de fusionar tu rama, con su descripción, su revisión y sus comprobaciones.
 > - **squash**: juntar todos los commits de un PR en uno solo al fusionarlo.
 > - **ruleset**: las reglas de GitHub que protegen una rama, como `main`.
+- **`gh`**: el programa de GitHub para la terminal (crear repos, abrir y fusionar PRs).
 
 ## Objetivo
 
-- Entender los **remotos**: `clone`, `fetch`, `pull`, `push` y el seguimiento entre ramas.
+- Entender los **remotos**: `fetch`, `pull`, `push` y el seguimiento entre ramas.
 - Hacer el ciclo profesional completo: **rama → push → pull request → revisión → merge → limpieza**.
 - Proteger `main` para que nadie (ni tú) pueda saltarse el PR.
 - Resolver un push rechazado porque otra persona cambió el remoto.
@@ -42,9 +43,18 @@ cd ~/my-devops-journey && git remote -v && cd -
 git config --global pull.rebase false
 ```
 
-👀 **Qué deberías ver:** `Logged in to github.com account …`; tu repo del curso con un `origin` del tipo `git@github.com:…` (dos líneas, `fetch` y `push`); y nada en la tercera.
+👀 **Qué deberías ver:** `Logged in to github.com account …`; tu repo del curso con un `origin` del tipo `git@github.com:…` (dos líneas, `fetch` y `push`, y `cd -` imprime la carpeta a la que vuelves); y nada en la tercera.
 
-La última línea le dice a `git pull` que, si tu rama y la remota han divergido, las **fusione** (merge). Sin esa configuración, las versiones modernas de Git se niegan a hacer `pull` en ese caso y te piden que elijas (`fatal: Need to specify how to reconcile divergent branches`). Algunos equipos prefieren `pull.rebase true`; para empezar, merge es lo más seguro.
+Si dice `You are not logged into any GitHub hosts`, ejecuta `gh auth login`: GitHub.com → SSH → tu llave → *Login with a web browser*. Si `gh` no existe, o tienes la versión `2.46.x` del paquete de Ubuntu (que falla en comandos como `gh pr view` sin `--web` por APIs antiguas), instálalo desde el repositorio oficial de GitHub (`cli.github.com/packages`):
+
+```bash
+sudo mkdir -p -m 755 /etc/apt/keyrings
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+sudo apt update && sudo apt install -y gh
+```
+
+La última línea de las tres comprobaciones le dice a `git pull` que, si tu rama y la remota han divergido, las **fusione** (merge). Sin esa configuración, las versiones modernas de Git se niegan a hacer `pull` en ese caso y te piden que elijas (`fatal: Necesita especificar cómo reconciliar las ramas divergentes.` / `fatal: Need to specify how to reconcile divergent branches`). Algunos equipos prefieren `pull.rebase true`; para empezar, merge es lo más seguro.
 
 ## Las piezas
 
@@ -61,10 +71,9 @@ La última línea le dice a `git pull` que, si tu rama y la remota han divergido
 ```
 
 - `origin` es solo el **nombre** del remoto por defecto.
-- `origin/main` es tu **copia local** de cómo estaba `main` en GitHub la última vez que hiciste `fetch`. No se actualiza sola.
-- `git push -u origin feature/x` sube la rama y la deja **enlazada** (*upstream*), así que después basta con `git push` y `git pull`.
+- `origin/main` es tu **copia local** de cómo estaba `main` en GitHub la última vez que hiciste `fetch`, `pull` o `push`. No se actualiza sola.
 
-Tu repo del curso usa `git@github.com:...` (SSH, con tu llave de la clase 15). Con HTTPS se usa un *token* en lugar de llave. En CI se usan tokens o *deploy keys*, nunca tu llave personal.
+Tu repo del curso usa `git@github.com:...` (SSH, con tu llave de la clase 15). Si en `gh` tienes configurado el protocolo HTTPS, los repos que crees con `gh repo create` usarán `https://github.com/...` y `gh` pondrá tus credenciales al hacer `push` (si prefieres SSH siempre: `gh config set git_protocol ssh`).
 
 **Pruébalo: un repositorio de práctica en GitHub.**
 
@@ -90,12 +99,12 @@ git log --oneline --all
 
 👀 **Qué deberías ver:** `✓ Created repository …/pr-lab on GitHub` y el push; `origin` con su dirección; y en el log, tu commit con `(HEAD -> main, origin/main)`: tu copia del remoto, en el mismo commit que tu `main`.
 
-✋ **Sin mirar:** ¿qué hace el `-u` de `git push -u origin feature/x`?
+✋ **Sin mirar:** si alguien sube un commit a `main` en GitHub, ¿cambia tu `origin/main` sola?
 
 <details>
 <summary>Comprueba</summary>
 
-Enlaza tu rama local con la remota (*upstream*): desde ese momento, en esa rama, `git push` y `git pull` saben a dónde ir sin más argumentos.
+No: `origin/main` es tu copia local y solo se actualiza cuando hablas con el remoto (`git fetch`, `git pull` o `git push`).
 </details>
 
 **En resumen:** `push` sube, `fetch` trae y `pull` trae y fusiona; `origin/main` es tu copia del remoto, y solo se actualiza cuando hablas con él.
@@ -111,6 +120,8 @@ Enlaza tu rama local con la remota (*upstream*): desde ese momento, en esa rama,
 6. merge (normalmente "squash" o "merge commit")
 7. borrar la rama y actualizar main local
 ```
+
+El `-u` del paso 3 (`git push -u origin feature/x`) sube la rama y la deja **enlazada** (*upstream*): a partir de ahí, en esa rama basta con `git push` y `git pull`.
 
 Tres formas de fusionar un PR en GitHub:
 
@@ -165,12 +176,12 @@ git log --oneline --graph --all
 
 👀 **Qué deberías ver:** la dirección del PR después de `gh pr create`; y al final, en `main`, **un** commit nuevo con el cambio. La rama se borró en GitHub y en local.
 
-✋ **Sin mirar:** ¿qué opción de merge deja **un solo** commit en `main` por cada PR?
+✋ **Sin mirar:** ¿para qué sirve el `-u` de `git push -u origin feature/health-check` y qué opción de merge deja **un solo** commit en `main` por cada PR?
 
 <details>
 <summary>Comprueba</summary>
 
-*Squash and merge*.
+`-u` enlaza tu rama local con la remota (*upstream*), para que después baste con `git push` y `git pull`. La opción que deja un solo commit es *Squash and merge*.
 </details>
 
 **En resumen:** rama → push → PR con qué, por qué y cómo se probó → revisión → squash → borrar la rama y `git pull` en `main`.
@@ -179,7 +190,7 @@ git log --oneline --graph --all
 
 Si `main` no está protegida, cualquiera (tú incluido) puede saltarse el PR con un `push` directo. Un **ruleset** lo impide.
 
-**Pruébalo.** En la web: **Settings → Rules → Rulesets → New ruleset → New branch ruleset**:
+**Pruébalo.** En la web: **Settings → Rulesets** (en la sección *Code, planning, and automation*) **→ Rulesets → New ruleset → New branch ruleset**:
 - Nombre: `protect-main` · *Enforcement status*: **Active**
 - *Target branches*: **Include default branch**
 - ✅ *Require a pull request before merging*
@@ -260,7 +271,7 @@ git push
 Rechazado: `Updates were rejected because the remote contains work that you do not have locally`. Tu rama local y la remota **divergieron**. **No uses `--force`**: borrarías el commit de tu compañero. Trae lo nuevo e intégralo:
 
 ```bash
-git pull                     # fetch + merge de origin/feature/port
+git pull --no-edit           # fetch + merge de origin/feature/port (sin --no-edit abre nano para el mensaje: Ctrl+O, Enter, Ctrl+X)
 git log --oneline --graph -5
 git push
 ```
@@ -268,13 +279,25 @@ git push
 Regla: **antes de crear una rama, `git switch main && git pull`**, y antes de seguir trabajando en una rama compartida, `git pull`.
 
 **2. Un conflicto dentro de un PR.**
-Crea dos ramas desde el mismo `main` que cambien **la misma línea** del README (por ejemplo, el título). Abre un PR por cada una. Fusiona la primera. La segunda mostrará *This branch has conflicts*. Resuélvelo en local:
+Crea dos ramas desde el mismo `main` que cambien **la misma línea** del README, abre un PR por cada una y fusiona la primera:
 
 ```bash
-git switch <segunda-rama>
+git switch main && git pull
+git switch -c titulo-a && sed -i '1s/.*/# pr-lab A/' README.md && git commit -am "Title A" && git push -u origin titulo-a && gh pr create --fill
+git switch main
+git switch -c titulo-b && sed -i '1s/.*/# pr-lab B/' README.md && git commit -am "Title B" && git push -u origin titulo-b && gh pr create --fill
+gh pr merge titulo-a --squash --delete-branch
+```
+
+El PR de `titulo-b` mostrará *This branch has conflicts*. Resuélvelo en local:
+
+```bash
+git switch titulo-b
 git pull origin main          # trae main y fusiona: aparece el conflicto
-# resuelve como en la clase 23, después:
+# resuelve en README.md como en la clase 23, después:
 git add README.md && git commit --no-edit && git push
+gh pr merge titulo-b --squash --delete-branch
+git switch main && git pull
 ```
 
 El PR se actualiza solo y vuelve a poder fusionarse.
@@ -288,10 +311,10 @@ git add secret.txt && git commit -m "Add config"
 git push -u origin test/secret
 ```
 
-GitHub puede **bloquear el push** si detecta algo con forma de credencial (*push protection*, activada por defecto en repos públicos). Aunque te deje, la lección de las clases 15 y 22 sigue en pie: si un secreto real llega a un remoto, se rota. Limpia:
+👀 **Qué deberías ver:** si GitHub lo bloquea (*push protection*, activa por defecto en repos públicos), verás `GH013` y `Push cannot contain secrets`. Si te deja subirlo, es normal: esa clave es el ejemplo de la documentación de AWS. La lección de las clases 15 y 22 sigue en pie: si un secreto real llega a un remoto, se rota. Limpia:
 
 ```bash
-git switch main && git branch -D test/secret
+git switch main && git branch -D test/secret   # -D: la borra aunque no esté fusionada
 git push origin --delete test/secret 2>/dev/null || true
 ```
 
@@ -364,7 +387,7 @@ printf "## What\n\n## ____\n\n## ____\n" > .github/pull_request_template.md
 git add .github && git commit -m "Add a pull request template"
 git push -u origin chore/pr-template && gh pr create --fill && gh pr merge --squash --delete-branch
 ```
-Después, abre otro PR **desde la web** y mira si el cuadro de texto ya trae las tres secciones.
+Después, en la web de GitHub, edita `README.md` con el lápiz ✏️ → *Commit changes…* → *Create a new branch for this commit and start a pull request* → *Propose changes*, y mira si el cuadro de texto ya trae las tres secciones.
 
 <details>
 <summary>Pista</summary>
@@ -382,7 +405,7 @@ Las tres secciones son las del PR de la pieza 2. Y la plantilla solo funciona cu
 > ```
 > Si alguien añadió un commit en GitHub, verás `Tu rama está detrás de 'origin/main' por 1 commit`: `fetch` lo trajo a `origin/main`, pero tu `main` no cambió.
 
-**Ahora tú, con huecos:** edita el README **en la web**, directamente en un PR (el ruleset no te deja en `main`), fusiónalo y después:
+**Ahora tú, con huecos:** fusiona en la web ese PR que acabas de abrir en el punto 2 (o abre otro con el lápiz ✏️) y después:
 ```bash
 git fetch
 git log --oneline -1 ____

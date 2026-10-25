@@ -19,7 +19,7 @@ usar 2>/dev/null con find es para enviar los reportes stderr o posible mensajes 
 
 ## Autocorrección
 
-Lo más dinámico: escríbele a Claude «examíname clase-05». O califica tú con la autocorrección de la clase:
+Lo más dinámico: escríbeme «examíname clase-05». O califica tú con la autocorrección de la clase:
 ✅ la idea clave con tus palabras · 🟡 a medias o sin el porqué · ❌ incorrecta
 
 Cierre: 1 ✅ · 2 — (omitida) · 3 ✅ · 4 ✅

@@ -14,17 +14,17 @@
 
 ## Preguntas
 
-1. ¿Qué diferencia hay entre `./script.sh`, `bash script.sh` y `source script.sh`? ¿Cuál puede cambiar las variables de tu shell?
+1. ¿Qué diferencia hay entre `./script.sh`, `bash script.sh` y `source script.sh`? ¿Cuál puede cambiar las variables de tu shell? *(1–2 líneas)*
 2. 💻 Con `F=informe.final.tar.gz`, ¿qué imprimen `"${F%%.*}"`, `"${F%.*}"` y `"${F#*.}"`?
 3. Escribe las dos líneas que van al principio de un script que exige **exactamente un** argumento y que ese argumento sea un directorio existente. Debe salir con 2 si falta el argumento y con 1 si no es un directorio.
 4. 💻 ¿Qué imprime `[[ 10 < 9 ]] && echo sí || echo no`? ¿Y `(( 10 < 9 )) && echo sí || echo no`?
 5. 💻 Este código imprime `0` aunque `lista.txt` tiene 5 líneas. Explica el fallo y arréglalo: `N=0; cat lista.txt | while read -r L; do N=$((N + 1)); done; echo $N`
 6. Escribe un bucle que reintente `curl -fs -o /dev/null http://localhost:8080` hasta 5 veces, con 2 segundos entre intentos, y que salga con 1 si nunca responde.
 7. Con `set -e`, ¿por qué el script muere en `(( i++ ))` cuando `i` vale 0? ¿Qué escribes en su lugar?
-8. ¿Qué hace `trap 'rm -rf "$TMP"' EXIT` y cuándo se ejecuta? Da un caso real.
+8. ¿Qué hace `trap 'rm -rf "$TMP"' EXIT` y cuándo se ejecuta? Da un caso real. *(1–2 líneas)*
 9. Escribe la línea de crontab que ejecute cada día a las 2:30 `/home/educo/bin/limpiar.sh` y guarde su salida y sus errores en `/home/educo/logs/limpiar.log`.
-10. Un script usa `aws`, instalado en `~/.local/bin`. En tu terminal funciona, pero desde cron el log dice que no encuentra `aws`. ¿Por qué, y cómo lo arreglas?
-11. **(Bloque B)** ¿Cuándo elegirías un timer de systemd en lugar de cron? Da dos razones.
+10. Un script usa `aws`, instalado en `~/.local/bin`. En tu terminal funciona, pero desde cron el log dice que no encuentra `aws`. ¿Por qué, y cómo lo arreglas? *(1–2 líneas)*
+11. **(Clases 12 y 20)** ¿Cuándo elegirías un timer de systemd en lugar de cron? Da dos razones. *(1–2 líneas)*
 12. **(Bloque A)** `./vigia.sh` responde `Permiso denegado`, pero `bash vigia.sh` funciona. ¿Por qué? ¿Qué arreglo es el correcto pensando en cron?
 
 ## Práctica final 💻
@@ -38,6 +38,39 @@ Sin mirar, escribe `alerta-disco.sh [límite]` en `~/my-devops-journey/labs/repa
 Pista, solo si te atascas más de 5 minutos: `df --output=pcent /` da el porcentaje con una cabecera, y `tr -dc '0-9'` deja solo los dígitos.
 
 Pruébalo con `./alerta-disco.sh 99`, `./alerta-disco.sh 1` y `./alerta-disco.sh abc`, y mira el código de salida de cada uno.
+
+### Para otro día (criterio de salida de la fase 1): `backup2.sh` sin mirar
+
+**Sin mirar la clase 20**, escribe desde cero `~/bin/backup2.sh` con el mismo comportamiento que `backup.sh` y compáralo después con `cat ~/bin/backup.sh`. Repítelo otro día hasta que te salga sin ayuda, primero con huecos y después sin ellos.
+
+> 🧩 **Ejemplo resuelto:** los pasos del script escritos como comentarios, antes que el código.
+> ```bash
+> # 1. validar: ¿llegó una carpeta y existe?
+> # 2. el nombre del archivo, con fecha y hora
+> # 3. comprimir con tar
+> # 4. rotación: borrar las copias de más de 7 días
+> ```
+> Con los pasos escritos, solo tienes que rellenar cada uno. Es como se escriben los scripts de verdad.
+
+**Con huecos (para el primer intento):**
+```bash
+#!/bin/bash
+set -euo pipefail
+ORIGEN="${1:?Uso: $0 <carpeta> [destino]}"
+DESTINO="${2:-$HOME/backups}"
+[[ -d $ORIGEN ]] || { echo "Error: $ORIGEN no es un directorio" >&2; exit 1; }
+mkdir -p "$DESTINO"
+BASE="$(basename "$ORIGEN")"
+ARCHIVO="$DESTINO/$BASE-$(date +____).tar.gz"
+tar -czf "$ARCHIVO" -C "$(dirname "$ORIGEN")" "____"
+find "$DESTINO" -maxdepth 1 -name "$BASE-*.tar.gz" -mtime +____ -print -delete
+```
+
+<details>
+<summary>Pista</summary>
+
+La fecha con hora es `%F_%H%M%S`. `tar` empaqueta el nombre de la carpeta (sin su ruta), que está en `$BASE`. Y la rotación es de 7 días.
+</details>
 
 ## Autocorrección
 
@@ -68,7 +101,7 @@ done
 echo "No respondió tras 5 intentos" >&2
 exit 1
 ```
-*(Clase 18.)*
+*(Dentro de un script; en la terminal, `exit` la cerraría. Clase 18.)*
 
 **7.** `(( ))` devuelve 1 cuando la expresión vale 0, y `i++` vale el valor **anterior** de `i`, 0. Para `set -e` eso es un fallo. En su lugar: `i=$(( i + 1 ))`. *(Clase 19.)*
 
@@ -76,7 +109,7 @@ exit 1
 
 **9.** `30 2 * * * /home/educo/bin/limpiar.sh >> /home/educo/logs/limpiar.log 2>&1`. Minuto 30, hora 2, todos los días. *(Clases 04 y 20.)*
 
-**10.** Cron arranca con un PATH mínimo, `/usr/bin:/bin`, que no incluye `~/.local/bin`. Arreglo: la ruta completa (`/home/educo/.local/bin/aws`) o un `PATH=` al principio del script o del crontab. *(Clases 07 y 20.)*
+**10.** Cron no carga tu PATH personal: el suyo no incluye `~/.local/bin`. Arreglo: la ruta completa (`/home/educo/.local/bin/aws`) o un `PATH=` al principio del script o del crontab. *(Clases 07 y 20.)*
 
 **11.** Con `Persistent=true`, el timer recupera la ejecución si el equipo estaba apagado a esa hora, y cron no. Además, sus logs van solos al journal (`journalctl -u nombre`), y puedes fijar el usuario y las dependencias como en cualquier servicio. Cron gana en sencillez, y su sintaxis es la que usan Kubernetes y GitHub Actions. *(Clases 12 y 20.)*
 

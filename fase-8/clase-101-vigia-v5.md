@@ -51,7 +51,7 @@ Criterios de salida de la fase:
 | R10 | `verify.sh` → `Fallos: 0` | — |
 | R11 | En el README:<br>• una sección *Infrastructure*: el arranque del estado, cómo recrearlo todo y cómo destruirlo;<br>• *What broke and how I found it*;<br>• *Limitations*.<br>Etiqueta `v5` y su release | — |
 
-### Por qué hace falta una receta para recrear
+### Por qué hacen falta tres pasos para recrear
 
 La instancia, al arrancar, descarga **su imagen de ECR**. Pero después de un `destroy` completo:
 - el repositorio de ECR ya no existe;
@@ -95,7 +95,7 @@ Es el precio de que `destroy` borre de verdad. En producción, los datos de larg
    ```
 
    Lee el plan de destrucción entero antes de escribir `yes`. Comprueba que **no** queda nada con `Proyecto=vigia` salvo el bucket del estado (pista 3).
-6. Recrea con la receta de arriba. En el paso 3, pon en `terraform.tfvars` (y en la variable `TF_ETIQUETA_IMAGEN` de GitHub) el SHA que acaba de publicar el pipeline.
+6. Recrea con los tres pasos de arriba. En el paso 3, pon en `terraform.tfvars` (y en la variable `TF_ETIQUETA_IMAGEN` de GitHub) el SHA que acaba de publicar el pipeline.
 7. Espera a que la instancia arranque, lanza el informe a mano (clase 79) y pasa `verify.sh`: `Fallos: 0`. Apunta la hora: ¿cuánto tardó, de `destroy` a todo en verde?
 8. README, PR, etiqueta `v5` y release. Termina la instancia si no vas a seguir (`terraform destroy -target=aws_instance.vigia`).
 
@@ -237,7 +237,7 @@ Después, escríbeme `examíname clase-101`.
 **Comprueba tu entrega:**
 - [ ] `verify.sh` → `Fallos: 0` **después** de destruir y recrear.
 - [ ] `aws resourcegroupstaggingapi get-resources …` tras el `destroy` solo mostraba el bucket del estado.
-- [ ] El README tiene la receta de recreación y el tiempo medido.
+- [ ] El README tiene los pasos de recreación y el tiempo medido.
 - [ ] El workflow de Terraform planifica en los PR.
 - [ ] `git tag` muestra `v5`, con su release.
 
@@ -288,7 +288,7 @@ Lo que te faltaría estudiar:
 - `precondition` y `postcondition`;
 - `TF_LOG`.
 
-Los tutoriales oficiales *Prepare for Terraform Associate (004)* lo cubren. Si decides presentarte, pídeme `prepara el Terraform Associate` y armamos un plan de estudio como el del CLF.
+Los tutoriales oficiales *Prepare for Terraform Associate (004)* lo cubren en unas 15–20 h (unas cuatro sesiones de repaso y práctica). Si decides presentarte, pídeme `revisa Terraform Associate` y armamos un plan de estudio como el del CLF.
 
 ## Al terminar la fase 8
 

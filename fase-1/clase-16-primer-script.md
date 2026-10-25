@@ -47,16 +47,16 @@ mkdir -p ~/my-devops-journey/labs/clase-16 && cd ~/my-devops-journey/labs/clase-
 ### Pieza 1 — Cómo es un script, y cómo se lanza
 
 ```bash
-#!/bin/bash                       # shebang: qué programa interpreta el archivo
+#!/bin/bash
 # Uso: ./hola.sh [nombre]         # comentario: qué hace y cómo se usa
 NOMBRE="${1:-mundo}"              # variable con valor por defecto (pieza 3)
 echo "Hola, $NOMBRE"              # la lógica
 exit 0                            # código de salida (0 = éxito)
 ```
 
-El **shebang** (`#!`) tiene que ser la **primera línea**, desde el primer carácter. Cuando ejecutas `./hola.sh`, el kernel lee esos dos caracteres y lanza `/bin/bash ./hola.sh` por ti.
+El **shebang** (`#!`) tiene que ser la **primera línea**, desde el primer carácter (sin comentarios al lado). Cuando ejecutas `./hola.sh`, el kernel lee esos dos caracteres y lanza `/bin/bash ./hola.sh` por ti. Si olvidas el shebang, desde tu terminal bash lo ejecutará igual, pero herramientas como `cron` lo lanzarán con `/bin/sh` (`dash` en Ubuntu), que es más básico y falla con cosas propias de bash como `[[ ]]`.
 
-> 🔁 **Vuelve a la clase 01.** En el paso 4 de «Qué pasa cuando pulsas Enter», el kernel ejecuta un programa. Un programa compilado, como `ls`, sabe ejecutarlo directamente. Un script, en cambio, es solo texto: el `#!` es la línea que le dice al kernel a qué programa pasárselo. Y si el archivo no tiene `x` (clase 06), el kernel se niega justo en ese paso: `Permiso denegado`.
+> 🔁 **Vuelve a la clase 01.** En el paso 4 de «Qué pasa cuando pulsas Enter», el kernel ejecuta un programa. Un programa compilado (ya traducido a instrucciones de la CPU), como `ls`, sabe ejecutarlo directamente. Un script, en cambio, es solo texto: el `#!` es la línea que le dice al kernel a qué programa pasárselo. Y si el archivo no tiene `x` (clase 06), el kernel se niega justo en ese paso: `Permiso denegado`.
 
 Hay tres formas de lanzarlo:
 
@@ -221,7 +221,7 @@ Y con `ARCHIVO="backup-2026-10-12.tar.gz"`, la diferencia entre uno y dos símbo
 | `${ARCHIVO#*.}` | por delante, **lo mínimo** (hasta el primer punto) | `tar.gz` |
 | `${ARCHIVO##*.}` | por delante, **lo máximo** (hasta el último punto) | `gz` |
 
-Cómo recordarlo: en el teclado, `#` está a la **izquierda** de `$` (corta por delante) y `%` a la **derecha** (corta por detrás). **Un** símbolo corta lo mínimo; **dos**, lo máximo. Y `${#ARCHIVO}`, con el `#` delante del nombre, no recorta: cuenta las letras (`24`).
+Cómo recordarlo: en el teclado, `#` está a la **izquierda** de `$` (corta por delante) y `%` a la **derecha** (corta por detrás). **Un** símbolo corta lo mínimo; **dos**, lo máximo.
 
 **Pruébalo.** 🔮 **Predice** cada resultado antes de ejecutarlo, con las tablas de arriba:
 
@@ -235,13 +235,12 @@ ARCHIVO="backup-2026-10-12.tar.gz"
 echo "${ARCHIVO%.tar.gz}"
 echo "${ARCHIVO#*.}"
 echo "${ARCHIVO##*.}"
-echo "${#ARCHIVO}"
 ```
 
 <details>
 <summary>Qué deberías ver</summary>
 
-`ejemplo.com/salud`, `https://ejemplo.com`, `https:`, `ejemplo.com`, `backup-2026-10-12`, `tar.gz`, `gz` y `24`.
+`ejemplo.com/salud`, `https://ejemplo.com`, `https:`, `ejemplo.com`, `backup-2026-10-12`, `tar.gz` y `gz`.
 </details>
 
 Sacar el host de una URL en dos pasos es justo lo que hará Vigía para medir el DNS (clase 35).
@@ -306,7 +305,7 @@ Cuando un script "hace algo raro", lo primero es ver qué ejecuta **de verdad**:
 bash -x tamano.sh ~/my-devops-journey/labs
 ```
 
-👀 **Qué deberías ver:** líneas que empiezan por `+`, como `+ RUTA=/home/educo/my-devops-journey/labs` y `+ du -sh /home/educo/my-devops-journey/labs`, y al final la línea normal del script con el tamaño.
+👀 **Qué deberías ver:** líneas que empiezan por `+`, como `+ RUTA=/home/educo/my-devops-journey/labs`, seguidas de `++ du -sh /home/educo/my-devops-journey/labs` y `++ cut -f1` (con `++` porque corren dentro de `$( )`), y al final la línea normal del script con el tamaño.
 
 **En resumen:** `bash -x script` te enseña cada comando tal como lo ejecuta bash: es la primera herramienta para depurar.
 
@@ -370,7 +369,7 @@ ls "$DIRETORIO"
 EOF
 chmod +x typo.sh && ./typo.sh
 ```
-`$DIRETORIO` (falta una C) no existe, así que vale vacío **sin ningún aviso**, y `ls` recibe `''`. Aquí solo falla un `ls`. Imagina `rm -rf "$DIRETORIO"/*`: se convertiría en `rm -rf /*`. En 2015, un script de Steam para Linux hizo exactamente eso y borró los archivos de algunos usuarios. En la clase 19 activarás `set -u`, que convierte este error en una parada inmediata, y `shellcheck` te avisará de la errata (`Possible misspelling: DIRETORIO`) antes de ejecutar nada.
+`$DIRETORIO` (falta una C) no existe, así que vale vacío **sin ningún aviso**, y `ls` recibe `''`. Aquí solo falla un `ls`. Imagina `rm -rf "$DIRETORIO/"*`: si la variable está vacía, se convierte en `rm -rf /*`. En 2015, un script de Steam para Linux tenía `rm -rf "$STEAMROOT/"*` con la variable vacía y borró los archivos de algunos usuarios. En la clase 19 activarás `set -u`, que convierte este error en una parada inmediata, y `shellcheck` te avisará de la errata (`Possible misspelling: DIRETORIO`) antes de ejecutar nada.
 
 ## Reto
 
@@ -428,7 +427,7 @@ Para el nombre, corta por **detrás** lo mínimo, desde el último punto: `%` y 
 > ```
 > Como `NOMBRE` está vacía, `SALUDO` toma el valor de `$USER`: imprime `educo`.
 
-**Ahora tú, con huecos:**
+**Ahora tú, con huecos** (añade `ETIQUETA` debajo de `TAMANO=...` en `tamano.sh` y cambia la línea del `echo`):
 ```bash
 ETIQUETA="${2:-____}"
 echo "$____ ocupa ${TAMANO:-?}"
@@ -493,7 +492,7 @@ Después, escríbeme `examíname clase-16`.
 <details>
 <summary>Ábrelo solo después de escribir tus respuestas</summary>
 
-**1.** Es la primera línea, `#!/bin/bash`: le dice al kernel con qué programa interpretar el archivo cuando lo ejecutas directamente. Sin ella, el resultado depende de quién lo lance: desde bash funciona por casualidad (bash lo ejecuta él mismo), pero cron lanza los comandos con `/bin/sh` (dash), que lo interpretaría como un script de `sh`, y fallaría en lo que es propio de bash, como `[[ ]]`. Un programa que no es un shell daría `Exec format error`. Con `bash script.sh` el shebang se ignora.
+**1.** Es la primera línea, `#!/bin/bash`: le dice al kernel con qué programa interpretar el archivo cuando lo ejecutas directamente. Sin ella, el resultado depende de quién lo lance: desde bash funciona por casualidad (bash lo ejecuta él mismo), pero cron lanza los comandos con `/bin/sh` (dash), que lo interpretaría como un script de `sh`, y fallaría en lo que es propio de bash, como `[[ ]]`. Con `bash script.sh` el shebang se ignora.
 
 **2.** `"$@"` entrega cada argumento tal como llegó, aunque tenga espacios. `$@` sin comillas los vuelve a partir por los espacios (y además expande comodines). Se nota en cuanto un argumento tiene espacios, como una ruta `"mi informe.txt"`, que se convierte en dos argumentos.
 

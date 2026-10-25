@@ -7,7 +7,7 @@ Un contenedor empaqueta la aplicación con todo lo que necesita y corre igual en
 
 ## Qué necesitas
 
-Docker ya está en tu Ubuntu (fase 0) y tu usuario está en el grupo `docker`. En la clase 56 instalarás los dos complementos que faltan: `sudo apt install docker-compose-v2 docker-buildx`. En la 64, una cuenta gratis de Docker Hub.
+Docker ya está en tu Ubuntu (fase 1) y tu usuario está en el grupo `docker`. En la clase 56 instalarás los dos complementos que faltan: `sudo apt install docker-compose-v2 docker-buildx`. En la 64, una cuenta gratis de Docker Hub.
 
 ## Clases
 

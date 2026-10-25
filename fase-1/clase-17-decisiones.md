@@ -57,9 +57,12 @@ fi
 No hay corchetes porque no hacen falta: `grep` ya deja su código de salida. Para encadenar varios casos existe `elif` («y si no, si…»):
 
 ```bash
-if [[ $USO -ge 90 ]]; then echo "crítico"
-elif [[ $USO -ge 80 ]]; then echo "aviso"
-else echo "bien"
+if grep -q "^root:" /etc/passwd; then
+  echo "existe root"
+elif grep -q "^educo:" /etc/passwd; then
+  echo "existe educo"
+else
+  echo "no está ninguno"
 fi
 ```
 
@@ -90,17 +93,14 @@ El **código de salida** de `grep`: si es 0, entra.
 
 ### Pieza 2 — `[[ ]]`: un comando que solo sabe hacer preguntas
 
-Los corchetes dobles **también son un comando**: hacen una pregunta y dejan código 0 si la respuesta es «sí». Las preguntas más útiles:
+Los corchetes dobles **también son un comando**: hacen una pregunta y dejan código 0 si la respuesta es «sí». Las preguntas más útiles sobre archivos y texto:
 
 | Sobre… | Pregunta | Ejemplo |
 |--------|----------|---------|
-| archivos | ¿existe? ¿es un archivo? ¿es un directorio? | `[[ -e $F ]]` · `[[ -f $F ]]` · `[[ -d $D ]]` |
-| texto | ¿está vacío? ¿es igual a…? ¿se parece a…? | `[[ -z $V ]]` · `[[ $V == si ]]` · `[[ $V == web-* ]]` |
-| números | ¿es igual? ¿menor? ¿mayor o igual? | `[[ $N -eq 0 ]]` · `[[ $N -lt 10 ]]` · `[[ $N -ge 80 ]]` |
+| archivos | ¿existe? ¿es un archivo? ¿es un directorio? ¿puedo escribirlo? | `[[ -e $F ]]` · `[[ -f $F ]]` · `[[ -d $D ]]` · `[[ -w $F ]]` |
+| texto | ¿está vacío? ¿es igual a…? ¿se parece a…? | `[[ -z $V ]]` · `[[ $V == si ]]` · `[[ $V == web-* ]]` · `[[ $V =~ ^web-[0-9]+$ ]]` |
 
-Los números se comparan con letras (`-eq` *equal*, `-lt` *less than*, `-ge` *greater or equal*…) porque `<` y `>` dentro de `[[ ]]` comparan **texto**, por orden alfabético. Lo comprobarás en el Rómpelo 2.
-
-Verás también corchetes **simples**, `[ … ]`: es la versión clásica, que funciona en cualquier `sh` pero es más frágil con las variables vacías. En tus scripts de bash, usa siempre los dobles.
+`=~` compara con una expresión regular: `[0-9]` es un dígito, `+` significa «uno o más» y `^` `$` son el principio y el final (clase 05).
 
 **Pruébalo:**
 
@@ -122,17 +122,27 @@ NOMBRE="servidor-01"
 
 ✋ **Sin mirar:**
 1. ¿Cómo preguntas si `/srv/datos` es un directorio?
-2. ¿Con qué comparas números dentro de `[[ ]]`: con `<` o con `-lt`?
+2. ¿Cómo preguntas si `$NOMBRE` está vacío?
 
 <details>
 <summary>Comprueba</summary>
 
-1. `[[ -d /srv/datos ]]`. 2. Con `-lt`: `<` compararía texto. (O usa `(( ))`, la pieza 3, donde `<` sí compara números.)
+1. `[[ -d /srv/datos ]]`. 2. `[[ -z $NOMBRE ]]`.
 </details>
 
-**En resumen:** `[[ ]]` pregunta sobre archivos (`-f`, `-d`), texto (`==`, `-z`) o números (`-lt`, `-ge`).
+**En resumen:** `[[ ]]` pregunta sobre archivos (`-f`, `-d`, `-w`) o texto (`==`, `-z`, `=~`).
 
-### Pieza 3 — `(( ))`: cuentas con números enteros
+### Pieza 3 — Comparar números y hacer cuentas: `-lt` o `(( ))`
+
+Dentro de `[[ ]]`, los números se comparan con letras (`-eq` *equal*, `-lt` *less than*, `-ge` *greater or equal*…):
+
+| Sobre… | Pregunta | Ejemplo |
+|--------|----------|---------|
+| números | ¿es igual? ¿menor? ¿mayor o igual? | `[[ $N -eq 0 ]]` · `[[ $N -lt 10 ]]` · `[[ $N -ge 80 ]]` |
+
+Se usan letras porque `<` y `>` dentro de `[[ ]]` comparan **texto**, por orden alfabético (lo comprobarás en el Rómpelo 2).
+
+La alternativa para números enteros es `(( ))`, que sirve tanto para comparar como para calcular:
 
 ```bash
 (( INTENTOS > 3 )) && echo "demasiados intentos"   # comparar: código 0 si es verdad
@@ -145,14 +155,23 @@ Dentro de `(( ))` no hace falta el `$` delante de las variables, y `<` y `>` sí
 
 ```bash
 USO=85
-(( USO >= 80 )) && echo "disco por encima del 80 %"
+[[ $USO -ge 80 ]] && echo "con -ge: disco por encima del 80 %"
+(( USO >= 80 )) && echo "con (( )): disco por encima del 80 %"
 A=7; B=3
 echo "total: $(( A + B * 2 ))  ·  división entera: $(( A / B ))  ·  resto: $(( A % B ))"
 ```
 
-👀 **Qué deberías ver:** `disco por encima del 80 %` y `total: 13  ·  división entera: 2  ·  resto: 1`: `7 / 3` da 2, sin decimales.
+👀 **Qué deberías ver:** las dos líneas de `disco por encima del 80 %` y `total: 13  ·  división entera: 2  ·  resto: 1`: `7 / 3` da 2, sin decimales.
 
-**En resumen:** `(( ))` compara y calcula con números enteros.
+✋ **Sin mirar:** ¿con qué comparas números dentro de `[[ ]]`: con `<` o con `-lt`?
+
+<details>
+<summary>Comprueba</summary>
+
+Con `-lt`: dentro de `[[ ]]`, `<` compararía texto. (O usa `(( ))`, donde `<` sí compara números.)
+</details>
+
+**En resumen:** para números enteros, usa `-eq`/`-lt`/`-ge` dentro de `[[ ]]`, o `(( ))` para comparar y calcular.
 
 > ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
 
@@ -193,6 +212,8 @@ TAMANO="$(du -sh "$RUTA" | cut -f1)"
 echo "$RUTA ocupa $TAMANO"
 ```
 
+`!` delante de la pregunta la invierte: `[[ ! -e $RUTA ]]` es «¿la ruta **no** existe?».
+
 🔮 **Predice:** ¿qué código devuelve ahora con `/no-existe`?
 
 ```bash
@@ -223,7 +244,7 @@ cat > revisar-url.sh <<'EOF'
 # Sale con 0 si la URL responde con un código 2xx o 3xx, y con 1 si no.
 URL="${1:?Uso: $0 <url>}"
 CODIGO="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL")"
-if [[ $CODIGO == [23]* ]]; then
+if [[ $CODIGO == [23]* ]]; then   # [23]*: empieza por 2 o por 3 (el comodín [ ] de la clase 03)
   echo "UP   $CODIGO $URL"
 else
   echo "DOWN $CODIGO $URL"
@@ -341,7 +362,7 @@ El código 3 para "inactivo" no es casual: `systemctl status` usa la misma conve
 VACIA=""
 [ $VACIA = "x" ] && echo "igual"
 ```
-`[: =: se esperaba un operador unario`. Sin comillas, `$VACIA` desaparece y `[` recibe `[ = x ]`, que no tiene sentido. Con `[ "$VACIA" = "x" ]` o con `[[ $VACIA == x ]]` funciona. Es una de las razones para preferir `[[ ]]`.
+`[: =: se esperaba un operador unario` (una pregunta de una sola parte, como `-z`: `[` vio `=` donde esperaba algo así). Sin comillas, `$VACIA` desaparece y `[` recibe `[ = x ]`, que no tiene sentido. Con `[ "$VACIA" = "x" ]` o con `[[ $VACIA == x ]]` funciona. Es una de las razones para preferir `[[ ]]`.
 
 **2. Comparar números como si fueran texto:**
 
@@ -363,7 +384,7 @@ Dentro de `[[ ]]`, `<` compara **texto** en orden alfabético: `"1"` va antes qu
 ```bash
 if [[ grep -q root /etc/passwd ]]; then echo "sí"; fi
 ```
-Error de sintaxis. `if` ya ejecuta comandos: se escribe `if grep -q root /etc/passwd; then …`. Los corchetes son solo para las comprobaciones de la tabla.
+Sale `elemento inesperado «-q», se esperaba un operador binario condicional` y después `error de sintaxis cerca de «-q»`. `if` ya ejecuta comandos: se escribe `if grep -q root /etc/passwd; then …`. Los corchetes son solo para las comprobaciones de la tabla.
 
 ## Reto
 
@@ -432,10 +453,10 @@ if (( N % ____ == 0 )); then echo "par"; else echo "____"; fi
 <details>
 <summary>Pista</summary>
 
-Un número es par si el resto de dividirlo entre 2 es 0.
+Un número es par si el resto de dividirlo entre 2 es 0. (Un número con 0 delante, como `08`, bash lo lee en otra base y da error; no hace falta arreglarlo hoy.)
 </details>
 
-**4.** Mejora `revisar-url.sh` con `case`: `-h` o `--help` muestran el uso, y sin argumento revisa `https://example.com`.
+**4.** Mejora `revisar-url.sh` con `case`: sustituye la línea `URL="${1:?Uso: $0 <url>}"` por este `case` para que `-h` o `--help` muestren el uso y, sin argumento, revise `https://example.com`.
 
 > 🧩 **Ejemplo resuelto:** un `case` que distingue «no me diste nada» de «me diste algo».
 > ```bash

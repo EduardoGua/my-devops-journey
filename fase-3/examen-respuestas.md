@@ -12,7 +12,7 @@
 
 **A4.** `777` da escritura a cualquier usuario y proceso: un riesgo de seguridad grave. Lo correcto es ver con qué usuario corre nginx (`www-data`), qué permiso falta y en qué tramo de la ruta (`namei -l`), y dar el mínimo: archivos `644`, directorios `755` y el grupo adecuado si hace falta. *(Clases 06, 11)*
 
-**A5.** Tres de estas: (1) el PATH de cron es solo `/usr/bin:/bin`, así que no encuentra programas de `~/bin` o `/usr/local/bin` → rutas absolutas o PATH definido en el script; (2) el directorio de trabajo es el HOME, así que las rutas relativas apuntan a otro sitio → rutas absolutas o calcular la carpeta del script; (3) no carga `~/.bashrc`, ni alias ni variables exportadas → definir en el script lo que necesite; (4) la línea la ejecuta `/bin/sh` y un `%` sin escapar la corta → la lógica en un script con su shebang, y `\%` si hace falta; (5) la salida se descarta → redirigirla a un log para poder ver el error. *(Clases 07, 20)*
+**A5.** Tres de estas: (1) cron no carga tu `PATH` personal (`~/bin`, `~/.local/bin`; en distribuciones clásicas es solo `/usr/bin:/bin`) → rutas absolutas o `PATH` definido en el script; (2) el directorio de trabajo es el HOME, así que las rutas relativas apuntan a otro sitio → rutas absolutas o calcular la carpeta del script; (3) no carga `~/.bashrc`, ni alias ni variables exportadas → definir en el script lo que necesite; (4) la línea la ejecuta `/bin/sh` y un `%` sin escapar la corta → la lógica en un script con su shebang, y `\%` si hace falta; (5) la salida se descarta → redirigirla a un log para poder ver el error. *(Clases 07, 20)*
 
 **A6.** `SIGTERM` pide terminar y se puede atrapar para cerrar ordenadamente. `SIGKILL` lo mata el kernel sin opción de limpieza. Kubernetes envía `SIGTERM`, espera el *grace period* (30 s por defecto) y después `SIGKILL`. *(Clase 11)*
 
@@ -57,7 +57,7 @@
 
 **C4.** 502 = nginx no obtiene respuesta del backend. `tail /var/log/nginx/error.log` → *connection refused* / *upstream prematurely closed* · `systemctl status <app>` · `journalctl -u <app> -n 50` · `ss -tlnp` (¿escucha en el puerto que espera nginx?) · `curl` al backend directamente.
 
-**C5.** `df -h` (¿qué sistema de archivos está lleno?) · `df -i` (¿inodos?) · `sudo du -xh / --max-depth=1 | sort -h` y seguir bajando · `sudo lsof +L1` (archivos borrados abiertos) · limpiar con `apt clean`, `journalctl --vacuum-size=200M`, logs viejos… y **después** buscar la causa y poner una alarma de disco.
+**C5.** `df -h` (¿qué sistema de archivos está lleno?) · `df -i` (¿inodos?) · `sudo du -xh / --max-depth=1 | sort -h` y seguir bajando · `sudo lsof +L1` (archivos borrados abiertos) · limpiar con `apt clean`, logs viejos… y **después** buscar la causa y poner una alarma de disco.
 
 ## Parte D (criterios)
 
@@ -65,7 +65,7 @@
 
 **D2:** usuario `--system --shell /usr/sbin/nologin`; unit con `User=horasvc`, `ExecStart=/usr/bin/python3 -m http.server 8090 --bind 127.0.0.1 --directory …`, `Restart=on-failure`, `WantedBy=multi-user.target`; `daemon-reload` y `enable --now`; nginx con `location /hora/ { proxy_pass http://127.0.0.1:8090/; }`, `nginx -t` y reload. `curl http://IP/hora/` desde el PC → 200. *Escuchar en 127.0.0.1 ya es una buena decisión.*
 
-**D3:** `ufw default deny incoming`, `allow OpenSSH`, `allow 80/tcp`, `enable`. Desde el PC: `nc -zv -w3 IP 8090` → timeout (o refused si el servicio escucha en 127.0.0.1) y `curl IP/hora/` → 200. Razón: un solo punto de entrada (el proxy) que centraliza TLS, logs y control; el servicio interno no queda expuesto. Es el patrón de ALB + subred privada.
+**D3:** `ufw default deny incoming`, `allow OpenSSH`, `allow 80/tcp`, `enable`. Desde el PC: `nc -zv -w3 IP 8090` → **timeout** (ufw descarta), y `curl IP/hora/` → 200. Si tu servicio escucha en `127.0.0.1`, ese `nc` no prueba por sí solo el firewall (sin ufw daría *refused*): para demostrar el bloqueo del firewall, levanta una sonda en `0.0.0.0` como en el P2 (clase 37) o mira `sudo ufw status verbose`. Razón: un solo punto de entrada (el proxy) que centraliza TLS, logs y control; el servicio interno no queda expuesto. Es el patrón de ALB + subred privada.
 
 ## Parte E (puntos clave que deben aparecer)
 

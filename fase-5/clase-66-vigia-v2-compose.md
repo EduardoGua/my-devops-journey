@@ -165,7 +165,7 @@ curl -s 127.0.0.1:8000/status
 (how to see the logs of each service, query the database, stop it and back up the volume)
 ````
 
-### Modelo para adaptar (lo escribió Claude)
+### Modelo para adaptar
 
 Cópialo en tu README debajo de *Run it with Docker Compose* y rellena los huecos (`____`). No hace falta escribir más.
 

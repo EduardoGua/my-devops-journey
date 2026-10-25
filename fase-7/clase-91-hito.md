@@ -281,7 +281,7 @@ Reglas:
 
 Que la **acción** sea lo más largo (qué comprobaste, en qué orden y por qué) y que el **resultado** tenga un dato.
 
-**Un modelo, ya escrito** (lo escribió Claude, con la historia de la clase 79):
+**Un modelo, ya escrito** (con la historia de la clase 79):
 
 ```markdown
 ## El informe que no llegaba a S3 (algo que fallaba en la nube)

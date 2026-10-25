@@ -14,21 +14,21 @@
 
 ## Preguntas
 
-1. ¿Qué diferencia hay entre `multipass stop`, `multipass delete` y `multipass delete --purge`? ¿Cuál equivale a *Terminate* en AWS, y qué sigue costando dinero si solo paras una EC2?
-2. Ana tiene que poder reiniciar nginx con `sudo` y nada más. Escribe la regla y cómo la creas sin riesgo de romper `sudo`.
-3. `/srv/equipo` es `root:devs` con permisos `2770`. Luis, de `devs`, crea un archivo, y Ana, también de `devs`, no puede modificarlo. ¿Qué dos piezas revisas?
-4. ¿Por qué en un script de aprovisionamiento se escribe `apt-get update && apt-get install -y nginx`, y no solo el `install`?
-5. Una app tarda 20 segundos en apagarse y alguien propone usar siempre `kill -9`. ¿Qué le respondes?
-6. `systemctl status miapp` dice `active (running)`, pero la web no responde. ¿Qué haces?
-7. Tras reiniciar el servidor, `miapp` no está corriendo. Da dos causas posibles y el comando que distingue cada una.
-8. Escribe el comando para ver los errores de nginx en el journal entre las 14:00 y las 14:30 de hoy.
-9. En una VM de 1 GB, `free -h` muestra `free 80Mi` y `available 600Mi`. ¿Tiene un problema de memoria?
-10. Una app se reinicia sola cada pocas horas y su log no muestra ningún error. ¿Qué sospechas y dónde lo confirmas?
-11. Copias tu llave privada a otro equipo y SSH se niega a usarla: `UNPROTECTED PRIVATE KEY FILE`. ¿Por qué, y cómo lo arreglas?
-12. **(Bloque A)** En un log con líneas como `Invalid user admin from 203.0.113.9 port 51234`, saca las 3 IPs que más lo intentan.
-13. **(Bloque A)** ¿Por qué falla `sudo echo "x" >> /etc/archivo`? Explícalo con lo que sabes de redirecciones.
-14. **(Bloque A)** Un servicio de systemd no ve una variable que exportaste en tu `~/.bashrc`. ¿Por qué? ¿Dónde se la pones?
-15. **Caso final.** La web de `servidor-01` no responde. Escribe en orden tus primeros cinco comandos y qué esperas aprender de cada uno.
+1. ¿Qué diferencia hay entre `multipass stop`, `multipass delete` y `multipass delete --purge`? ¿Cuál equivale a *Terminate* en AWS, y qué sigue costando dinero si solo paras una EC2? *(2–3 líneas)*
+2. Ana tiene que poder reiniciar nginx con `sudo` y nada más. Escribe la regla y cómo la creas sin riesgo de romper `sudo`. *(2 líneas)*
+3. `/srv/equipo` es `root:devs` con permisos `2770`. Luis, de `devs`, crea un archivo, y Ana, también de `devs`, no puede modificarlo. ¿Qué dos piezas revisas? *(2–3 líneas)*
+4. ¿Por qué en un script de aprovisionamiento se escribe `apt-get update && apt-get install -y nginx`, y no solo el `install`? *(2 líneas)*
+5. Una app tarda 20 segundos en apagarse y alguien propone usar siempre `kill -9`. ¿Qué le respondes? *(2–3 líneas)*
+6. `systemctl status miapp` dice `active (running)`, pero la web no responde. ¿Qué haces? *(2–3 líneas)*
+7. Tras reiniciar el servidor, `miapp` no está corriendo. Da dos causas posibles y el comando que distingue cada una. *(2 líneas)*
+8. Escribe el comando para ver los errores de nginx en el journal entre las 14:00 y las 14:30 de hoy. *(1 comando)*
+9. En una VM de 1 GB, `free -h` muestra `free 50Mi`, `available 90Mi` y `700Mi` de swap en uso. ¿Tiene un problema de memoria? *(2 líneas)*
+10. Una app se reinicia sola cada pocas horas y su log no muestra ningún error. ¿Qué sospechas y dónde lo confirmas? *(2 líneas)*
+11. Descargas de AWS la llave `mi-llave.pem` y SSH se niega a usarla: `UNPROTECTED PRIVATE KEY FILE`. ¿Por qué, y cómo lo arreglas? *(2 líneas)*
+12. **(Bloques A y B)** En un log con líneas como `Invalid user admin from 203.0.113.9 port 51234`, saca las 3 IPs que más lo intentan. *(1 comando)*
+13. **(Bloque A)** ¿Por qué falla `sudo echo "x" >> /etc/archivo`? Explícalo con lo que sabes de redirecciones. *(2 líneas)*
+14. **(Bloque A)** Un servicio de systemd no ve una variable que exportaste en tu `~/.bashrc`. ¿Por qué? ¿Dónde se la pones? *(2 líneas)*
+15. **Caso final.** La web de `servidor-01` no responde. Escribe en orden tus primeros cinco comandos y qué esperas aprender de cada uno. *(5 puntos de 1 línea)*
 
 ## Tu chuleta
 
@@ -55,11 +55,11 @@ En 10 minutos y **sin mirar**, escribe en `notas/fase-1/chuleta-bloque-b.md` los
 
 **8.** `journalctl -u nginx -p err --since "14:00" --until "14:30" --no-pager`. Una hora sin fecha significa «hoy». *(Clase 13.)*
 
-**9.** No. Linux usa la memoria libre como caché de disco y la devuelve cuando alguien la pide. La columna que importa es `available`: 600 MiB disponibles está bien. Preocuparía un `available` bajo con mucho swap en uso. *(Clase 14.)*
+**9.** Sí. No por el `free 50Mi` (Linux usa la memoria libre como caché), sino porque `available` está muy bajo (`90Mi`) y ya hay `700Mi` de swap en uso: a la VM le falta RAM y está tirando de disco. *(Clase 14.)*
 
 **10.** El **OOM killer**: el kernel la mató con `SIGKILL` por falta de memoria, y por eso la app no pudo escribir nada. Se confirma en el log del kernel: `journalctl -k | grep -iE "out of memory|killed process"`. *(Clase 14.)*
 
-**11.** La copia se creó con permisos demasiado abiertos (por ejemplo `664`, según tu umask), y SSH se niega a usar una llave privada que otros podrían leer. Arreglo: `chmod 600 llave` y `~/.ssh` en `700`. *(Clases 06 y 15.)*
+**11.** El archivo descargado tiene permisos demasiado abiertos (por ejemplo `644` o `664`, según el navegador y tu umask), y SSH se niega a usar una llave privada que otros usuarios podrían leer. Arreglo: `chmod 600 mi-llave.pem` (o `400`) y `~/.ssh` en `700`. *(Clases 06 y 15.)*
 
 **12.** `grep "Invalid user" archivo | awk '{print $(NF-2)}' | sort | uniq -c | sort -rn | head -3`. Contar los campos **desde el final** (`NF-2`, la antepenúltima palabra) funciona aunque cambie lo que hay delante. *(Clases 05 y 13.)*
 

@@ -14,7 +14,7 @@
 > - **RDS** (y **Aurora**): bases de datos relacionales gestionadas por AWS.
 > - **Multi-AZ / réplica de lectura**: copia en espera en otra zona, para la disponibilidad / copia que atiende lecturas, para el rendimiento.
 > - **ALB / NLB**: balanceador de capa 7 (HTTP) / de capa 4 (TCP/UDP).
-> - **grupo de Auto Scaling / plantilla de lanzamiento**: un conjunto de instancias iguales / la receta para crearlas.
+> - **grupo de Auto Scaling / plantilla de lanzamiento**: un conjunto de instancias iguales / la configuración para crearlas.
 > - **Lambda**: código que se ejecuta cuando ocurre un evento, sin servidor que gestionar.
 > - **arranque en frío** (*cold start*): el tiempo de preparar el entorno de una Lambda la primera vez.
 
@@ -46,33 +46,23 @@ Si la haces en dos mañanas: el primer día, las **piezas 1 a 4** (unos 40 min);
 
 ## Las piezas
 
-### Pieza 1 — RDS: la base de datos gestionada
+### Pieza 1a — RDS: la base de datos gestionada, Multi-AZ y réplicas
 
-**RDS** (*Relational Database Service*) te da PostgreSQL, MySQL, MariaDB, SQL Server, Oracle o Db2 **gestionados**. **Aurora** es la versión de AWS compatible con MySQL y PostgreSQL, más rápida y que escala mejor.
+**RDS** (*Relational Database Service*) gestiona PostgreSQL, MySQL, MariaDB, SQL Server, Oracle o Db2; **Aurora** es la versión de AWS compatible con MySQL y PostgreSQL, más rápida y escalable.
 
-| Quién se encarga | PostgreSQL en tu EC2 (o en un contenedor) | RDS |
-|------------------|-------------------------------------------|-----|
-| instalar y parchear el sistema y el motor | tú | AWS (tú eliges la ventana de mantenimiento) |
-| copias de seguridad y restaurar a un momento concreto | tú | AWS, automáticas |
+| Quién se encarga | PostgreSQL en tu EC2 | RDS |
+|------------------|----------------------|-----|
+| instalar y parchear el sistema y el motor | tú | AWS (en tu ventana de mantenimiento) |
+| copias de seguridad y restaurar a un momento | tú | AWS, automáticas |
 | alta disponibilidad | tú, y es difícil | una casilla: **Multi-AZ** |
-| escalar | tú | cambiar el tipo de instancia o añadir réplicas |
-| el esquema, las consultas, los usuarios, los datos | tú | **tú** |
+| escalar | tú | cambiar tipo o añadir réplicas |
+| esquema, consultas, usuarios y datos | tú | **tú** |
 
-Para el examen, no confundas:
-- **Multi-AZ:** una copia en **espera** en otra zona, replicada de forma **síncrona**. Si la principal falla, RDS cambia a la copia solo. Sirve para la **disponibilidad**; la copia no atiende consultas.
-- **Réplicas de lectura:** copias **asíncronas** que sí atienden consultas de lectura. Sirven para el **rendimiento**, y pueden estar en otra región.
+No confundas:
+- **Multi-AZ:** copia en **espera** en otra zona, replicada de forma **síncrona**. Si la principal falla, RDS cambia a la copia solo (**disponibilidad**; la copia no atiende consultas).
+- **Réplicas de lectura:** copias **asíncronas** que sí atienden lecturas (**rendimiento**, incluso en otra región).
 
-Una base de datos de RDS vive en un **grupo de subredes** (*DB subnet group*) con subredes **privadas** en al menos dos zonas, sin acceso público y con un security group que solo admite el 5432 **desde el SG de la aplicación** (clase 73). Es el criterio de salida de la clase 71 hecho servicio.
-
-Otras bases de datos que pide el examen:
-
-| Servicio | Tipo | Para qué |
-|----------|------|----------|
-| **DynamoDB** | NoSQL clave-valor, *serverless* | millones de lecturas por segundo con latencia de milisegundos; sin servidores que gestionar |
-| **ElastiCache** | en memoria (Redis, Memcached) | caché delante de la base de datos, sesiones |
-| **Redshift** | almacén de datos (*data warehouse*) | análisis sobre grandes volúmenes |
-| **DocumentDB** · **Neptune** | documentos (compatible con MongoDB) · grafos | casos específicos |
-| **DMS** + **SCT** | migración | mover una base de datos a AWS (DMS) y convertir su esquema a otro motor (SCT) |
+Una instancia de RDS vive en un **grupo de subredes** (*DB subnet group*) con subredes **privadas** en al menos dos zonas, sin acceso público y con un SG que solo admite el 5432 **desde el SG de la aplicación** (clases 71 y 73).
 
 **Pruébalo, sin crear nada.** En la consola, como `eduardo`: **RDS → Create database**, elige PostgreSQL y recorre la página. Busca qué plantillas ofrece (*Production*, *Dev/Test*, *Free tier*), dónde se activa Multi-AZ, qué valor trae *Public access* y qué pide en *Connectivity*. Anota tres ajustes que tendrías que decidir para la base de datos de Vigía. **Cancel**.
 
@@ -87,6 +77,26 @@ Multi-AZ: su copia en espera, síncrona, toma el relevo sola. Una réplica de le
 </details>
 
 **En resumen:** RDS te quita parches, copias y alta disponibilidad; Multi-AZ para disponibilidad, réplicas para rendimiento.
+
+### Pieza 1b — Otras bases de datos del examen
+
+| Servicio | Tipo | Para qué |
+|----------|------|----------|
+| **DynamoDB** | NoSQL clave-valor, *serverless* | millones de lecturas por segundo con latencia de milisegundos; sin servidores que gestionar |
+| **ElastiCache** | en memoria (Redis, Memcached) | caché delante de la base de datos, sesiones |
+| **Redshift** | almacén de datos (*data warehouse*) | análisis sobre grandes volúmenes |
+| **DocumentDB** · **Neptune** | documentos (compatible con MongoDB) · grafos | casos específicos |
+| **DMS** + **SCT** | migración | mover una base de datos a AWS (DMS) y convertir su esquema a otro motor (SCT) |
+
+**Pruébalo, en papel.** ¿Qué servicio elegirías para: 1) guardar sesiones en memoria delante de PostgreSQL; 2) una tabla clave-valor *serverless* con latencia de milisegundos; 3) migrar una base de datos Oracle a PostgreSQL en RDS?
+
+<details>
+<summary>Comprueba</summary>
+
+1) **ElastiCache** (Redis o Memcached) · 2) **DynamoDB** · 3) **SCT** (convierte el esquema) + **DMS** (mueve los datos).
+</details>
+
+**En resumen:** DynamoDB para clave-valor *serverless*, ElastiCache para caché en memoria, Redshift para analítica y DMS + SCT para migrar.
 
 ### Pieza 2 — Balanceadores: un solo punto de entrada
 

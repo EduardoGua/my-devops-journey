@@ -12,11 +12,15 @@
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **resolutor**: el servidor que busca la respuesta por ti (el de tu operador, `8.8.8.8` o el de la VPC).
+> - **servidor raíz**: el primero al que se pregunta; sabe dónde están los servidores de cada TLD.
+> - **TLD**: la última parte del nombre (`.com`, `.es`); sus servidores saben qué autoritativo tiene cada dominio.
 > - **autoritativo**: el servidor que manda en un dominio; su respuesta es la verdad.
 > - **registro**: cada dato de un dominio: `A` (IPv4), `CNAME` (alias), `MX` (correo)…
 > - **TTL**: cuántos segundos se puede guardar una respuesta en caché.
 > - **`dig`**: la herramienta para preguntar al DNS.
 > - **`/etc/hosts`**: un archivo local con nombres e IPs que tu máquina consulta antes que el DNS.
+> - **`systemd-resolved`**: el resolutor local de Ubuntu, con caché, en `127.0.0.53`.
+> - **`getent hosts`**: busca un nombre igual que lo haría un programa.
 
 ## Objetivo
 
@@ -39,7 +43,7 @@ Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 45 min);
 
 ### Pieza 1 — Qué resuelve el DNS, y `dig`
 
-Los humanos y las configuraciones usan **nombres** (`api.tienda.com`), pero la red necesita **IPs**. El DNS es como una guía telefónica, repartida por miles de servidores: das el nombre y te devuelve la IP. Las IPs cambian (un balanceador de AWS cambia sus IPs con el tiempo) y el nombre es lo estable.
+Los humanos y las configuraciones usan **nombres** (`api.tienda.com`), pero la red necesita **IPs**. El DNS, repartido por miles de servidores, recibe el nombre y devuelve la IP. Las IPs cambian (un balanceador de AWS cambia sus IPs con el tiempo) y el nombre es lo estable.
 
 `dig` le pregunta al DNS y te enseña la respuesta completa.
 
@@ -82,24 +86,27 @@ Porque las IPs del balanceador cambian con el tiempo; el nombre siempre apunta a
 | `AAAA` | nombre → IPv6 | `tienda.com → 2001:db8::10` |
 | `CNAME` | nombre → **otro nombre** (alias) | `www.tienda.com → tienda.com` |
 | `MX` | servidores de correo del dominio, con prioridad | `10 mail.tienda.com` |
-| `TXT` | texto: verificaciones, SPF, DKIM | `"v=spf1 include:amazonses.com -all"` |
+| `TXT` | texto: verificaciones del dominio y reglas antispam del correo | `"v=spf1 include:amazonses.com -all"` |
 | `NS` | qué servidores son autoritativos | `ns-1447.awsdns-52.org` |
 | `PTR` | IP → nombre (DNS inverso) | `10.113.0.203.in-addr.arpa → tienda.com` |
-| `SOA` | datos de la zona | |
 
-Un `CNAME` no puede estar en la **raíz** del dominio (`tienda.com`), solo en subdominios. Route 53 lo resuelve con registros **ALIAS**, que apuntan a un ALB o a CloudFront desde la raíz.
+<details>
+<summary>Para saber más: CNAME en la raíz y ALIAS en Route 53</summary>
+
+Un `CNAME` no puede estar en la **raíz** del dominio (`tienda.com`), solo en subdominios. Route 53 lo resuelve con registros **ALIAS**, que apuntan a un balanceador (ALB) o a CloudFront desde la raíz.
+</details>
 
 **Pruébalo:**
 
 ```bash
 dig +short MX gmail.com
 dig +short TXT gmail.com
-dig +short NS amazon.com            # Amazon usa Route 53 (awsdns)
+dig +short NS github.com            # incluye servidores de Route 53 (awsdns)
 dig +short AAAA google.com
 dig +short -x 8.8.8.8               # inverso (PTR)
 ```
 
-👀 **Qué deberías ver:** los servidores de correo de Gmail, cada uno con su prioridad (`5 gmail-smtp-in.l.google.com.`…); textos como `"v=spf1 …"`; servidores `ns-….awsdns-….` para Amazon; una IPv6 de Google; y `dns.google.` para `8.8.8.8`.
+👀 **Qué deberías ver:** los servidores de correo de Gmail, cada uno con su prioridad (`5 gmail-smtp-in.l.google.com.`…); textos como `"v=spf1 …"`; servidores autoritativos de GitHub (incluidos `ns-….awsdns-….` de Route 53); una IPv6 de Google; y `dns.google.` para `8.8.8.8`.
 
 ✋ **Sin mirar:** quieres que `www.tienda.com` lleve al mismo sitio que `tienda.com`. ¿Qué registro creas en `www`?
 
@@ -128,7 +135,7 @@ Un `CNAME`: `www.tienda.com → tienda.com`.
   Guarda la respuesta en caché durante TTL segundos y responde
 ```
 
-- El **autoritativo** es la fuente de la verdad de un dominio. En AWS, si usas Route 53, tu *hosted zone* es el autoritativo.
+- El **autoritativo** es la fuente de la verdad de un dominio. En AWS, si usas Route 53, tu zona alojada (*hosted zone*) es el autoritativo.
 - El **TTL** (*time to live*) dice cuántos segundos puede guardarse la respuesta en caché. Si cambias un registro con TTL 86400, parte del mundo seguirá usando la IP vieja **hasta un día**. Por eso, **antes de una migración se baja el TTL** (a 60, por ejemplo) con antelación.
 
 **Pruébalo, primero el viaje completo:**
@@ -162,7 +169,7 @@ dig +noall +answer github.com @8.8.8.8
 dig +noall +answer github.com @1.1.1.1
 ```
 
-👀 **Qué deberías ver:** la misma IP, pero con TTL distintos: cada resolutor tiene su propia caché, y cada uno la guardó en un momento distinto.
+👀 **Qué deberías ver:** normalmente la misma IP (a veces otra: GitHub reparte por zonas), y con TTL distintos: cada resolutor tiene su propia caché, y cada uno la guardó en un momento distinto.
 
 ✋ **Sin mirar:** cambias un registro que tenía TTL 3600. ¿Cuánto puede tardar alguien en ver el cambio?
 
@@ -184,17 +191,16 @@ Hasta una hora (3.600 segundos): lo que le quede de TTL a la respuesta que tiene
                                  2) dns   → /etc/resolv.conf → 127.0.0.53 (systemd-resolved) → servidores DNS reales
 ```
 
-⚠️ **`dig` no lee `/etc/hosts`**: pregunta directamente a un servidor DNS. Para ver lo que verá **tu aplicación** usa `getent hosts nombre`, que sigue el mismo camino que los programas. Es una confusión muy común al depurar.
+⚠️ **`dig` no lee `/etc/hosts`**, pero en Ubuntu pregunta a `systemd-resolved` (`127.0.0.53`), que **sí** lo lee. Para ver lo que verá **tu aplicación** usa `getent hosts nombre`, y para ver lo que dice el DNS de verdad, pregunta a un servidor de fuera: `dig nombre @8.8.8.8`. Es una confusión muy común al depurar.
 
 **Pruébalo, primero el resolutor de tu sistema:**
 
 ```bash
 cat /etc/resolv.conf
-resolvectl status | head -20
 grep hosts /etc/nsswitch.conf
 ```
 
-👀 **Qué deberías ver:** `nameserver 127.0.0.53` (es `systemd-resolved`, el resolutor local con caché); en `resolvectl`, los servidores DNS reales a los que reenvía (los de tu router u operador); y `hosts: files … dns`: primero `/etc/hosts`, después el DNS.
+👀 **Qué deberías ver:** `nameserver 127.0.0.53` (es `systemd-resolved`, el resolutor local con caché) y `hosts: files … dns`: primero `/etc/hosts`, después el DNS.
 
 **Ahora, el atajo local.** En tu PC, da un nombre a tu VM:
 
@@ -207,27 +213,27 @@ echo "$IP servidor-01.lab" | sudo tee -a /etc/hosts
 
 ```bash
 getent hosts servidor-01.lab
-dig +short servidor-01.lab
+dig +short servidor-01.lab @8.8.8.8
 curl -s http://servidor-01.lab | head -3
 ```
 
 <details>
 <summary>Compruébalo</summary>
 
-`getent` y `curl` lo encuentran (leen `/etc/hosts`); `dig` no devuelve nada (pregunta al DNS, que no conoce ese nombre).
+`getent` y `curl` lo encuentran (leen `/etc/hosts`); `dig @8.8.8.8` no devuelve nada: el DNS real no conoce ese nombre.
 </details>
 
 `/etc/hosts` es útil para probar, por ejemplo, una web nueva **antes de cambiar el DNS real**. Pero si se olvida ahí, provoca fallos misteriosos: "en mi máquina va a otro servidor".
 
-✋ **Sin mirar:** `dig` dice que `api.tienda.com` es `203.0.113.10`, pero tu `curl` llega a otro servidor. ¿Qué miras primero?
+✋ **Sin mirar:** `dig api.tienda.com @8.8.8.8` dice que es `203.0.113.10`, pero tu `curl` llega a otro servidor. ¿Qué miras primero?
 
 <details>
 <summary>Comprueba</summary>
 
-`/etc/hosts` (o `getent hosts api.tienda.com`): lo que ve la aplicación puede no ser lo que dice `dig`.
+`/etc/hosts` (o `getent hosts api.tienda.com`): lo que ve la aplicación puede no ser lo que dice `dig @8.8.8.8`.
 </details>
 
-**En resumen:** las aplicaciones miran primero `/etc/hosts` y después el DNS; `getent hosts` enseña lo que ven ellas, y `dig`, solo lo que dice el DNS.
+**En resumen:** las aplicaciones miran primero `/etc/hosts` y después el DNS; `getent hosts` enseña lo que ven ellas, y `dig @8.8.8.8`, solo lo que dice el DNS de fuera.
 
 ## Tu chuleta de la clase
 
@@ -246,13 +252,13 @@ curl -s http://servidor-01.lab | head -3
 |---------|--------|
 | por IP funciona y por nombre no | DNS |
 | `Could not resolve host` · `Name or service not known` · `Temporary failure in name resolution` | DNS |
-| `dig` y la app no coinciden | `/etc/hosts` |
+| `dig @8.8.8.8` y la app no coinciden | `/etc/hosts` |
 
 ## Rómpelo
 
 Snapshot primero (desde tu PC): `multipass stop servidor-01 && multipass snapshot servidor-01 --name pre-dns && multipass start servidor-01`.
 
-**1. Un DNS que no responde.** En la VM:
+**1. Un DNS que no responde.** En la VM (`resolvectl status` enseña qué servidores DNS usa `systemd-resolved` en cada interfaz):
 ```bash
 IFACE=$(ip route | awk '/default/ {print $5; exit}')
 GHIP=$(dig +short github.com | tail -1); echo "IP de GitHub: $GHIP"   # apúntala ANTES de romper el DNS
@@ -270,7 +276,11 @@ dig +short github.com
 dig +short github.com @8.8.8.8
 ```
 
+<details>
+<summary>Compruébalo</summary>
+
 La **red funciona** (el ping por IP responde, y `dig @8.8.8.8` también), pero **los nombres no se resuelven**. El síntoma en las aplicaciones: `Could not resolve host`, `Name or service not known`, `Temporary failure in name resolution`. **Diagnóstico clave: si por IP funciona y por nombre no, es DNS.**
+</details>
 
 Restaura. `netplan apply` vuelve a aplicar la configuración de red de la VM, incluidos sus DNS (tu sesión puede congelarse un par de segundos):
 ```bash
@@ -280,7 +290,7 @@ dig +short github.com
 ```
 Si aun así no resuelve, restaura el snapshot `pre-dns`.
 
-**2. Un `/etc/hosts` olvidado.** En la VM, añade `1.2.3.4 github.com` a `/etc/hosts` con `sudo tee -a`. Ejecuta `getent hosts github.com` y `curl -m 5 https://github.com`. Todo apunta a una IP equivocada, **solo en esta máquina**. Quítalo con `sudo sed -i '/github.com/d' /etc/hosts`. Ahora imagina ese error en una sola de veinte instancias de un Auto Scaling Group: así nacen los fallos intermitentes.
+**2. Un `/etc/hosts` olvidado.** En la VM, añade `1.2.3.4 github.com` a `/etc/hosts` con `sudo tee -a`. Ejecuta `getent hosts github.com`, `dig +short github.com @8.8.8.8` y `curl -m 5 https://github.com`. El DNS real (`@8.8.8.8`) sigue bien, pero en esta máquina todo apunta a una IP equivocada. Quítalo con `sudo sed -i '/github.com/d' /etc/hosts`. Ahora imagina ese error en una sola de veinte instancias de un Auto Scaling Group: así nacen los fallos intermitentes.
 
 ## Reto
 
@@ -369,11 +379,11 @@ Después, escríbeme `examíname clase-31`.
 
 **2.** El TTL es el tiempo (en segundos) que una respuesta puede guardarse en caché. Se baja **antes** porque las cachés del mundo guardaron el valor viejo **con el TTL viejo**: si lo bajas el mismo día del cambio, quien preguntó ayer seguirá con la IP vieja hasta que caduque su TTL largo. Se baja con antelación (al menos un TTL antiguo antes), se hace el cambio, se verifica y después se vuelve a subir.
 
-**3.** Probar por **IP** (`nc -zv IP puerto`) y por **nombre** (`getent hosts db.interna`). Si por IP conecta y el nombre no resuelve (o resuelve a otra IP), es DNS. Si el nombre resuelve bien pero la IP no conecta, es red (security group, rutas, servicio). Se usa `getent` porque sigue el mismo camino que las aplicaciones, incluido `/etc/hosts`; `dig` pregunta solo al servidor DNS y puede darte una respuesta distinta de la que ve la app.
+**3.** Probar por **IP** (`nc -zv IP puerto`) y por **nombre** (`getent hosts db.interna`). Si por IP conecta y el nombre no resuelve (o resuelve a otra IP), es DNS. Si el nombre resuelve bien pero la IP no conecta, es red (security group, rutas, servicio). Se usa `getent` porque sigue el mismo camino que las aplicaciones, incluido `/etc/hosts`; un DNS externo (`dig @8.8.8.8`) no lee `/etc/hosts` (mientras que `dig` a secas en Ubuntu pregunta a `systemd-resolved`, que sí lo lee).
 
 **4.** Que su tabla de rutas tenga `0.0.0.0/0` hacia un **Internet Gateway**.
 
-**Reto:** 1) `dig +noall +answer amazon.com` y `dig +noall +answer github.com`; los valores cambian con el tiempo, y suelen ser cortos (de un minuto a unos pocos): así pueden cambiar de IP y volver atrás rápido. 2) `MX`; el de **menor** número de prioridad. 3) **Orden: B, D, E, A, F, G, C**, y la espera es de **24 horas** (86400 s, el TTL viejo). 4) Cualquiera de las dos, con su motivo y apuntada en la nota.
+**Reto:** 1) `dig +noall +answer amazon.com` y `dig +noall +answer github.com`; los valores cambian con el tiempo, y suelen ser cortos (de un minuto a unos pocos): así pueden cambiar de IP y volver atrás rápido. 2) `MX`; el de **menor** número de prioridad. 3) **Orden: B, D, E, A, F, G, C** (también vale B, E, D, A…: puedes probar el ALB durante la espera), y la espera es de **24 horas** (86400 s, el TTL viejo). 4) Cualquiera de las dos, con su motivo y apuntada en la nota.
 </details>
 
 ## Inglés

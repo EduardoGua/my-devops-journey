@@ -114,7 +114,7 @@ aws ecr describe-images --repository-name lab-web \
   --query 'imageDetails[].[imageTags[0],imageSizeInBytes,imagePushedAt]' --output table
 ```
 
-El nombre de la imagen **es** su destino: registro, repositorio y etiqueta (clase 64). La contraseña va por una tubería a `--password-stdin`: nunca aparece en la línea de órdenes ni en el historial de Bash.
+El nombre de la imagen **es** su destino: registro, repositorio y etiqueta (clase 64). La contraseña va por un pipe (`|`) a `--password-stdin`: nunca aparece en la línea de órdenes ni en el historial de Bash.
 
 👀 **Qué deberías ver:** la imagen construida (unos 50 MB en `docker images`); `Login Succeeded`, con el aviso de que la credencial queda sin cifrar; cada capa subida en el `push`, que termina con `1.0.0: digest: sha256:…`; y en la tabla, un `imageSizeInBytes` bastante menor que el de `docker images`: ECR muestra el tamaño **comprimido** de las capas, que es lo que se descarga y lo que se cobra.
 

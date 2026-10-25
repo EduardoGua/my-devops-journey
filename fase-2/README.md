@@ -3,7 +3,7 @@
 **Horas (Ruta 2.0):** 12–16 h. Con las clases del curso, probablemente te baste con menos.
 **Al terminar:** trabajas con Git como en un equipo (ramas, conflictos, pull requests y `main` protegida), y Vigía está publicado en tu GitHub con sus primeras versiones.
 
-Desde la clase 01 guardas tu trabajo con la receta `add` / `commit` / `push`. Aquí aprendes qué hace por dentro, y desde esta fase todo lo que hagas en Vigía queda a la vista de quien revise tu perfil.
+Desde la clase 01 guardas tu trabajo con `add` / `commit` / `push`. Aquí aprendes qué hace por dentro, y desde esta fase todo lo que hagas en Vigía queda a la vista de quien revise tu perfil.
 
 ## Clases
 
@@ -25,7 +25,7 @@ Son los de la Ruta 2.0. Se marcan en [`PROGRESO.md`](../PROGRESO.md):
 - Recuperas con Git un archivo que borraste por error (clases 22 y 25)
 - Tu perfil de GitHub muestra el repo de Vigía con su README (clase 25)
 
-Desde esta fase, los mensajes de commit y el README de Vigía van en inglés.
+Los mensajes de commit y el README de Vigía siguen en inglés (como desde la v0).
 
 ## Siguiente fase
 

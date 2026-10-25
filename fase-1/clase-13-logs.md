@@ -14,6 +14,7 @@
 > - **gravedad** (o prioridad): cómo de importante es un mensaje (`err`, `warning`, `info`…).
 > - **rotación**: renombrar, comprimir y borrar los logs viejos.
 > - **rsyslog**: el programa que copia el journal en archivos de texto de `/var/log`.
+> - **JSON**: un formato de texto con pares `"campo": valor` entre llaves.
 > - **log estructurado**: un log con campos que tienen nombre, como en JSON.
 > - **CloudWatch Logs** (AWS): un servicio que recoge los logs de muchos servidores en un solo sitio, fuera de ellos (fase 6).
 
@@ -26,7 +27,7 @@
 
 ## Por qué importa
 
-Los logs son la **memoria** del servidor. En un incidente, la pregunta "¿qué pasó a las 14:03?" solo se responde con logs. En AWS los enviarás a **CloudWatch Logs**, y en Kubernetes a herramientas como Loki, pero la habilidad es la misma: filtrar por fuente, tiempo y gravedad hasta encontrar la línea que explica el fallo.
+Los logs son el **registro** de lo que pasó en el servidor. En un incidente, la pregunta "¿qué pasó a las 14:03?" solo se responde con logs. En AWS los enviarás a **CloudWatch Logs**, y en Kubernetes a herramientas como Loki, pero la habilidad es la misma: filtrar por fuente, tiempo y gravedad hasta encontrar la línea que explica el fallo.
 
 ## Cómo va esta clase
 
@@ -103,11 +104,12 @@ Cada línea del journal lleva una etiqueta de gravedad. Las tres que más usará
 
 Por encima de `err` están `crit`, `alert` y `emerg` (el sistema está en peligro), y por debajo de `info`, `debug` (detalle para depurar). Al filtrar, `journalctl -p err` te enseña `err` **y todo lo más grave**.
 
-Buscar en un log es ir **estrechando**: de qué servicio, desde cuándo, cómo de grave. Los cuatro filtros básicos se pueden combinar:
+Buscar en un log es ir **estrechando**: de qué servicio, desde cuándo, cómo de grave. Los cinco filtros básicos se pueden combinar:
 
 ```bash
 journalctl -u nginx                     # de qué SERVICIO (-u de unit)
 journalctl --since "10 min ago"         # desde CUÁNDO
+journalctl -b                           # desde el último arranque (boot)
 journalctl -p err                       # a partir de qué GRAVEDAD
 journalctl -u nginx -f                  # en DIRECTO, como tail -f (Ctrl+C para salir)
 ```
@@ -124,7 +126,7 @@ journalctl -b -p warning --no-pager | tail -20
 
 👀 **Qué deberías ver:** las líneas de arranque de `miapp`; lo que ha dicho nginx en la última hora (quizá nada: `-- No entries --`); y los avisos desde que encendiste la VM.
 
-Ahora escribe tú un aviso en el journal y búscalo por su gravedad. En un script, `logger` es la forma correcta de dejar rastro de lo que hace:
+Ahora escribe tú un aviso en el journal y búscalo por su gravedad. En un script, `logger` es la forma correcta de dejar rastro de lo que hace (`user.` es la categoría del mensaje; lo que importa aquí es `warning`):
 
 ```bash
 logger -p user.warning "Prueba de aviso desde la clase 13"
@@ -157,11 +159,13 @@ sudo tail -f /var/log/nginx/access.log
 En **tu PC** (otra terminal), con la IP de la VM (`multipass list`):
 
 ```bash
-IP=$(multipass info servidor-01 | awk '/IPv4/ {print $2}')
+IP=$(multipass info servidor-01 | awk '/IPv4/ {print $2}')   # de la línea que contiene IPv4, el campo 2
 curl -s http://$IP/ > /dev/null
 curl -s http://$IP/no-existe > /dev/null
 for i in $(seq 1 20); do curl -s http://$IP/pagina-$i > /dev/null; done
 ```
+
+(Este `for` repite el `curl` 20 veces, con `pagina-1` … `pagina-20`; los bucles los verás en la clase 18.)
 
 🔮 **Predice:** ¿qué IP de origen y qué código de estado verás en esas líneas?
 
@@ -172,7 +176,7 @@ sudo awk '{print $9}' /var/log/nginx/access.log | sort | uniq -c | sort -rn
 sudo grep " 404 " /var/log/nginx/access.log | tail -3
 ```
 
-👀 **Qué deberías ver:** un `200` y unos 21 `404` (la página que no existe y las 20 `pagina-N`), y las tres últimas líneas con 404.
+👀 **Qué deberías ver:** al menos un `200` (más los de clases anteriores) y 21 `404` nuevos (la página que no existe y las 20 `pagina-N`), y las tres últimas líneas con 404.
 
 **En resumen:** las apps como nginx tienen su propio log; `tail -f` lo sigue en directo, y `awk` + `sort | uniq -c` lo resume.
 
@@ -182,12 +186,12 @@ sudo grep " 404 " /var/log/nginx/access.log | tail -3
 
 Cada intento de entrar por SSH, bueno o malo, queda en el journal del servicio `ssh` (y en `auth.log`, si hay rsyslog).
 
-**Pruébalo.** Desde **tu PC**, intenta entrar con usuarios que no existen (es tu propia VM, es seguro):
+**Pruébalo.** Desde **tu PC**, intenta entrar con usuarios que no existen (es tu propia VM, es seguro; las opciones `-o` le dicen a SSH: «no preguntes nada, no guardes la huella y ríndete a los 3 s»):
 
 ```bash
-ssh -o ConnectTimeout=3 -o BatchMode=yes noexiste@$IP
-ssh -o ConnectTimeout=3 -o BatchMode=yes admin@$IP
-ssh -o ConnectTimeout=3 -o BatchMode=yes root@$IP
+ssh -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null noexiste@$IP
+ssh -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null admin@$IP
+ssh -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@$IP
 ```
 
 En la VM:
@@ -197,7 +201,7 @@ sudo journalctl -u ssh --since "5 min ago" --no-pager
 sudo grep -E "Invalid user|Connection closed" /var/log/auth.log | tail     # solo si existe auth.log
 ```
 
-👀 **Qué deberías ver:** líneas `Invalid user noexiste from …` y `Invalid user admin from …`, con la IP de tu PC, y los intentos de `root`.
+👀 **Qué deberías ver:** en tu PC, `Permission denied (publickey)`; y en la VM, líneas `Invalid user noexiste from …` y `Invalid user admin from …`, con la IP de tu PC, y los intentos de `root`.
 
 Esto es lo que verías en cualquier servidor con SSH abierto a internet: **bots probando usuarios todo el día**. En la clase 15 lo blindarás.
 
@@ -268,7 +272,7 @@ systemctl status nginx --no-pager
 journalctl -u nginx -n 20 --no-pager
 sudo nginx -t
 ```
-`nginx -t` comprueba la configuración **sin aplicarla** y te dice archivo y línea. Moraleja: **antes de reiniciar, `nginx -t`**. Muchos servicios tienen algo parecido (`sshd -t`, `apachectl configtest`). Restaura:
+👀 `nginx -t` dice `unknown directive "esto"` con el archivo y el número de línea. Comprueba la configuración **sin aplicarla**. Moraleja: **antes de reiniciar, `nginx -t`**. Muchos servicios tienen algo parecido (`sshd -t`, `apachectl configtest`). Restaura:
 ```bash
 sudo cp /tmp/default.bak /etc/nginx/sites-available/default
 sudo nginx -t && sudo systemctl restart nginx
@@ -389,9 +393,9 @@ Después, escríbeme `examíname clase-13`.
 journalctl -u nginx --since "2026-10-04 14:00" --until "2026-10-04 14:30" --no-pager
 journalctl -p err --since "2026-10-04 14:00" --until "2026-10-04 14:30" --no-pager
 sudo grep "04/Oct/2026:14:[0-2]" /var/log/nginx/access.log | awk '$9 >= 500'
-sudo zgrep ... /var/log/nginx/access.log.2.gz   # si ya rotó
+sudo zgrep "04/Oct/2026:14:[0-2]" /var/log/nginx/access.log.2.gz   # si ya rotó
 ```
-Y el `error.log` de nginx en esa franja.
+(`[0-2]` = un 0, un 1 o un 2: de 14:00 a 14:29.) Y el `error.log` de nginx en esa franja.
 
 **3.** (a) Si la instancia muere, se termina o se reinicia sin journal persistente, los logs locales desaparecen justo cuando más falta hacen. (b) Con muchas instancias (un Auto Scaling Group), no puedes entrar en cada una: necesitas buscar en todas a la vez. Otras razones válidas: retención controlada, alarmas sobre los logs, y que un atacante que entra no puede borrar la evidencia ya enviada.
 

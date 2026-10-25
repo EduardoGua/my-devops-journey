@@ -50,7 +50,7 @@ Cuando creas un par de llaves, obtienes dos archivos que van juntos:
 - la **privada** (`lab_ed25519`): la que **firma**. Solo la tienes tú;
 - la **pública** (`lab_ed25519.pub`): la que **comprueba** esas firmas. Se puede enseñar a cualquiera: la pegas en los servidores, en GitHub o en AWS.
 
-Al conectarte, el servidor te pone delante un documento único (un *reto*); tu PC lo **firma** con la privada y el servidor **comprueba** la firma con la llave pública que guarda en `~/.ssh/authorized_keys`. Si coinciden, entras. La privada **nunca viaja por la red**: solo viaja la firma de ese documento.
+Al conectarte, el servidor te pone delante un dato al azar (en inglés, *challenge*); tu PC lo **firma** con la privada y el servidor **comprueba** la firma con la llave pública que guarda en `~/.ssh/authorized_keys`. Si coinciden, entras. La privada **nunca viaja por la red**: solo viaja la firma de ese dato.
 
 Por eso la pública no es peligrosa (con ella no se puede firmar) y la privada sí: quien la tenga **es** tú para todos esos servidores. Una *passphrase* la protege en el disco: si te la roban, no sirve sin la frase.
 
@@ -75,6 +75,8 @@ cat ~/.ssh/lab_ed25519.pub
 multipass exec servidor-01 -- bash -c "echo '$(cat ~/.ssh/lab_ed25519.pub)' >> ~/.ssh/authorized_keys"
 multipass exec servidor-01 -- cat /home/ubuntu/.ssh/authorized_keys
 ```
+
+(`$(cat …)` se resuelve en tu PC y pone tu llave en el texto; `bash -c "…"` ejecuta esa línea entera dentro de la VM, donde `~` es `/home/ubuntu`.)
 
 👀 **Qué deberías ver:** dos líneas: la llave de Multipass y la tuya, que acaba en `lab-servidor-01`.
 
@@ -121,7 +123,7 @@ Si coinciden, escribe `yes`. Después te pedirá la passphrase de tu llave. Sal 
 grep "$IP" ~/.ssh/known_hosts || ssh-keygen -F $IP
 ```
 
-👀 **Qué deberías ver:** la misma huella (`SHA256:…`) en las dos terminales y, al final, la línea de `known_hosts` con la IP de la VM.
+👀 **Qué deberías ver:** la misma huella (`SHA256:…`) en las dos terminales y, al final, `# Host <IP> found…` y una línea que empieza por `|1|`: Ubuntu guarda los nombres cifrados, por eso usamos `ssh-keygen -F`.
 
 ✋ **Sin mirar:** SSH te avisa de que la huella del servidor ha cambiado. ¿Qué haces?
 
@@ -220,10 +222,11 @@ rsync -avz /tmp/web/ servidor-01:/tmp/web/      # la 2.ª vez no copia nada: sol
 
 👀 **Qué deberías ver:** `informe local`; la copia de `nginx.conf` en tu `/tmp`; y, en el segundo `rsync`, ningún archivo en la lista: no había nada nuevo que copiar.
 
-**Ahora un túnel.** `miapp` (clase 12) escucha en el puerto 8080 de la VM. Imagina que el firewall no deja llegar a él desde fuera:
+**Ahora un túnel.** `miapp` (clase 12) escucha en el puerto 8080 de la VM. Imagina que el firewall no deja llegar a él desde fuera (`-N`: no abras un shell, solo el túnel):
 
 ```bash
 ssh -N -L 9090:localhost:8080 servidor-01 &
+sleep 2
 curl -s localhost:9090
 kill %1
 ```
@@ -292,16 +295,16 @@ Dejar abierta una sesión de seguridad y probar desde otra (y revisar la sintaxi
 
 Para dar acceso a alguien, **esa persona** crea su par de llaves y te manda **solo la pública**. Tú la pones en el `authorized_keys` de **su** usuario, con los permisos de la pieza 3.
 
-**Pruébalo.** Ana (clase 09) necesita entrar. Genera **su** llave (en la vida real la genera ella):
+**Pruébalo.** Ana (clase 09) necesita entrar. Genera **su** llave (en la vida real la genera ella; `-N ""`: sin passphrase, solo vale para el laboratorio):
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/ana_lab -N "" -C "ana"
 ```
 
-En la VM:
+En tu PC, muestra la pública con `cat ~/.ssh/ana_lab.pub` y copia la línea entera. Después, en la VM:
 
 ```bash
-sudo install -d -m 700 -o ana -g ana /home/ana/.ssh
+sudo mkdir -p /home/ana/.ssh && sudo chown ana:ana /home/ana/.ssh && sudo chmod 700 /home/ana/.ssh
 echo "<pega aquí el contenido de ana_lab.pub>" | sudo tee /home/ana/.ssh/authorized_keys
 sudo chown ana:ana /home/ana/.ssh/authorized_keys && sudo chmod 600 /home/ana/.ssh/authorized_keys
 ```
@@ -331,6 +334,8 @@ ssh -i ~/.ssh/ana_lab -o IdentitiesOnly=yes ana@$IP whoami
 
 ## Rómpelo
 
+Snapshot primero (desde tu PC): `multipass stop servidor-01 && multipass snapshot servidor-01 --name pre-ssh && multipass start servidor-01`.
+
 **1. Permisos abiertos:**
 ```bash
 sudo chmod 666 /home/ana/.ssh/authorized_keys      # en la VM
@@ -357,7 +362,7 @@ ssh servidor-01
 **3. Echarse a uno mismo:**
 
 > Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
-Con tu sesión de seguridad abierta, cambia `AllowUsers ubuntu ana` por `AllowUsers ana` en `00-endurecido.conf` y reinicia ssh. Intenta `ssh servidor-01` desde una terminal nueva: rechazado. **`multipass shell` también deja de funcionar**, porque usa SSH con el usuario `ubuntu` por debajo. Arréglalo **desde la sesión que dejaste abierta**:
+Con tu sesión de seguridad abierta, abre `sudo nano /etc/ssh/sshd_config.d/00-endurecido.conf`, cambia la línea `AllowUsers ubuntu ana` por `AllowUsers ana`, guarda y ejecuta `sudo systemctl restart ssh`. Intenta `ssh servidor-01` desde una terminal nueva: rechazado. **`multipass shell` también deja de funcionar**, porque usa SSH con el usuario `ubuntu` por debajo. Arréglalo **desde la sesión que dejaste abierta**:
 ```bash
 sudo sed -i 's/^AllowUsers ana$/AllowUsers ubuntu ana/' /etc/ssh/sshd_config.d/00-endurecido.conf
 sudo sshd -t && sudo systemctl restart ssh
@@ -395,7 +400,7 @@ Host ____
 Tres cambios respecto al ejemplo: el nombre del alias, el usuario y la llave de Ana (la que creaste en la pieza 7).
 </details>
 
-**2.** Usa `rsync` para «desplegar» una carpeta local `web/` en `/var/www/html/` de la VM, y comprueba el resultado en el navegador con `http://IP`.
+**2.** Usa `rsync` para «desplegar» una carpeta local `web/` en `/var/www/html/` de la VM, y comprueba el resultado en el navegador con `http://IP`. Crea primero `~/web/index.html` (`mkdir -p ~/web && echo "<h1>Hola</h1>" > ~/web/index.html`) y lanza el `rsync` desde `~`.
 
 > 🧩 **Ejemplo resuelto:** el `rsync` de la pieza 5.
 > ```bash
@@ -417,7 +422,7 @@ sudo cp -r /tmp/web/* /var/www/____/
 `ubuntu` no puede escribir en `/var/www/html/`, así que copias primero a `/tmp` y después, con `sudo`, a su sitio. El hueco es la última carpeta de esa ruta.
 </details>
 
-**3.** **Incidente simulado:** alguien sube por error la llave **privada** `ana_lab` a un repo público. Escribe en orden los pasos para cerrar el incidente y ejecútalos en la VM.
+**3.** **Incidente simulado:** alguien sube por error la llave **privada** `ana_lab` a un repo público. Borrar el archivo con un commit nuevo no basta: Git guarda todas las versiones anteriores (fase 2). Escribe en orden los pasos para cerrar el incidente y ejecútalos en la VM.
 
 > 🧩 **Ejemplo resuelto:** el paso «revisar»: ¿quién ha entrado con llave en los últimos 7 días?
 > ```bash
@@ -445,7 +450,7 @@ En `notas/fase-1/clase-15.md`:
 1. ¿Por qué la llave pública se puede compartir y la privada no? Explica qué hace cada una al conectar. *(3 líneas. Empieza así: «La pública solo comprueba…, así que con ella nadie puede… La privada firma…, y quien la tenga…»)*
 2. ¿Qué significa el aviso `REMOTE HOST IDENTIFICATION HAS CHANGED` y qué haces cuando lo ves? *(2 líneas. Empieza así: «Que la host key del servidor no coincide con la que apunté… Antes de aceptar, compruebo…»)*
 3. Una llave privada se publicó en GitHub. ¿Por qué borrar el archivo del repo **no** cierra el incidente? ¿Qué pasos sí lo cierran? *(3 líneas. Empieza así: «Porque Git guarda… y los bots… Lo cierran: revocar…, reemplazar… y revisar…»)*
-4. **Repaso (clase 14, sin mirar):** `df` dice que el disco está lleno pero `du` no encuentra el espacio. ¿Qué compruebas? *(2 líneas. Empieza así: «Un archivo borrado que un proceso sigue usando, con `lsof +L1`. Y si es *No space left* con espacio libre…»)*
+4. **Repaso (clase 14, sin mirar):** `df` dice que el disco está lleno pero `du` no encuentra el espacio. ¿Qué compruebas? *(2 líneas. Empieza así: «Un archivo borrado que un proceso sigue usando, con `lsof +L1`. La otra causa: datos tapados por un montaje…»)*
 
 Después, escríbeme `examíname clase-15`.
 
@@ -454,13 +459,13 @@ Después, escríbeme `examíname clase-15`.
 <details>
 <summary>Ábrelo solo después de escribir tus respuestas</summary>
 
-**1.** La pública solo sirve para **verificar** firmas: el servidor la usa para comprobar que quien se conecta tiene la privada. Con ella no se puede entrar a ningún sitio. La privada **firma** el reto del servidor: quien la tenga puede hacerse pasar por ti en cada servidor (y en GitHub, o donde sea) que tenga tu pública. Por eso nunca sale de tu máquina, se protege con `600` y con una passphrase.
+**1.** La pública solo sirve para **verificar** firmas: el servidor la usa para comprobar que quien se conecta tiene la privada. Con ella no se puede entrar a ningún sitio. La privada **firma** ese dato del servidor: quien la tenga puede hacerse pasar por ti en cada servidor (y en GitHub, o donde sea) que tenga tu pública. Por eso nunca sale de tu máquina, se protege con `600` y con una passphrase.
 
 **2.** La huella (host key) del servidor no coincide con la que tu cliente guardó en `known_hosts`. Puede ser un ataque *man-in-the-middle* o un cambio legítimo (servidor reinstalado, IP reasignada a otra máquina, algo muy común en la nube). No se acepta a ciegas: se confirma por otra vía (consola de AWS, el administrador, `ssh-keygen -lf` desde una sesión de confianza) y solo entonces se borra la entrada vieja con `ssh-keygen -R host`.
 
 **3.** Porque git guarda el **historial**: el archivo sigue en commits anteriores, en clones y en forks, y los bots escanean GitHub en busca de secretos en **minutos**. La llave debe considerarse comprometida. Pasos: (1) **revocarla**: quitar la pública de **todos** los `authorized_keys` (y de GitHub o AWS si estaba ahí); (2) generar un **par nuevo** e instalar la pública nueva; (3) **revisar los logs** de acceso (`journalctl -u ssh`, `auth.log`) por si alguien la usó; (4) después, limpiar el historial del repo. Lo esencial es **rotar**: lo publicado nunca se "despublica".
 
-**4.** Un archivo borrado que sigue abierto por un proceso (`sudo lsof +L1`). Si el error es "No space left" con espacio libre, los inodos (`df -i`).
+**4.** Un archivo borrado que sigue abierto por un proceso (`sudo lsof +L1`), o datos tapados bajo un punto de montaje (se comprobaría desmontando ese disco).
 
 **Reto 3 (en la VM):**
 ```bash

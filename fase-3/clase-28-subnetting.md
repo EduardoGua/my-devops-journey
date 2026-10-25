@@ -13,7 +13,7 @@
 > - **subnetting**: dividir una red en subredes más pequeñas.
 > - **VPC**: tu red privada en AWS, con su CIDR principal (`10.0.0.0/16`).
 > - **zona de disponibilidad (AZ)**: un centro de datos separado dentro de una región; una subred vive en una sola.
-> - **subred pública / privada**: con o sin ruta a un Internet Gateway (lo decide la ruta, no el nombre).
+> - **subred pública / privada**: la que tiene, o no, salida directa a internet. En AWS la da una ruta al *Internet Gateway*, la puerta de la VPC a internet (clase 30).
 > - **solapamiento**: dos redes que comparten alguna dirección; impide conectarlas.
 
 ## Objetivo
@@ -25,13 +25,13 @@
 
 ## Por qué importa
 
-Una VPC mal planificada no se arregla fácilmente: el CIDR principal no se puede cambiar, y las subredes no se redimensionan. Si dos VPCs (o tu VPC y la red de la oficina) usan rangos solapados, **no podrás conectarlas** por peering, VPN o Transit Gateway. Planificar las IPs es de las primeras tareas de un ingeniero cloud, y "diseña la red para esta aplicación" es una pregunta habitual de entrevista.
+Una VPC mal planificada no se arregla fácilmente: el CIDR principal no se puede cambiar, y las subredes no se redimensionan. Si dos VPCs (o tu VPC y la red de la oficina) usan rangos solapados, **no podrás conectarlas** entre sí ni por VPN (un túnel cifrado entre la oficina y AWS). Planificar las IPs es de las primeras tareas de un ingeniero cloud, y "diseña la red para esta aplicación" es una pregunta habitual de entrevista.
 
 ## Cómo va esta clase
 
 Cinco piezas. En cada una lees **una** idea, la calculas **en papel** y la compruebas en la terminal; no pases a la siguiente sin haber hecho la anterior.
 
-Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 40 min); el segundo, las **piezas 4 y 5**, los ejercicios del Rómpelo, el proyecto y el cierre.
+Si la haces en sesiones de 35–45 min: el primer día, las **piezas 1 a 3**; el segundo, las **piezas 4 y 5** y los ejercicios del Rómpelo; el tercero, el proyecto de tu VPC y el cierre.
 
 ```bash
 mkdir -p ~/my-devops-journey/labs/clase-28 && cd ~/my-devops-journey/labs/clase-28
@@ -115,7 +115,7 @@ print([str(s) for s in i.ip_network('172.31.0.0/16').subnets(new_prefix=20)][:3]
 
 Para comprobar diseños grandes, una herramienta pequeña que lista las subredes de un bloque y cuántas IPs útiles deja AWS en cada una. Es para **comprobar** tus cálculos, nunca para sustituirlos.
 
-**Pruébalo.** Crea `subredes.py`:
+**Pruébalo.** Ábrelo con `nano subredes.py`, pega el código y guarda. No hace falta entender Python todavía (fase 4): `sys.argv[1]` es el primer argumento, como `$1` en Bash:
 
 ```python
 #!/usr/bin/env python3
@@ -147,9 +147,9 @@ chmod +x subredes.py
 VPC 10.0.0.0/16  (región us-east-1)
 │
 ├── AZ us-east-1a
-│   ├── pública      10.0.0.0/24    ← ALB, NAT Gateway, bastión  (ruta a Internet Gateway)
-│   ├── privada-app  10.0.10.0/24   ← EC2 / contenedores de la app (sale por el NAT)
-│   └── privada-db   10.0.20.0/24   ← RDS (sin salida a internet)
+│   ├── pública      10.0.0.0/24    ← balanceador y salida NAT (ruta a Internet Gateway)
+│   ├── privada-app  10.0.10.0/24   ← servidores de la app (sale por el NAT)
+│   └── privada-db   10.0.20.0/24   ← base de datos (sin salida a internet)
 │
 ├── AZ us-east-1b
 │   ├── pública      10.0.1.0/24
@@ -163,13 +163,14 @@ Qué hay detrás de cada decisión:
 - **Una subred vive en una sola AZ.** Para alta disponibilidad, se repite cada capa en al menos **2 AZs**.
 - **Pública** = su tabla de rutas tiene salida a un **Internet Gateway**. **Privada** = no la tiene (clase 30). "Pública" no la decide el nombre: la decide **la ruta**.
 - **Capas separadas** (web, app, datos): cada capa tiene su security group, y la base de datos no es alcanzable desde internet.
-- **Numeración con patrón** (`10.0.0.x` públicas, `10.0.1x.x` app, `10.0.2x.x` datos): cualquiera entiende una IP de un vistazo durante un incidente.
-- **Margen**: no gastes el `/16` entero el primer día. Una AZ nueva, una capa nueva o **Kubernetes** (en EKS, **cada pod consume una IP de la VPC**) pueden necesitar muchas IPs.
+- **Numeración con patrón** (públicas en `10.0.0–9.x`, app en `10.0.10–19.x`, datos en `10.0.20–29.x`): cualquiera entiende una IP de un vistazo durante un incidente.
+- **Margen**: no gastes el `/16` entero el primer día. Una AZ nueva, una capa nueva o **Kubernetes** (fase 9: da una IP de la VPC a cada contenedor) pueden necesitar muchas IPs.
 
 **Pruébalo.** Saca con tu herramienta las subredes del dibujo: la 1.ª y la 2.ª, la 11.ª y la 12.ª, y la 21.ª y la 22.ª `/24` de la VPC:
 
 ```bash
 ./subredes.py 10.0.0.0/16 24 | sed -n '1,2p;11,12p;21,22p'
+# sed -n '1,2p' imprime solo las líneas 1 y 2; con ; pides varios trozos
 ```
 
 👀 **Qué deberías ver:** `10.0.0.0/24`, `10.0.1.0/24`, `10.0.10.0/24`, `10.0.11.0/24`, `10.0.20.0/24` y `10.0.21.0/24`, cada una con `útiles AWS: 251`: las seis del dibujo.
@@ -316,14 +317,14 @@ Después, escríbeme `examíname clase-28`.
 1. 4 subredes: `192.168.0.0/24`, `192.168.1.0/24`, `192.168.2.0/24`, `192.168.3.0/24`.
 2. 8 = 2³ → `/19` (8.192 direcciones cada una, saltos de 32 en el 3.er octeto): `10.10.0.0/19`, `10.10.32.0/19`, `10.10.64.0/19` … `10.10.224.0/19`.
 3. Sí se solapan (la `/17` está dentro de la `/16`). No se solapan `10.0.0.0/16` y `10.1.0.0/16`.
-4. Una solución: `10.0.0.0/25` (126 hosts), `10.0.0.128/26` (62)… ¡Cuidado! Para **dos** de 100 necesitas dos `/25`, y eso ya llena el `/24` entero. **No cabe**. La respuesta correcta es detectarlo: hacen falta al menos 2 × 128 + 2 × 32 = 320 direcciones, más que las 256 de un `/24`. Detectar que un diseño no cabe es tan importante como hacerlo.
+4. **No cabe.** Cada red de 100 hosts necesita una `/25` (128 direcciones) y cada una de 20, una `/27` (32): 2 × 128 + 2 × 32 = 320 > 256 (las dos `/25` ya llenan el `/24` entero). Detectar que un diseño no cabe es tan importante como hacerlo.
 5. `10.0.0.0/8` de la oficina **contiene** a ambas VPCs: los rangos se solapan, y los routers no sabrán si `10.0.5.3` está en la oficina o en AWS. Hay que renumerar o usar NAT entre redes (complejo y frágil).
-6. Una `/28` en AWS tiene 11 IPs útiles: **no** caben 30 pods.
+6. Una `/28` en AWS tiene 11 IPs útiles: **no** caben 30 contenedores.
 
 **Cierre:**
 1. De `/20` a `/24` hay 4 bits más → 2⁴ = **16** subredes `/24`.
-2. Una subred vive en una sola AZ, y una AZ entera puede caer (un centro de datos). Con la capa repetida en dos AZs, el balanceador y los Auto Scaling Groups siguen sirviendo desde la otra.
-3. El enrutamiento no puede distinguir destinos cuando la misma IP existe en dos sitios. Peering, VPN y Transit Gateway **rechazan** o se vuelven ambiguos con rangos solapados. Ejemplo: la empresa compra otra que también usa `10.0.0.0/16` y hay que conectar ambas; o dev y prod se crearon con el mismo CIDR "por copiar" y después hay que conectarlas.
+2. Una subred vive en una sola AZ, y una AZ entera puede caer (un centro de datos). Con la capa repetida en dos AZs, el balanceador sigue enviando tráfico a la otra AZ.
+3. El enrutamiento no puede distinguir destinos cuando la misma IP existe en dos sitios: las conexiones entre VPCs y las VPNs **rechazan** o se vuelven ambiguas con rangos solapados. Ejemplo: la empresa compra otra que también usa `10.0.0.0/16` y hay que conectar ambas; o dev y prod se crearon con el mismo CIDR "por copiar" y después hay que conectarlas.
 4. Red `10.0.0.192`, broadcast `10.0.0.207`.
 
 **Proyecto (una solución válida, hay muchas):**

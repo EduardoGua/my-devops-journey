@@ -1,6 +1,6 @@
 # Labs
 
-Aquí cae lo que creas practicando **en tu Ubuntu**: los bloques A y C de la fase 1 (comandos y scripts) y Git. Cada clase te dice qué carpeta crear: `labs/clase-03/`, `labs/clase-16/`, etc.
+Aquí cae lo que creas practicando **en tu Ubuntu** a lo largo del curso (Linux, Bash, Git, Python, Docker, CI/CD, Terraform, Kubernetes y observabilidad). Cada clase te dice qué carpeta crear: `labs/clase-03/`, `labs/clase-16/`, `labs/clase-39/`, etc.
 
 Lo que haces en las VMs se queda en las VMs. Si algo de ahí merece guardarse (una configuración, un script), la clase te dice cómo traerlo.
 

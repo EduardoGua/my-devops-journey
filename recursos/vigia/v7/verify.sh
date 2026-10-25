@@ -32,7 +32,14 @@ esperar() {   # esperar <segundos> comando... → 0 en cuanto el comando funcion
   done
 }
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
+LIMPIAR_FILA=0
+limpiar() {
+  if (( LIMPIAR_FILA )); then
+    docker compose exec -T db psql -U vigia -d vigia -c "DELETE FROM checks WHERE url = 'https://verify.invalid'" >/dev/null 2>&1 || true
+  fi
+  rm -rf "$TMP"
+}
+trap limpiar EXIT
 consulta() { curl -fsS --data-urlencode "query=$1" "$PROM/api/v1/query"; }
 
 [[ -d .git && -f config.yaml ]] || { echo "Ejecútalo en la raíz de tu repo de Vigía (cd ~/vigia)."; exit 2; }
@@ -177,7 +184,7 @@ esperar 60 reglas_evaluadas
 while IFS=$'\t' read -r estado mensaje; do
   [[ $estado == OK ]] && ok "$mensaje" || mal "$mensaje"
 done < <(python3 - "$TMP/reglas.json" <<'PY'
-import json, sys
+import json, re, sys
 reglas = [r for g in json.load(open(sys.argv[1]))["data"]["groups"] for r in g["rules"]]
 def res(bien, mensaje):
     print(("OK" if bien else "MAL") + "\t" + mensaje)
@@ -189,7 +196,7 @@ if caido:
     res(caido.get("labels", {}).get("severity") in ("critical", "warning", "page", "ticket"), "VigiaSitioCaido tiene la etiqueta severity")
     res(bool(caido.get("annotations", {}).get("summary")), "VigiaSitioCaido tiene la anotación summary")
 api = por_nombre.get("VigiaApiCaida")
-res(api is not None and api["type"] == "alerting" and "up" in api.get("query", ""), "Prometheus cargó la alerta VigiaApiCaida, sobre up")
+res(api is not None and api["type"] == "alerting" and bool(re.search(r"\bup\b", api.get("query", ""))), "Prometheus cargó la alerta VigiaApiCaida, sobre la métrica up")
 grabadas = [r["name"] for r in reglas if r["type"] == "recording" and r["name"].startswith("vigia:")]
 res(bool(grabadas), "reglas de registro del SLI (vigia:…): " + (", ".join(grabadas) if grabadas else "ninguna"))
 res(all(r.get("health") == "ok" for r in reglas), "todas las reglas se evalúan sin errores")
@@ -254,6 +261,7 @@ if (( ALERTA )); then
   AHORA=$(python3 -c 'from datetime import datetime, timezone; print(datetime.now(timezone.utc).isoformat())')
   if docker compose exec -T db psql -U vigia -d vigia -v ON_ERROR_STOP=1 -c \
       "INSERT INTO checks (url, status_code, seconds, up, error, checked_at) VALUES ('https://verify.invalid', 0, 0.01, 0, 'verify', '$AHORA')" >/dev/null 2>&1; then
+    LIMPIAR_FILA=1
     disparada() { consulta 'ALERTS{alertname="VigiaSitioCaido", url="https://verify.invalid", alertstate="firing"}' | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin)["data"]["result"] else 1)'; }
     en_am() { curl -fsS "$AM/api/v2/alerts" | python3 -c 'import json,sys; sys.exit(0 if any(a["labels"].get("url") == "https://verify.invalid" for a in json.load(sys.stdin)) else 1)'; }
     if esperar 480 disparada; then ok "VigiaSitioCaido saltó para https://verify.invalid"; else mal "VigiaSitioCaido no saltó en 8 minutos para https://verify.invalid"; fi
@@ -269,6 +277,7 @@ if (( ALERTA )); then
       mal "Alertmanager no mandó ningún aviso en 2 minutos y medio: revisa route, group_wait y el receptor"
     fi
     docker compose exec -T db psql -U vigia -d vigia -c "DELETE FROM checks WHERE url = 'https://verify.invalid'" >/dev/null 2>&1
+    LIMPIAR_FILA=0
     echo "   (borré el chequeo de prueba: la alerta se resolverá sola en unos minutos)"
   else
     mal "no pude insertar el chequeo de prueba en PostgreSQL (¿servicio db, usuario y base vigia, tabla checks?)"

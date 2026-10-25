@@ -66,6 +66,8 @@ for (( i = 1; i <= 5; i++ )); do echo "intento $i"; done   # i vale 1, 2, 3, 4 y
 for i in {1..5}; do echo "intento $i"; done                # lo mismo, si el límite es fijo
 ```
 
+Dentro de `(( ))` van tres partes separadas por `;`: el valor inicial, la condición para seguir y lo que se hace al final de cada vuelta (`i++` suma 1, `i--` resta 1). `{1..5}` es la lista 1 2 3 4 5.
+
 **Pruébalo:**
 
 ```bash
@@ -88,12 +90,12 @@ for (( i = 3; i > 0; i-- )); do echo "$i…"; sleep 1; done; echo "¡despegue!"
 
 **En resumen:** `for X in lista` hace algo con cada elemento: palabras, archivos o números.
 
-### Pieza 2 — Leer un archivo línea a línea
+### Pieza 2a — Leer un archivo línea a línea
 
-Es el corazón de Vigía: una lista de URLs en un archivo, y hacer algo con cada una.
+`while cmd; do …; done` repite mientras `cmd` salga bien (código 0). `read` sale bien mientras quedan líneas, así que las dos cosas juntas leen un archivo línea a línea. Es el corazón de Vigía: una lista de URLs en un archivo, y hacer algo con cada una.
 
 ```bash
-while read -r URL || [[ -n $URL ]]; do
+while read -r URL; do
   [[ -z $URL || $URL == \#* ]] && continue      # salta líneas vacías y comentarios
   echo "procesando: $URL"
 done < urls.txt
@@ -103,15 +105,12 @@ Pieza a pieza:
 
 | Parte | Para qué |
 |-------|----------|
-| `read -r URL` | lee una línea en `URL`. `-r` impide que interprete las `\` |
-| `\|\| [[ -n $URL ]]` | procesa la **última línea** aunque no termine en salto de línea |
+| `read -r URL` | lee una línea en `URL`, recortando los espacios del principio y del final. `-r` impide que interprete las `\` |
 | `continue` | pasa a la siguiente vuelta. `break` sale del bucle |
 | `\#*` | "empieza por `#`" (se escapa porque `#` abre un comentario) |
 | `< urls.txt` al final | el archivo entra por stdin al bucle entero |
 
-(`read` recorta los espacios del principio y del final de cada línea: es lo que quieres para una lista de URLs. Si algún día necesitas la línea **exacta**, usa `IFS= read -r LINEA`).
-
-**Pruébalo, primero con un archivo de configuración** que tiene de todo: un comentario, una línea vacía, espacios delante y una última línea sin salto de línea.
+**Pruébalo** con un archivo de configuración que tiene un comentario, una línea vacía y espacios delante:
 
 ```bash
 cat > urls.txt <<'EOF'
@@ -119,16 +118,37 @@ cat > urls.txt <<'EOF'
 https://example.com
 
    https://www.wikipedia.org
-# esta está mal a propósito
+# esta falla a proposito
 https://no-existe.invalid
 EOF
+while read -r URL; do
+  [[ -z $URL || $URL == \#* ]] && continue
+  echo "[$URL]"
+done < urls.txt
+```
+
+👀 **Qué deberías ver:** las tres URLs entre corchetes, sin los comentarios, sin la línea vacía y con Wikipedia **sin** los espacios de delante.
+
+### Pieza 2b — La última línea sin salto
+
+Si la última línea de un archivo no termina en salto de línea (pasa a menudo con archivos editados a mano), `read` devuelve código 1 al llegar al final y el bucle termina **sin procesarla**. Se evita con `|| [[ -n $URL ]]` («o la variable no quedó vacía»):
+
+```bash
+while read -r URL || [[ -n $URL ]]; do
+  …
+done < urls.txt
+```
+
+**Pruébalo:** añade una línea sin salto final con `printf` y míralo con `cat -A`, que enseña cada salto de línea como un `$`:
+
+```bash
 printf 'https://github.com' >> urls.txt
 cat -A urls.txt
 ```
 
-👀 **Qué deberías ver:** `cat -A` muestra los finales de línea como `$`. Cada línea termina en `$`, menos la última (`https://github.com`): no tiene salto de línea. Pasa a menudo con archivos editados a mano.
+👀 **Qué deberías ver:** cada línea termina en `$`, menos la última (`https://github.com`), que no tiene salto de línea.
 
-**Ahora léelo:**
+**Ahora léelo con la forma completa:**
 
 ```bash
 cat > leer.sh <<'EOF'
@@ -146,7 +166,7 @@ EOF
 chmod +x leer.sh
 ```
 
-🔮 **Predice:** ¿cuántas URLs contará? ¿Saldrá Wikipedia con espacios delante?
+🔮 **Predice:** ¿cuántas URLs contará? ¿Saldrá GitHub aunque no tenga salto de línea?
 
 ```bash
 ./leer.sh urls.txt
@@ -158,7 +178,7 @@ chmod +x leer.sh
 4 URLs numeradas de 1 a 4, con Wikipedia **sin** los espacios de delante y GitHub incluida, y `Total: 4 URLs`.
 </details>
 
-**En resumen:** `while read -r L … done < archivo` hace algo con cada línea, saltándose las vacías y los comentarios.
+**En resumen:** `while read -r L || [[ -n $L ]]; do … done < archivo` hace algo con cada línea, saltándose las vacías y los comentarios y sin perder la última.
 
 ### Pieza 3 — ¿Bucle o `awk`? Hacer algo con cada línea
 
@@ -230,7 +250,7 @@ Primero contra algo que no existe. 🔮 **Predice:** ¿cuánto tardará y qué c
 Tres intentos fallidos, unos 6 segundos en total, `ERROR: … no respondió tras 3 intentos` y `código: 1`.
 </details>
 
-Ahora un servidor que "tarda en arrancar": lo lanzas en segundo plano con 5 segundos de retraso (clase 11) y esperas por él.
+Ahora un servidor que "tarda en arrancar": lo lanzas en segundo plano con 5 segundos de retraso (clase 11) y esperas por él. Los paréntesis agrupan los dos comandos para mandarlos juntos al segundo plano con un solo `&`: primero espera 5 s y luego arranca el servidor.
 
 ```bash
 (sleep 5; python3 -m http.server 8018 --bind 127.0.0.1 > /dev/null 2>&1) &
@@ -264,7 +284,7 @@ df -h --output=target,pcent | tail -n +2 | while read -r MONTAJE USO; do
 done
 ```
 
-👀 **Qué deberías ver:** una línea por disco, como `/ está al 58%`.
+👀 **Qué deberías ver:** una línea por cada sistema de archivos montado (también verás `/run` o `/dev/shm`, que viven en memoria), como `/ está al 58%`.
 
 `tail -n +2` salta la cabecera y `read` reparte cada línea en dos variables.
 
@@ -304,7 +324,7 @@ N=0
 cat urls.txt | while read -r L; do N=$(( N + 1 )); done
 echo "N=$N"
 ```
-🔮 **Predice** antes de ejecutar. Sale `N=0`: cada parte de un pipe corre en un **proceso hijo** (un *subshell*), y el hijo nunca cambia las variables del padre (clase 07). El contador subió dentro del hijo, que terminó con el pipe. El arreglo: `while …; done < urls.txt`, sin pipe. Para leer la salida de un comando sin pipe: `done < <(comando)`.
+🔮 **Predice** antes de ejecutar. Sale `N=0`: cada parte de un pipe corre en un **proceso hijo** (un *subshell*), y el hijo nunca cambia las variables del padre (clase 07). El contador subió dentro del hijo, que terminó con el pipe. El arreglo: `while …; done < urls.txt`, sin pipe. Para leer la salida de un comando sin pipe: `done < <(comando)` (`<(comando)` hace que la salida de un comando se lea como si fuera un archivo).
 
 **3. La última línea que desaparece:**
 ```bash
@@ -351,7 +371,7 @@ done
 Es el ejemplo dentro del bucle de `esperar-url.sh`. Para el porqué: imagina mil clientes reintentando a la vez contra un servicio que intenta recuperarse.
 </details>
 
-**2.** `comprimir-logs.sh <carpeta>`: comprime con `gzip` cada `*.log` de la carpeta que ocupe más de 1 KB e imprime qué hizo. Si no hay logs, no debe hacer nada raro. Prepara la prueba con `head -c 2000 /dev/urandom > grande.log` y `echo hola > pequeno.log`.
+**2.** `comprimir-logs.sh <carpeta>`: comprime con `gzip` cada `*.log` de la carpeta que ocupe más de 1 KB e imprime qué hizo. Si no hay logs, no debe hacer nada raro. Prepara la prueba con `head -c 2000 /dev/urandom > grande.log` (crea un archivo de 2000 bytes al azar) y `echo hola > pequeno.log`.
 
 > 🧩 **Ejemplo resuelto:** listar los `.log` de `/var/log` con su tamaño en bytes.
 > ```bash
@@ -415,7 +435,7 @@ echo "2xx: $C2  3xx: $C3  4xx: $C4  5xx: $C5"
 Las tres líneas que faltan son como la de `2??`, cada una con su contador. Y el bucle lee del archivo que llegó como argumento.
 </details>
 
-➕ **Si te queda energía:** compara la velocidad de tu `contar-codigos.sh` con el pipeline de la clase 05. Fabrica un log grande con `for i in {1..50}; do cat "$LOG"; done > grande.log` (106 000 líneas) y compara `time ./contar-codigos.sh grande.log` con `time awk '{print $9}' grande.log | sort | uniq -c`. ¿Qué concluyes?
+➕ **Si te queda energía:** compara la velocidad de tu `contar-codigos.sh` con el pipeline de la clase 05. Fabrica un log grande con `for i in {1..50}; do cat "$LOG"; done > grande.log` (106 000 líneas) y compara `time ./contar-codigos.sh grande.log` con `time awk '{print $9}' grande.log | sort | uniq -c` (`time` delante de un comando mide cuánto tarda: mira la línea `real`). ¿Qué concluyes?
 
 ## Cierre
 

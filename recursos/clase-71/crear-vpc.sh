@@ -8,7 +8,9 @@ export AWS_PAGER=""
 # Etiquetas para --tag-specifications: tipo de recurso y nombre
 etiquetas() { echo "ResourceType=$1,Tags=[{Key=Name,Value=$2},{Key=Proyecto,Value=lab}]"; }
 
-if [[ $(aws ec2 describe-vpcs --filters Name=tag:Name,Values=lab-vpc --query 'length(Vpcs)') != 0 ]]; then
+aws sts get-caller-identity >/dev/null 2>&1 || { echo "Error: no hay sesión activa de AWS. Ejecuta: aws login" >&2; exit 1; }
+
+if [[ $(aws ec2 describe-vpcs --filters Name=tag:Name,Values=lab-vpc --query 'length(Vpcs)' --output text) != 0 ]]; then
   echo "Ya existe una lab-vpc. Si quieres empezar de cero: bash borrar-vpc.sh" >&2
   exit 1
 fi

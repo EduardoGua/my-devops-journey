@@ -13,7 +13,8 @@
 > - **cron**: el programa que ejecuta comandos a una hora fija.
 > - **crontab**: tu lista de tareas programadas, una línea por tarea.
 > - **rotación** (de copias): borrar las copias más viejas para que no se acumulen.
-> - **ruta absoluta**: la que empieza por `/`; funciona desde cualquier carpeta.
+> - **anacron**: el programa que lanza las tareas diarias del sistema aunque el equipo estuviera apagado.
+> - **MTA**: el programa que envía correo; Ubuntu no trae ninguno.
 > - **timer de systemd**: la alternativa moderna a cron (clase 12).
 
 ## Objetivo
@@ -34,7 +35,7 @@ Seis piezas. En cada una lees **una** idea y la pruebas enseguida; no pases a la
 
 Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 40 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
 
-Primero, las carpetas de hoy y una copia de tu crontab (si nunca usaste cron, `crontab -l` dice `no crontab for educo` y el respaldo queda vacío: es normal):
+Primero, las carpetas de hoy y una copia de tu crontab (si nunca usaste cron, el respaldo queda vacío: es normal):
 
 ```bash
 mkdir -p ~/my-devops-journey/labs/clase-20 ~/bin ~/logs ~/backups
@@ -44,7 +45,38 @@ crontab -l > ~/crontab.respaldo 2>/dev/null ; echo "respaldo hecho"
 
 ## Las piezas
 
-### Pieza 1 — La línea de cron, y el comando `crontab`
+### Pieza 1a — Una tarea cada minuto, y el comando `crontab`
+
+En cron, cinco asteriscos (`* * * * *`) seguidos de un comando significan «**ejecuta esto cada minuto**». Cada usuario tiene su propio **crontab** (la lista de sus tareas programadas, una línea por tarea), y se maneja con el comando `crontab`:
+
+| Comando | Qué hace |
+|---------|----------|
+| `crontab -e` | edita **tu** crontab. La primera vez te pregunta el editor: elige `nano` |
+| `crontab -l` | lo muestra |
+| `crontab archivo` | reemplaza tu crontab por el contenido del archivo |
+| `crontab -r` | ⚠️ **lo borra entero, sin preguntar**. La `r` está al lado de la `e` en el teclado |
+
+Antes de tocarlo, haz siempre una copia: `crontab -l > ~/crontab.respaldo` (ya la hiciste arriba).
+
+**Pruébalo:** una tarea que se ejecuta cada minuto.
+
+```bash
+crontab -e
+```
+
+Añade al final esta línea, guarda y sal:
+
+```
+* * * * * date >> /tmp/cron-prueba.txt
+```
+
+```bash
+crontab -l
+```
+
+Mientras cambia el minuto un par de veces (`date`), lee la pieza 1b.
+
+### Pieza 1b — Los cinco campos
 
 Cada línea de cron son **cinco campos de tiempo** y un comando:
 
@@ -71,34 +103,7 @@ Un `*` significa «**cualquiera**»: `* * * * *` es «cada minuto de cada hora d
 
 Para comprobar una expresión, [crontab.guru](https://crontab.guru) la traduce a palabras.
 
-Cada usuario tiene su propio **crontab**, la lista de sus tareas programadas, y se maneja con el comando `crontab`:
-
-| Comando | Qué hace |
-|---------|----------|
-| `crontab -e` | edita **tu** crontab. La primera vez te pregunta el editor: elige `nano` |
-| `crontab -l` | lo muestra |
-| `crontab archivo` | reemplaza tu crontab por el contenido del archivo |
-| `crontab -r` | ⚠️ **lo borra entero, sin preguntar**. La `r` está al lado de la `e` en el teclado |
-
-Antes de tocarlo, haz una copia: `crontab -l > ~/crontab.respaldo` (ya la hiciste arriba). Las tareas del sistema viven aparte, en `/etc/crontab`, `/etc/cron.d/` y `/etc/cron.daily/`. En tu portátil, las de `/etc/cron.daily/` las lanza **anacron**, que recupera las ejecuciones perdidas si el equipo estaba apagado.
-
-**Pruébalo:** una tarea que se ejecuta cada minuto.
-
-```bash
-crontab -e
-```
-
-Añade al final esta línea, guarda y sal:
-
-```
-* * * * * date >> /tmp/cron-prueba.txt
-```
-
-```bash
-crontab -l
-```
-
-Espera a que cambie el minuto un par de veces (`date`) y mira:
+**Pruébalo:** cuando haya cambiado el minuto un par de veces, mira el archivo:
 
 ```bash
 cat /tmp/cron-prueba.txt
@@ -136,28 +141,20 @@ Ahora vuelve a `crontab -e` y **borra esa línea**: ya sabes que cron funciona.
 
 **En resumen:** si la línea `CMD` está en `journalctl -u cron`, la tarea se ejecutó; si no hizo lo esperado, mira tu log.
 
-### Pieza 3 — El entorno de cron: aquí falla casi todo
+### Pieza 3a — Lo que cron no tiene
 
-Cron ejecuta tus comandos en un entorno casi vacío, distinto del de tu terminal. No tiene tu PATH, ni tus alias, ni tu carpeta actual, ni una pantalla donde escribir. Un script que funciona en tu terminal puede fallar en cron sin que nadie se entere.
+Cron ejecuta tus comandos en un entorno casi vacío, distinto del de tu terminal. No tiene tu PATH personal, ni tus alias, ni tu carpeta actual, ni una pantalla donde escribir. Un script que funciona en tu terminal puede fallar en cron sin que nadie se entere.
 
 Comprobado en Ubuntu 26.04, un trabajo de tu crontab arranca así:
 
 | | En tu terminal | En cron |
 |--|----------------|---------|
-| `PATH` | largo; incluye `~/bin` si lo añadiste | solo `/usr/bin:/bin` |
+| `PATH` | largo; incluye `~/bin` y `~/.local/bin` si los añadiste | un PATH del sistema (heredado de systemd con `-P`), **sin** tus carpetas (`~/bin`, `~/.local/bin`) |
 | Shell que lee la línea del crontab | bash | `/bin/sh` (dash) |
 | Directorio de trabajo | donde estés | tu `HOME` |
 | `~/.bashrc`, alias y variables exportadas | sí | **no** |
 | Terminal | sí | no |
 | Salida del comando | la pantalla | **se pierde**: no hay correo configurado, y cron solo deja `No MTA installed, discarding output` en su log |
-
-De ahí salen cuatro reglas:
-1. **Rutas absolutas** en el crontab: `/home/educo/bin/backup.sh`, no `backup.sh`.
-2. Dentro del script, no supongas en qué carpeta estás: usa rutas absolutas o calcula la carpeta del script con `DIR="$(cd "$(dirname "$0")" && pwd)"`.
-3. **Redirige la salida a un log**: `>> /home/educo/logs/backup.log 2>&1`.
-4. **El `%` es especial** en una línea de crontab: cron lo convierte en un salto de línea y corta el comando ahí. `date +%F` en el crontab rompe la línea. Escápalo (`\%`) o, mejor, pon la lógica en un script.
-
-Y una de hardware: si tu portátil está apagado o suspendido a la hora programada, cron **no** recupera esa ejecución.
 
 **Pruébalo: el entorno de cron, visto con tus ojos.**
 
@@ -178,12 +175,28 @@ Espera a que cambie el minuto (`date`) y compara:
 ```bash
 cat /tmp/env-cron.txt
 env | wc -l ; wc -l < /tmp/env-cron.txt
-diff <(env | sort) <(sort /tmp/env-cron.txt) | head -30
+grep -E '^(PATH|SHELL|HOME)=' /tmp/env-cron.txt
+env | grep -E '^(PATH|SHELL|HOME)='
 ```
 
-👀 **Qué deberías ver:** pocas variables en cron (menos de diez) frente a las decenas de tu terminal; en el `diff`, `PATH=/usr/bin:/bin` y `SHELL=/bin/sh` del lado de cron; y, al final del archivo, tu `HOME` como carpeta de trabajo.
+👀 **Qué deberías ver:** pocas variables en cron (menos de diez) frente a las decenas de tu terminal; en cron, un `PATH` más corto que el tuyo y sin `/home/educo/bin`, `SHELL=/bin/sh` y, al final del archivo, tu `HOME` como carpeta de trabajo.
 
 Vuelve a `crontab -e` y **borra esa línea**.
+
+### Pieza 3b — Cuatro reglas para cron
+
+De la tabla anterior salen cuatro reglas:
+1. **Rutas absolutas** en el crontab: `/home/educo/bin/backup.sh`, no `backup.sh`.
+2. Dentro del script, **no supongas en qué carpeta estás**: usa rutas absolutas.
+3. **Redirige la salida a un log**: `>> /home/educo/logs/backup.log 2>&1`.
+4. **El `%` es especial** en una línea de crontab: cron lo convierte en un salto de línea y corta el comando ahí. `date +%F` en el crontab rompe la línea. Escápalo (`\%`) o, mejor, pon la lógica en un script.
+
+**Pruébalo:** dos comprobaciones rápidas sobre tu crontab:
+
+```bash
+crontab -l | grep -v '^#'      # muestra las tareas activas: cada comando debe empezar por /
+crontab -l | grep -n '%'       # busca % sueltos en tu crontab: si hay alguno, debe ir como \%
+```
 
 ✋ **Sin mirar:**
 1. Un script funciona en tu terminal, pero desde cron dice que no encuentra un comando. ¿Qué es lo primero que sospechas?
@@ -192,7 +205,7 @@ Vuelve a `crontab -e` y **borra esa línea**.
 <details>
 <summary>Comprueba</summary>
 
-1. El PATH: cron solo tiene `/usr/bin:/bin`. Arreglo: rutas absolutas. 2. Porque en el crontab el `%` corta la línea: hay que escaparlo (`\%`) o, mejor, poner la lógica en un script.
+1. El PATH: el de cron no incluye tus carpetas (`~/bin`, `~/.local/bin`). Arreglo: rutas absolutas. 2. Porque en el crontab el `%` corta la línea: hay que escaparlo (`\%`) o, mejor, poner la lógica en un script.
 </details>
 
 **En resumen:** en cron: rutas absolutas, la salida a un log y nada de `%` sueltos.
@@ -234,11 +247,17 @@ log INFO "rotación: $BORRADOS copias de más de $DIAS días borradas"
 ```
 
 Línea por línea, lo nuevo:
-- `basename` y `dirname` separan `/home/educo/datos` en `datos` y `/home/educo`.
+- `basename` y `dirname` separan `/home/educo/datos` en `datos` y `/home/educo`. (Si un script necesita saber en qué carpeta vive él mismo, puede calcularla con `DIR="$(cd "$(dirname "$0")" && pwd)"`.)
 - `tar -C carpeta-padre nombre` guarda la ruta **relativa** (`datos/…`), no la absoluta. Así el backup se restaura en cualquier sitio.
 - La fecha incluye la hora (`%F_%H%M%S`). 🔮 ¿Qué pasaría con solo `%F` si lo ejecutas dos veces el mismo día?
 - `find … -mtime +7 -print -delete` borra las copias de más de 7 días y las imprime, y `wc -l` las cuenta.
 - Aquí `log` escribe en stdout porque, desde cron, stdout y stderr irán al mismo archivo.
+
+<details>
+<summary>Respuesta a la predicción de %F</summary>
+
+Las dos copias se llamarían igual y la segunda **sobrescribiría** la primera: perderías la copia de la mañana.
+</details>
 
 ```bash
 chmod +x ~/bin/backup.sh
@@ -313,6 +332,8 @@ Un backup en el mismo disco protege de un borrado accidental, pero no de que el 
 
 ### Para saber más: cron frente a un timer de systemd (clase 12)
 
+Si tu portátil está apagado o suspendido a la hora programada, tu crontab **no** recupera esa ejecución. Las tareas del sistema viven aparte, en `/etc/crontab`, `/etc/cron.d/` y `/etc/cron.daily/`: en tu portátil, las de `/etc/cron.daily/` las lanza **anacron**, que recupera las ejecuciones perdidas si el equipo estaba apagado.
+
 | | cron | timer de systemd |
 |--|------|------------------|
 | Definición | una línea | dos archivos (`.service` y `.timer`) |
@@ -336,15 +357,17 @@ Para Vigía usarás cron: es más simple y su sintaxis te servirá en la fase 9.
 
 ## Rómpelo
 
-**1. El comando que cron no encuentra.** Añade esta línea a tu crontab:
+Añade las tres líneas de los Rómpelo 1–3 de una vez (`crontab -e`), espera **un** minuto y mira los tres resultados. Al terminar, quita las tres líneas.
+
+**1. El comando que cron no encuentra:**
 ```
 * * * * * backup.sh /home/educo/datos-prueba >> /home/educo/logs/roto.log 2>&1
 ```
-Tras un minuto: `cat ~/logs/roto.log` → `/bin/sh: 1: backup.sh: not found`. En tu terminal funciona porque `~/bin` está en tu PATH; en cron, el PATH es `/usr/bin:/bin`. Quita la línea.
+Tras un minuto: `cat ~/logs/roto.log` → `/bin/sh: 1: backup.sh: not found`. En tu terminal funciona porque `~/bin` está en tu PATH; en cron, el PATH del sistema no incluye `~/bin`.
 
-**2. El `%` traidor.**
+**2. El `%` traidor:**
 
-> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera. Añade:
+> Si se te atraganta, sáltalo y vuelve a él después del cierre: no hace falta entenderlo a la primera.
 ```
 * * * * * echo "hoy es $(date +%F)" >> /home/educo/logs/fecha.log 2>&1
 ```
@@ -354,13 +377,13 @@ No habrá ni siquiera archivo. Mira lo que vio cron:
 ```bash
 journalctl -u cron --since "3 min ago" --no-pager | grep -E "hoy es|MTA"
 ```
-El comando quedó cortado en el `%` (`CMD (echo "hoy es $(date +)`), así que la redirección al log nunca llegó a ejecutarse, y el error de sintaxis acabó en la salida descartada (`No MTA installed, discarding output`). Un fallo **totalmente silencioso**. Cambia `%F` por `\%F`, comprueba que ya escribe y después quita la línea.
+El comando quedó cortado en el `%` (`CMD (echo "hoy es $(date +)`), así que la redirección al log nunca llegó a ejecutarse, y el error de sintaxis acabó en la salida descartada (`No MTA installed, discarding output`). Un fallo **totalmente silencioso**. Si cambias `%F` por `\%F`, ya escribe.
 
-**3. La carpeta en la que cron te deja.** Añade:
+**3. La carpeta en la que cron te deja:**
 ```
 * * * * * echo "¿dónde estoy?" > donde.txt
 ```
-Tras un minuto, busca `donde.txt`: está en tu HOME (`ls ~/donde.txt`), no en la carpeta de la clase. En un script, una ruta relativa se resuelve desde la carpeta actual, y en cron esa carpeta es tu HOME. Quita la línea y borra el archivo.
+Tras un minuto, busca `donde.txt`: está en tu HOME (`ls ~/donde.txt`), no en la carpeta de la clase. En un script, una ruta relativa se resuelve desde la carpeta actual, y en cron esa carpeta es tu HOME. Quita las tres líneas de prueba de tu crontab y borra `~/donde.txt`.
 
 **4. `crontab -r` y la vuelta atrás:**
 ```bash
@@ -405,43 +428,12 @@ Lee campo a campo con el dibujo de la pieza 1. `8-18` en el campo de la hora es 
 > ```
 > Minuto 0, hora 21, todos los días; el comando con ruta absoluta y su salida al log.
 
-**Ahora tú, con huecos:** `____ ____ * * ____ /usr/bin/find /home/educo/logs -type f -mtime +____ -delete`
+**Ahora tú, con huecos:** `____ ____ * * ____ /usr/bin/find /home/educo/logs -type f -mtime +____ -delete >> /home/educo/logs/limpieza.log 2>&1`
 
 <details>
 <summary>Pista</summary>
 
 Minuto 0, hora 20, y el domingo es el 0 en el campo del día de la semana. Los días están en el enunciado.
-</details>
-
-**3.** **Sin mirar la clase**, escribe desde cero `~/bin/backup2.sh` con el mismo comportamiento que `backup.sh`. Después compáralos con `diff`. Es un criterio de salida de la fase 1: repítelo otro día hasta que te salga sin ayuda, primero con huecos y después sin ellos.
-
-> 🧩 **Ejemplo resuelto:** los pasos del script escritos como comentarios, antes que el código.
-> ```bash
-> # 1. validar: ¿llegó una carpeta y existe?
-> # 2. el nombre del archivo, con fecha y hora
-> # 3. comprimir con tar
-> # 4. rotación: borrar las copias de más de 7 días
-> ```
-> Con los pasos escritos, solo tienes que rellenar cada uno. Es como se escriben los scripts de verdad.
-
-**Ahora tú, con huecos:**
-```bash
-#!/bin/bash
-set -euo pipefail
-ORIGEN="${1:?Uso: $0 <carpeta> [destino]}"
-DESTINO="${2:-$HOME/backups}"
-[[ -d $ORIGEN ]] || { echo "Error: $ORIGEN no es un directorio" >&2; exit 1; }
-mkdir -p "$DESTINO"
-BASE="$(basename "$ORIGEN")"
-ARCHIVO="$DESTINO/$BASE-$(date +____).tar.gz"
-tar -czf "$ARCHIVO" -C "$(dirname "$ORIGEN")" "____"
-find "$DESTINO" -maxdepth 1 -name "$BASE-*.tar.gz" -mtime +____ -print -delete
-```
-
-<details>
-<summary>Pista</summary>
-
-La fecha con hora es `%F_%H%M%S`. `tar` empaqueta el nombre de la carpeta (sin su ruta), que está en `$BASE`. Y la rotación es de 7 días.
 </details>
 
 ➕ **Opcional:** convierte el backup en un **timer de systemd de usuario** (sin `sudo`). Crea `~/.config/systemd/user/backup.service` (`Type=oneshot`, `ExecStart=%h/bin/backup.sh %h/my-devops-journey/notas`) y `backup.timer` (`OnCalendar=*-*-* 21:00:00`, `Persistent=true`, `WantedBy=timers.target`). Actívalo con `systemctl --user daemon-reload && systemctl --user enable --now backup.timer`, y míralo con `systemctl --user list-timers` y `journalctl --user -u backup.service`. ¿Qué ventaja tiene `Persistent=true` en un portátil? (`%h` es tu HOME dentro de una unit).
@@ -451,7 +443,7 @@ La fecha con hora es `%F_%H%M%S`. `tar` empaqueta el nombre de la carpeta (sin s
 En `notas/fase-1/clase-20.md`:
 
 1. Escribe la línea de crontab que ejecute `/home/educo/bin/informe.sh` de lunes a viernes a las 7:30 y guarde su salida y sus errores en `/home/educo/logs/informe.log`. Explica cada campo. *(1 línea con la línea de crontab y 2 explicando los campos. Empieza así: `30 7 * * 1-5 /home/educo/bin/informe.sh …`)*
-2. Da tres diferencias entre el entorno de tu terminal y el de cron, y cómo escribes los scripts para que no te afecten. *(3 líneas, una por diferencia. Empieza así: «1. En cron el PATH es solo…, así que uso… 2. … 3. …»)*
+2. Da tres diferencias entre el entorno de tu terminal y el de cron, y cómo escribes los scripts para que no te afecten. *(3 líneas, una por diferencia. Empieza así: «1. En cron el PATH no incluye mis carpetas…, así que uso… 2. … 3. …»)*
 3. ¿Cómo compruebas si una tarea de cron se ejecutó y, si se ejecutó, si falló? *(2 líneas. Empieza así: «Miro `journalctl -u cron` buscando la línea `CMD`… Si está, miro mi log para…»)*
 4. **Repaso (clase 19, sin mirar):** ¿qué hace cada parte de `set -euo pipefail`? *(3 líneas, una por opción. Empieza así: «`-e`… `-u`… `-o pipefail`…»)*
 
@@ -464,13 +456,13 @@ Después, escríbeme `examíname clase-20`.
 
 **1.** `30 7 * * 1-5 /home/educo/bin/informe.sh >> /home/educo/logs/informe.log 2>&1`. Minuto 30, hora 7, cualquier día del mes, cualquier mes, días de la semana 1 a 5 (lunes a viernes). `>>` añade al log sin borrarlo y `2>&1` manda también los errores.
 
-**2.** Tres de: el PATH es solo `/usr/bin:/bin` (usa rutas absolutas); la línea la ejecuta `/bin/sh`, no bash (pon la lógica en un script con su shebang); el directorio de trabajo es tu HOME (no uses rutas relativas o calcula la carpeta del script); no carga `~/.bashrc` ni tus alias ni tus variables exportadas (define en el script lo que necesites); la salida se pierde (redirígela a un log); el `%` corta la línea (escápalo o usa un script).
+**2.** Tres de: el PATH es el del sistema y no incluye tus carpetas (`~/bin`, `~/.local/bin`) (usa rutas absolutas); la línea la ejecuta `/bin/sh`, no bash (pon la lógica en un script con su shebang); el directorio de trabajo es tu HOME (no uses rutas relativas o calcula la carpeta del script); no carga `~/.bashrc` ni tus alias ni tus variables exportadas (define en el script lo que necesites); la salida se pierde (redirígela a un log); el `%` corta la línea (escápalo o usa un script).
 
-**3.** `journalctl -u cron` muestra una línea `CMD (…)` por cada ejecución: si no está, cron no la lanzó (horario mal escrito, crontab sin guardar, equipo apagado). Si está, el resultado se mira en el log al que rediriges la salida y en lo que el script debía producir (el archivo de backup). El código de salida del script, escrito por su función `log`, dice si terminó bien.
+**3.** `journalctl -u cron` muestra una línea `CMD (…)` por cada ejecución: si no está, cron no la lanzó (horario mal escrito, crontab sin guardar, equipo apagado). Si está, el resultado se mira en el log al que rediriges la salida y en lo que el script debía producir (el archivo de backup). Si el script falló, en tu log verás el mensaje de error (gracias al `2>&1`) o una línea `[ERROR]`, y faltará la línea `rotación: …` del final.
 
 **4.** `-e`: salir en cuanto un comando falle. `-u`: error si se usa una variable no definida. `-o pipefail`: un pipe falla si falla cualquiera de sus comandos, no solo el último.
 
-**Reto 2:** `0 20 * * 0 /usr/bin/find /home/educo/logs -type f -mtime +30 -delete`. Minuto 0, hora 20, cualquier día del mes y cualquier mes, día de la semana 0 (domingo).
+**Reto 2:** `0 20 * * 0 /usr/bin/find /home/educo/logs -type f -mtime +30 -delete >> /home/educo/logs/limpieza.log 2>&1`. Minuto 0, hora 20, cualquier día del mes y cualquier mes, día de la semana 0 (domingo).
 
 **Reto 1:** a las 2:15 de lunes a viernes · cada 10 minutos entre las 8:00 y las 18:50 · a medianoche del 1 de enero.
 

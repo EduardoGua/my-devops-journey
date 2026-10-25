@@ -28,7 +28,7 @@ Lo nuevo es lo que piden las ofertas y la ruta no tenía: redes de Cisco con la 
 |--------|-----|-------------------|-------|
 | A. Redes de Cisco y CCST | switches, MAC y ARP, VLANs, DHCP, Wi-Fi, cableado y fibra, comandos `show` de Cisco IOS y Packet Tracer | Networking Basics, de Cisco Networking Academy (NetAcad) | 30–40 h |
 | B. Monitoreo con Zabbix | Zabbix server y agente en dos VMs, ítems, un trigger con aviso y un incidente simulado | documentación oficial de Zabbix | 25–30 h |
-| C. Operación con tickets | ITIL a nivel práctico, tickets y una hoja de troubleshooting | esta página | 8–10 h |
+| C. Operación con tickets | ITIL a nivel práctico, tickets y una hoja de troubleshooting | esta página | 7–10 h |
 | D. ★ Hito NOC | CV, LinkedIn, historias de entrevista y postulaciones | esta página y la [clase 91](../fase-7/clase-91-hito.md) como referencia | 8–10 h, y después 2–3 h por semana aparte |
 
 Esta fase no tiene clases propias todavía. En el bloque A el recurso principal es NetAcad, y en el B, la documentación de Zabbix. Si quieres clases como las del resto del curso para los bloques B y C, pídeme `escribe la fase NOC` al terminar la clase 38: las escribiré en el mismo formato por piezas (teoría y práctica intercaladas, con Rómpelo, reto en tres escalones y cierre guiado), con las versiones y los comandos al día.
@@ -74,14 +74,16 @@ No esperes a terminar el laboratorio de Zabbix para postular: empiezas en cuanto
 
 Zabbix, porque es la herramienta que más aparece en las ofertas NOC revisadas: unas piden manejo básico de Zabbix, otras Nagios o Zabbix, y otras Zabbix con SSH, ITIL y cursos de Cisco o MikroTik.
 
-**Laboratorio** (guía: la [documentación oficial de Zabbix](https://www.zabbix.com/documentation/current/))
+En Zabbix, el **agente** es el programa que corre en el servidor vigilado (`10050/tcp`), un **ítem** es cada métrica que recoge (CPU, disco, puerto), un **trigger** es la condición que dispara un problema y un **web scenario** es una prueba HTTP periódica.
+
+**Laboratorio** (guía: la [documentación oficial de Zabbix 7.0 LTS](https://www.zabbix.com/documentation/7.0/))
 
 1. Dos VMs con Multipass:
    - `zabbix-01`, con Zabbix server, el frontend web y su base de datos (2 GB de RAM);
-   - `servidor-01`, con el agente de Zabbix y nginx. Puedes crearla con tu cloud-init del P2 (clase 37).
+   - `servidor-01`, con el agente de Zabbix y nginx. Puedes usar el mismo cloud-init de `web-01` del P2 (clase 37) cambiándole el nombre a `servidor-01`; si activas `ufw`, abre también el puerto `10050/tcp` desde la IP de `zabbix-01`.
 2. Instala Zabbix desde sus paquetes oficiales para Ubuntu, en la versión LTS vigente.
 3. Monitorea en `servidor-01` la CPU, el disco, el servicio nginx y un ping (ICMP) a otro equipo.
-4. Crea un trigger para "nginx caído" y un aviso por correo o por Telegram.
+4. Crea un trigger para "nginx caído" y un aviso por correo (con una contraseña de aplicación SMTP) o por Telegram (creando un bot con `@BotFather`).
 5. **Rómpelo:** detén nginx (y en otra prueba, llena el disco). Recibe la alerta, abre el ticket (bloque C), arréglalo y ciérralo. Apunta la hora de cada paso.
 6. Opcional: un *web scenario* de Zabbix que compruebe las mismas URLs que vigila Vigía. En la entrevista podrás comparar tu monitor con una herramienta del mercado.
 
@@ -103,7 +105,7 @@ Prevent:  also alert on port 80 (net.tcp.service), not only on the process
 - `projects/p3-noc-lab/` con un README en inglés: pasos, capturas y la configuración exportada.
 - El incidente simulado de punta a punta, con su registro.
 
-## C. Operación con tickets · 8–10 h
+## C. Operación con tickets · 7–10 h
 
 ITIL a nivel práctico, sin pagar la certificación:
 
@@ -128,7 +130,7 @@ ITIL a nivel práctico, sin pagar la certificación:
 
 **CV y LinkedIn**
 
-- **CV de una página**, en español, y en inglés para los puestos remotos: la CCST y las insignias de NetAcad, el enlace a tu repo (P1 y P3) y a Vigía.
+- **CV de una página**, en español, y en inglés para los puestos remotos: al aprobar la CCST, publícalo con la CCST, las insignias de NetAcad, el P1 y Vigía; cuando termines el bloque B, añade Zabbix, el P3 y la historia 2.
 - **Habilidades con las palabras de las ofertas:** Linux, TCP/IP, DHCP, DNS, VLANs, Zabbix, SSH, gestión de tickets, ITIL y Cisco Packet Tracer.
 - **Tu trabajo actual cuenta:** atención al cliente, responsabilidad y disponibilidad para turnos largos. Si haces tareas reales de tecnología (red, equipos, punto de venta), escríbelas y pide un certificado laboral solo con lo que de verdad haces.
 - **Titular de LinkedIn:** "Soporte N1 / NOC · Linux · Redes · Zabbix · CCST Networking".
@@ -179,7 +181,7 @@ Se marcan en [`PROGRESO.md`](../PROGRESO.md), sin mirar:
 - Explicas qué es una VLAN y para qué sirve DHCP, y lo muestras en tu red de Packet Tracer (bloque A)
 - Zabbix vigila un servidor y la alerta de un servicio caído llega, probada (bloque B)
 - Explicas la diferencia entre incidente, problema, solicitud y cambio, y cómo se calcula la prioridad (bloque C)
-- Diagnosticas en voz alta "no hay internet", paso a paso (fase 3 y bloque C)
+- Diagnosticas en voz alta "no hay internet", paso a paso (fase 3, bloque A —DHCP y Wi-Fi— y tu hoja del bloque C)
 
 ## Datos que caducan
 
@@ -187,12 +189,12 @@ Antes de empezar la fase, pídeme `revisa la fase NOC` y lo compruebo de nuevo.
 
 | Dato | Valor | Verificado | Fuente |
 |------|-------|------------|--------|
-| CCST Networking (100-150) | 125 USD · 50 min · en español · sin prerrequisitos | 2026-10-19, según tu plan NOC | cisco.com/site/us/en/learn/training-certifications/exams/ccst-networking.html |
-| Networking Basics | gratis, unas 22 h | 2026-10-19, según tu plan NOC | NetAcad |
-| Zabbix | versión LTS vigente y paquetes para Ubuntu 26.04 | por comprobar | zabbix.com/documentation |
-| Packet Tracer | instalador para Ubuntu; compatibilidad con 26.04 | por comprobar | NetAcad |
+| CCST Networking (100-150) | 125 USD · 50 min · 40–45 preguntas · en español · sin prerrequisitos · validez 5 años (Pearson VUE / Certiport) | 2026-10-25 | cisco.com/site/us/en/learn/training-certifications/exams/ccst-networking.html |
+| Networking Basics | gratis, unas 22 h | 2026-10-25 | NetAcad |
+| Zabbix | 7.0 LTS vigente (soporte completo hasta jun 2027); paquetes oficiales para Ubuntu 24.04/26.04 (8.0 LTS prevista Q4 2026) | 2026-10-25 | zabbix.com/life_cycle_and_release_policy |
+| Packet Tracer | 9.0.1 con instalador `.deb` para Ubuntu (soporte oficial listado para 22.04 LTS; en 26.04 puede requerir librerías extra) | 2026-10-25 | NetAcad |
 | Ofertas NOC en Bogotá | redes, Zabbix, tickets con SLA, ITIL, SSH y turnos 7x24; muchas pagan cerca del mínimo | 2026-10-19 | elempleo.com y co.computrabajo.com (enlaces en tu plan NOC) |
-| Tecnólogo SENA en Gestión de Redes de Datos | gratis, virtual, unas 4 h diarias; estuvo en la oferta virtual de 2026 | 2026-10-19, según tu plan NOC | sena.edu.co |
+| Tecnólogo SENA en Gestión de Redes de Datos | gratis, virtual, unas 4 h diarias; estuvo en la oferta virtual de 2026 | 2026-10-19 | sena.edu.co |
 
 ## Siguiente fase
 

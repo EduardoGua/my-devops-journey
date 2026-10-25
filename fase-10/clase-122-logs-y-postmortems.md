@@ -209,9 +209,9 @@ Las piezas:
 6. **Qué salió bien, qué salió mal y dónde tuvimos suerte.**
 7. **Acciones**, con responsable y fecha: para que no vuelva a pasar, para detectarlo antes y para arreglarlo más rápido.
 
-**Pruébalo, en papel.** Lee este modelo, ya relleno, de un incidente de la clase 79. Lo escribió Claude, para que veas el tono y la longitud: una línea por campo.
+**Pruébalo, en papel.** Lee este modelo, ya relleno, de un incidente de la clase 79, para que veas el tono y la longitud: una línea por campo.
 
-> **Modelo (lo escribió Claude): Vigía v3 — el informe diario no llegó a S3**
+> **Modelo: Vigía v3 — el informe diario no llegó a S3**
 >
 > - **Resumen:** el 12 de octubre, el informe diario de Vigía no se subió a S3 durante 2 días. Los contenedores no recibían credenciales del rol por el límite de saltos de IMDS. Se resolvió subiendo el límite a 2.
 > - **Impacto:** 2 informes diarios sin publicar; la API y los chequeos siguieron funcionando; ningún usuario externo afectado.

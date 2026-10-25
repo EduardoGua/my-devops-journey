@@ -8,7 +8,7 @@
 > - Una rama es un puntero a un commit, y `HEAD` dice en qué rama estás (clase 22, pieza 3).
 > - `git log --oneline --graph --all` dibuja la historia (clase 22, pieza 4).
 > - `git reflog` encuentra commits que ya no están en ninguna rama (clase 22, Rómpelo 3).
-> - `sed -i 's/viejo/nuevo/' archivo` cambia un texto dentro de un archivo (clase 19).
+> - `sed -i 's/viejo/nuevo/' archivo` cambia un texto dentro de un archivo (clase 05).
 
 > 🔤 **Palabras nuevas de hoy:**
 > - **merge** (fusión): unir los cambios de una rama con otra.
@@ -49,12 +49,6 @@ git add . && git commit -m "Configuración inicial"
 ## Las piezas
 
 ### Pieza 1 — Una rama por cambio, y el *fast-forward*
-
-```
-main:     A ── B ──────────── M        ← merge de la rama de trabajo
-                \            /
-feature:         C ── D ────┘
-```
 
 Convención de nombres habitual: `feature/health-check`, `fix/permisos-backend`, `docs/readme`.
 
@@ -97,7 +91,13 @@ Un fast-forward: Git solo adelanta el puntero de `main`, sin commit de merge.
 
 ### Pieza 2 — El merge de tres vías
 
-Si **ambas** ramas avanzaron, Git compara las dos puntas con su **ancestro común** (el commit del que salieron) y crea un **commit de merge** con dos padres.
+Si **ambas** ramas avanzaron, Git compara las dos puntas con su **ancestro común** (el commit del que salieron) y crea un **commit de merge** con dos padres:
+
+```
+main:     A ── B ──────────── M        ← merge de la rama de trabajo (dos padres)
+                \            /
+feature:         C ── D ────┘
+```
 
 **Pruébalo:** dos cambios en líneas distintas del mismo archivo, uno en cada rama.
 
@@ -130,10 +130,10 @@ Hay conflicto cuando ambas ramas cambiaron **las mismas líneas** (o una borró 
 
 ```
 <<<<<<< HEAD
-server_port=8080          ← tu versión (la rama en la que estás)
+server_port=8000          ← tu versión (la rama en la que estás)
 =======
 server_port=9090          ← la versión que intentas fusionar
->>>>>>> feature/puerto
+>>>>>>> feature/puerto-9090
 ```
 
 **Método para resolver:**
@@ -173,7 +173,7 @@ Resuélvelo: imagina que hablas con quien hizo el otro cambio y acordáis el **8
 
 ```bash
 nano app.conf
-grep -n '<<<<<<<\|=======\|>>>>>>>' app.conf || echo "sin marcadores"
+grep -nE '<<<<<<<|=======|>>>>>>>' app.conf || echo "sin marcadores"
 git add app.conf
 git commit --no-edit
 git log --oneline --graph --all
@@ -212,7 +212,7 @@ git status                               # tu cambio a medias ha vuelto
 git restore README.md                    # descártalo para seguir limpio
 ```
 
-👀 **Qué deberías ver:** después del `stash`, `Directorio de trabajo y estado de índice WIP on main… guardados` y un `git status` limpio; el arreglo urgente fusionado con un fast-forward; y, con `stash pop`, `README.md` otra vez en `Cambios no rastreados para el commit`.
+👀 **Qué deberías ver:** después del `stash`, `Directorio de trabajo y estado de índice WIP on main… guardados` (WIP = *work in progress*, trabajo a medias) y un `git status` limpio; el arreglo urgente fusionado con un fast-forward; y, con `stash pop`, `README.md` otra vez en `Cambios no rastreados para el commit`.
 
 **En resumen:** `git stash` guarda aparte lo que estás haciendo; `git stash pop` lo devuelve.
 
@@ -225,7 +225,7 @@ antes:   main: A ── B ── E          feature: A ── B ── C ── 
 rebase:  feature: A ── B ── E ── C' ── D'     (C' y D' son commits NUEVOS, con otros hashes)
 ```
 
-**Regla de oro:** haz rebase **solo** de ramas que nadie más ha descargado. Reescribir commits ya compartidos rompe el trabajo de los demás.
+**Regla de oro:** haz rebase **solo** de ramas que solo tienes tú. Reescribir commits ya compartidos rompe el trabajo de los demás.
 
 **Pruébalo** con una rama que solo existe en tu PC:
 
@@ -240,7 +240,7 @@ git rebase main
 git log --oneline --graph --all
 ```
 
-👀 **Qué deberías ver:** antes, dos ramas que se separan; después del rebase, una sola línea en la que `Activa SSL` va **detrás** de `Añade sección de despliegue`, y con un hash distinto al de antes.
+👀 **Qué deberías ver:** antes, dos ramas que se separan; después del rebase, una sola línea en la que `Activa SSL` aparece **encima** de `Añade sección de despliegue` (es el más nuevo), con otro hash.
 
 La rama `feature/ssl` ahora parte de la punta de `main`. Fusionarla será un fast-forward:
 
@@ -249,7 +249,7 @@ git switch main && git merge feature/ssl
 git log --oneline --graph
 ```
 
-✋ **Sin mirar:** tu compañero ya descargó tu rama `feature/x`. ¿Puedes hacerle un rebase?
+✋ **Sin mirar:** tu compañero ya tiene una copia de tu rama `feature/x`. ¿Puedes hacerle un rebase?
 
 <details>
 <summary>Comprueba</summary>
@@ -267,7 +267,7 @@ No: el rebase crea commits nuevos, y su copia tendría los viejos. Para integrar
 | `git branch` · `git branch -d rama` | ver las ramas · borrar una ya fusionada |
 | `git merge rama` · `git merge --no-ff rama` | fusionar · fusionar siempre con commit de merge |
 | `git merge --abort` · `git merge --continue` | deshacer un merge a medias · terminarlo tras resolver |
-| `git status` · `grep -n '<<<<<<<' archivo` | qué está en conflicto · marcadores que quedan |
+| `git status` · `grep -nE '<<<<<<<|=======|>>>>>>>' archivo` | qué está en conflicto · marcadores que quedan |
 | `git stash` · `git stash pop` · `git stash list` | guardar lo que estás haciendo · recuperarlo · ver lo guardado |
 | `git rebase main` · `--continue` · `--abort` | reaplicar tu rama sobre `main` · seguir tras un conflicto · volver atrás |
 | `git log --oneline --graph --all` | ver las ramas y cómo se unen |
@@ -302,7 +302,7 @@ git switch rebase-conflicto
 git rebase main
 git status
 ```
-Resuélvelo como siempre (editar, `git add`), pero en lugar de `commit` se usa `git rebase --continue`. O `git rebase --abort` para volver atrás. Prueba ambos caminos: aborta, repite el rebase y complétalo.
+Resuélvelo como siempre (editar, `git add`), pero en lugar de `commit` se usa `git rebase --continue` (o `git rebase --abort` para volver atrás). Ojo: en un rebase, arriba (`HEAD`) está `main` y abajo tu commit, al revés que en un merge. Al hacer `git rebase --continue` se abre nano con el mensaje: guarda y sal (`Ctrl+O`, `Enter`, `Ctrl+X`). Prueba ambos caminos: aborta, repite el rebase y complétalo.
 
 ## Reto
 
@@ -321,7 +321,7 @@ Si en el Rómpelo 2 te quedaste sin `README.md`, recréalo antes: `echo '# Servi
 > ```
 > Cero conflictos: ninguna línea la cambiaron las dos ramas. El primero es un fast-forward; el segundo, un merge de tres vías.
 
-**Ahora tú, con huecos:**
+**Ahora tú, con huecos** (ejecuta primero el ejemplo resuelto: deja `log_level=error` en `main`):
 ```bash
 git switch main
 git switch -c ra && sed -i '1s/.*/# Servicio web/' README.md && sed -i 's/server_port=8000/server_port=____/' app.conf && git commit -am "ra"
@@ -329,6 +329,8 @@ git switch main && git switch -c rb && sed -i '1s/.*/# ____/' README.md && sed -
 git switch main && git merge ra && git merge rb
 git status
 ```
+
+(`1s/.*/…/` = en la línea 1, cambia la línea entera —`.*` es cualquier texto— por lo nuevo.)
 
 <details>
 <summary>Pista</summary>
@@ -359,7 +361,7 @@ git log --oneline --graph -3
 La opción está en el enunciado. Fíjate en el gráfico: ¿aparece un commit de merge aunque se pudiera hacer fast-forward? ¿Qué ventaja tiene ver siempre ese commit si un día quieres deshacer la funcionalidad entera?
 </details>
 
-**3.** ¿Por qué hacer rebase de una rama que tu compañero ya descargó le causa problemas? Completa el esquema.
+**3.** ¿Por qué hacer rebase de una rama que tu compañero ya tiene le causa problemas? Completa el esquema.
 
 > 🧩 **Ejemplo resuelto:** el rebase de la pieza 5, en una rama solo tuya.
 > ```
@@ -373,7 +375,7 @@ La opción está en el enunciado. Fíjate en el gráfico: ¿aparece un commit de
 tu compañero tiene:   A ── B ── C ── D
 tú, tras el rebase:   A ── B ── E ── C' ── D'
 → Para Git, C y C' son commits ____ (tienen otro hash).
-→ Cuando él haga git pull, Git verá dos historias ____ y le pedirá un merge con
+→ Cuando él vuelva a bajarse tu rama (con git pull, clase 24), Git verá dos historias ____ y le pedirá un merge con
   los mismos cambios repetidos: ____ y ____.
 ```
 
@@ -408,7 +410,7 @@ Después, escríbeme `examíname clase-23`.
 **4.** El historial de todos los movimientos de `HEAD` en tu repo local, incluidos commits que ya no están en ninguna rama. Te salva tras un `reset --hard` equivocado, un rebase que salió mal o una rama borrada: buscas el hash y vuelves a él.
 
 **Reto 1:** **un** conflicto, en la línea 1 de `README.md`; los cambios de `app.conf` se fusionan solos. Resuélvelo con el método de la pieza 3.
-**Reto 2:** `git merge --no-ff docs/b`. Fuerza un commit de merge aunque se pudiera hacer fast-forward: deja constancia de que "esta funcionalidad entró como un bloque" y facilita revertirla entera (`git revert -m 1 <merge>`).
+**Reto 2:** `git merge --no-ff docs/b`. Fuerza un commit de merge aunque se pudiera hacer fast-forward: deja constancia de que "esta funcionalidad entró como un bloque" y facilita revertirla entera (`git revert -m 1 <merge>`, donde `-m 1` indica deshacerlo respecto al primer padre, `main`).
 **Reto 3:** commits **distintos**; dos historias **que se separan** (divergentes), y el merge le traería `C` y `C'`, `D` y `D'`: los mismos cambios dos veces, con posibles conflictos. Por eso solo se hace rebase de ramas que nadie más tiene.
 </details>
 

@@ -1,12 +1,12 @@
 # Clase 12 — systemd: servicios
 
-**Dónde:** VM `servidor-01` · **Tiempo:** 90 min · **Bloque:** B. Administrar un servidor
+**Dónde:** VM `servidor-01` · **Tiempo:** 100 min (en dos sesiones) · **Bloque:** B. Administrar un servidor
 
 > 💡 **La idea de hoy:** `systemd` es el **encargado del edificio**: al encender arranca los servicios en orden, los vigila y los vuelve a levantar si se caen. Tú le dejas las instrucciones en un archivo *unit* (qué ejecutar, con qué usuario, qué hacer si falla) y él se ocupa. Dos preguntas que nunca debes confundir: ¿está funcionando **ahora**? (`start`) y ¿arrancará **después de reiniciar**? (`enable`).
 
 > 📚 **Lo que ya sabes y hoy vas a usar:**
 > - El PID 1 es `systemd`, el padre de todos los procesos (clase 11).
-> - `SIGTERM` y `SIGKILL`: pedir por favor y el apagón (clase 11).
+> - `SIGTERM` y `SIGKILL`: terminar con orden o matar en el acto (clase 11).
 > - El usuario de servicio `appsvc` y los permisos de una carpeta (clases 09 y 06).
 
 > 🔤 **Palabras nuevas de hoy:**
@@ -15,6 +15,8 @@
 > - **demonio** (*daemon*): un programa que trabaja en segundo plano, sin terminal.
 > - **habilitar** (`enable`): que arranque solo cada vez que se enciende el servidor.
 > - **drop-in**: un archivo pequeño que cambia solo unas líneas de una unit.
+> - **target**: un grupo de units que se arrancan juntas; `multi-user.target` es «el arranque normal».
+> - **timer**: una unit que lanza un servicio a ciertas horas.
 
 ## Objetivo
 
@@ -31,7 +33,7 @@ Toda aplicación en un servidor corre como servicio: nginx, bases de datos, tu A
 
 Cinco piezas. En cada una lees **una** idea y la pruebas enseguida en el servidor; no pases a la siguiente sin haber ejecutado la anterior.
 
-Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 45 min: en la 3 creas tu propio servicio); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre.
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3b** (unos 45 min: en la 3b creas tu propio servicio); el segundo, las **piezas 4 y 5**, el Rómpelo, el reto y el cierre (unos 55 min).
 
 Todo se hace dentro de la VM:
 
@@ -48,7 +50,7 @@ multipass shell servidor-01
 - mientras funcionan, los **vigila** y los vuelve a levantar si se caen;
 - y apunta todo lo que dicen en su registro, el *journal* (clase 13).
 
-Cada cosa que gestiona systemd tiene un archivo de instrucciones, una **unit**. Hoy usarás dos tipos: `.service`, un programa que debe estar funcionando (`nginx.service`), y `.timer`, algo que debe ejecutarse a ciertas horas (`apt-daily.timer`), la alternativa moderna a cron. Las units viven en dos sitios, y esto importa:
+Cada cosa que gestiona systemd tiene un archivo de instrucciones, una **unit**. Las de los servicios terminan en `.service` (`nginx.service`). Las units viven en dos sitios, y esto importa:
 
 | Dónde | Qué hay | ¿Las tocas? |
 |-------|---------|-------------|
@@ -75,34 +77,33 @@ systemctl status nginx --no-pager
 oct 05 10:00:00 servidor-01 systemd[1]: Started nginx.service ...   ← últimas líneas de log
 ```
 
-La unit de nginx es del fabricante: está en `/usr/lib/systemd/system/`. Mírala entera, y mira qué servicios están en marcha y si alguno falló:
+La unit de nginx es del fabricante: está en `/usr/lib/systemd/system/`. Mírala entera:
 
 ```bash
 systemctl cat nginx
-systemctl list-units --type=service --state=running --no-pager
-systemctl list-units --failed --no-pager
 ```
 
-👀 **Qué deberías ver:** la unit de nginx entera, con sus secciones `[Unit]`, `[Service]` e `[Install]` (las leerás a fondo en la pieza 3); la lista de servicios en marcha; y, si todo va bien, `0 loaded units listed` en los fallidos.
+👀 **Qué deberías ver:** la unit de nginx entera, con sus secciones `[Unit]`, `[Service]` e `[Install]` (las leerás a fondo en la pieza 3a).
 
 **En resumen:** systemd arranca los servicios, los vigila y los vuelve a levantar si se caen. Cada servicio tiene su unit; las del fabricante no se tocan, y las tuyas van en `/etc/systemd/system/`.
 
 ### Pieza 2 — Dar órdenes a systemd: `systemctl`, y `start` frente a `enable`
 
-Lo esencial son seis órdenes:
+Lo esencial son siete órdenes:
 
 ```bash
 systemctl status nginx          # ¿cómo está? (estado, PID y sus últimas líneas de log)
 sudo systemctl start nginx      # arráncalo AHORA
 sudo systemctl stop nginx       # páralo
 sudo systemctl restart nginx    # páralo y arráncalo
+sudo systemctl reload nginx     # relee la configuración sin cortar (el SIGHUP de la clase 11)
 sudo systemctl enable nginx     # arráncalo CADA VEZ que se encienda el servidor
 sudo systemctl daemon-reload    # vuelve a leer las units (después de editar una)
 ```
 
 La confusión más cara del oficio es la de `start` y `enable`. Son dos preguntas **independientes**:
-- **¿Está abierto ahora?** Es `start`, y lo dice `is-active`.
-- **¿Abrirá mañana, cuando se reinicie?** Es `enable`, y lo dice `is-enabled`.
+- **¿Está funcionando ahora?** Es `start`, y lo dice `is-active`.
+- **¿Arrancará cuando se reinicie el servidor?** Es `enable`, y lo dice `is-enabled`.
 
 Arrancas un servicio a mano, compruebas que funciona y te vas… pero no lo habilitaste. Semanas después la EC2 se reinicia y la web no vuelve. Por eso se usa `sudo systemctl enable --now x`: lo habilita **y** lo arranca.
 
@@ -142,9 +143,9 @@ No necesariamente: `enable` solo hace que arranque **al encender**. Para arranca
 
 **En resumen:** `start` = ahora; `enable` = al encender. Casi siempre quieres las dos: `enable --now`.
 
-### Pieza 3 — Leer y escribir una unit: tu propio servicio
+### Pieza 3a — Leer una unit
 
-Así es la unit del servicio que vas a crear ahora. Cada `#` explica la línea de debajo:
+Así es la unit del servicio que vas a crear ahora. Cada `#` explica lo de debajo:
 
 ```ini
 [Unit]
@@ -157,7 +158,7 @@ Wants=network-online.target
 # NUNCA root si no hace falta
 User=appsvc
 WorkingDirectory=/srv/miapp
-# configuración por variables (clase 07)
+# ejemplo de la sintaxis: esta app no la lee (el puerto va en ExecStart)
 Environment=PORT=8080
 ExecStart=/usr/bin/python3 -m http.server 8080 --directory /srv/miapp
 # si muere con error, reiniciar a los 3 segundos
@@ -172,6 +173,18 @@ WantedBy=multi-user.target
 Tres secciones: `[Unit]` dice **qué es** y cuándo arrancarlo; `[Service]` dice **cómo ejecutarlo** (con qué usuario, qué comando y qué hacer si falla); `[Install]` dice si debe arrancar **al encender** el servidor.
 
 ⚠️ Los comentarios (`#`) van **en su propia línea**. Un `#` al final de una línea con valor **no** es un comentario: pasaría a formar parte del valor.
+
+**Pruébalo:** vuelve a mirar la unit de nginx y localiza sus tres secciones.
+
+```bash
+systemctl cat nginx
+```
+
+👀 **Qué deberías ver:** `[Unit]` con `Description` y `After`, `[Service]` con `ExecStart` y `ExecReload`, e `[Install]` con `WantedBy=multi-user.target`.
+
+**En resumen:** `[Unit]` dice qué es, `[Service]` cómo ejecutarlo e `[Install]` si arranca al encender.
+
+### Pieza 3b — Crear `miapp`: tu propio servicio
 
 **Pruébalo.** Prepara la app y su usuario:
 
@@ -188,7 +201,7 @@ Escribe la unit. Está en `/etc/systemd/system/` porque es tuya:
 sudo nano /etc/systemd/system/miapp.service
 ```
 
-Copia la unit de arriba tal cual. Después:
+Copia la unit de la pieza 3a tal cual. Después:
 
 ```bash
 sudo systemctl daemon-reload
@@ -210,7 +223,7 @@ ps -o user,pid,cmd -C python3
 1. `sudo systemctl daemon-reload`, para que systemd vuelva a leer las units. 2. Porque es del fabricante: la próxima actualización del paquete la sobrescribiría. Tus cambios van en `/etc/systemd/system/`.
 </details>
 
-**En resumen:** `[Unit]` dice qué es, `[Service]` cómo ejecutarlo e `[Install]` si arranca al encender. Tras escribir una unit: `daemon-reload` y `enable --now`.
+**En resumen:** tras escribir o cambiar una unit en `/etc/systemd/system/`, haz `daemon-reload` y `enable --now`.
 
 > ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí. Para salir de la VM, `exit`.
 
@@ -226,6 +239,8 @@ sleep 1; systemctl status miapp --no-pager | head -5
 sleep 3; systemctl status miapp --no-pager | head -5
 curl -s localhost:8080
 ```
+
+(`systemctl show -p MainPID --value miapp` imprime solo el PID principal del servicio, el `Main PID` que ves en `status`.)
 
 <details>
 <summary>Qué deberías ver</summary>
@@ -252,11 +267,10 @@ sudo systemctl start miapp
 Para entrevistas, el orden del arranque:
 
 ```
-firmware (BIOS/UEFI) ─► gestor de arranque (GRUB) ─► kernel (+ initramfs) ─► systemd (PID 1) ─► targets y servicios ─► login
-  comprueba el hardware    elige y carga el kernel      monta el disco raíz       arranca todo en orden      (multi-user.target)
+firmware ─► GRUB (elige el kernel) ─► kernel ─► systemd (PID 1) ─► servicios (multi-user.target) ─► login
 ```
 
-Al llegar a systemd, arranca todo lo que está `enabled`. En una EC2 no ves la pantalla, pero sí la **consola del sistema** (*Get system log* / *EC2 serial console*). Ahí se diagnostica una instancia que no arranca, por ejemplo por un `fstab` roto (clase 14).
+Al llegar a systemd, arranca todo lo que está `enabled`.
 
 **Pruébalo: ¿sobreviven tus servicios a un reinicio?**
 
@@ -286,11 +300,14 @@ multipass exec servidor-01 -- curl -s localhost:8080
 | `enable --now x` | habilitar y arrancar a la vez |
 | `is-active x` · `is-enabled x` | respuesta corta, ideal para scripts |
 | `daemon-reload` | releer las units tras editarlas |
-| `list-units --type=service --failed` | qué servicios fallaron |
+| `list-units --type=service --state=running` | qué servicios están en marcha |
+| `list-units --failed` | qué units fallaron |
 | `cat x` · `edit x` · `revert x` | ver la unit efectiva · cambiar solo unas líneas (*drop-in*) · deshacer esos cambios |
 | `reset-failed x` | limpiar el estado `failed` para poder arrancarlo otra vez |
 
-Otros tipos de unit que verás: `.target` (un grupo de units, como `multi-user.target`, «el arranque normal»), `.socket` y `.mount`. Un *drop-in* es un archivo `/etc/systemd/system/x.service.d/override.conf` que cambia solo algunas líneas de una unit: lo crea `systemctl edit x`.
+Otros tipos de unit que verás: `.target` (un grupo de units, como `multi-user.target`, «el arranque normal»), `.timer`, `.socket` y `.mount`. Un *drop-in* es un archivo `/etc/systemd/system/x.service.d/override.conf` que cambia solo algunas líneas de una unit: lo crea `systemctl edit x`.
+
+**Para saber más:** entre el kernel y systemd entra `initramfs` (un sistema mínimo en memoria que monta el disco raíz); y en una EC2, donde no hay pantalla, el arranque se ve en la **consola del sistema** (*Get system log* / *EC2 serial console*), donde se diagnostica una instancia que no arranca por un `fstab` roto (clase 14).
 
 ## Rómpelo
 
@@ -301,6 +318,7 @@ Snapshot primero (desde tu PC): `multipass stop servidor-01 && multipass snapsho
 sudo sed -i 's|/usr/bin/python3|/usr/bin/pyton3|' /etc/systemd/system/miapp.service
 sudo systemctl restart miapp
 ```
+(Uso `|` en lugar de `/` como separador porque la ruta ya lleva `/`; `sed` acepta cualquier carácter.)
 🔮 **Predice:** ¿qué crees que pasará? Lee el mensaje con atención.
 
 `restart` te avisa de que la unit cambió en disco y no hiciste `daemon-reload`: **systemd todavía usa la versión vieja**. Recarga y repite:
@@ -354,7 +372,7 @@ ExecStart=
 ExecStart=/bin/false
 RestartSec=500ms
 ```
-La primera línea `ExecStart=` vacía **borra** el valor heredado; la segunda pone uno que siempre falla; `RestartSec` corto acelera los reintentos.
+La primera línea `ExecStart=` vacía **borra** el valor heredado; la segunda pone uno que siempre falla; `RestartSec` corto acelera los reintentos. `watch -n1 X` repite el comando X cada segundo y refresca la pantalla; sales con `Ctrl+C`.
 ```bash
 sudo systemctl restart miapp
 watch -n1 systemctl status miapp --no-pager
@@ -380,7 +398,7 @@ En la VM. Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, e
 > #   Description=Mi app de prueba
 > systemctl cat miapp
 > ```
-> `systemctl edit` crea el drop-in y recarga solo las units. `systemctl cat` enseña la unit original y, debajo, tu cambio.
+> `systemctl edit` crea el drop-in y hace el `daemon-reload` por ti. `systemctl cat` enseña la unit original y, debajo, tu cambio.
 
 **Ahora tú, con huecos:**
 ```bash
@@ -394,10 +412,10 @@ systemctl cat miapp
 <details>
 <summary>Pista</summary>
 
-`RestartSec` vive en la sección de la unit que dice **cómo ejecutarlo** (pieza 3).
+`RestartSec` vive en la sección de la unit que dice **cómo ejecutarlo** (pieza 3a).
 </details>
 
-**2.** Elige tres servicios de `systemctl list-unit-files --type=service --state=enabled` y comprueba con `systemctl is-active` si están funcionando ahora. ¿Alguno está habilitado pero no activo? ¿Por qué podría ser?
+**2.** Elige tres servicios de `systemctl list-unit-files --type=service --state=enabled` (salta los nombres con `@`: son plantillas, no servicios) y comprueba con `systemctl is-active` si están funcionando ahora. ¿Alguno está habilitado pero no activo? ¿Por qué podría ser?
 
 > 🧩 **Ejemplo resuelto:** las dos preguntas sobre nginx.
 > ```bash
@@ -415,10 +433,10 @@ systemctl is-active ____
 <details>
 <summary>Pista</summary>
 
-Copia un nombre de la lista en el hueco, y repite con otros dos. Recuerda las dos preguntas de la pieza 2: pueden tener respuestas distintas.
+Copia un nombre de la lista en el hueco (sin `@`), y repite con otros dos. Recuerda las dos preguntas de la pieza 2: pueden tener respuestas distintas. Piensa en servicios que hacen su trabajo al arrancar y terminan.
 </details>
 
-**3.** (El más largo.) Crea un **timer** que cada minuto añada la fecha y la carga del sistema a `/var/log/latido.log`. Necesitas dos units: `latido.service` (`Type=oneshot`, con `ExecStart=/bin/sh -c 'echo "$(date) $(cat /proc/loadavg)" >> /var/log/latido.log'`) y `latido.timer` (con `[Timer] OnCalendar=minutely` y `[Install] WantedBy=timers.target`).
+**3.** *(Opcional, el más largo.)* Un **timer** (`.timer`, como `apt-daily.timer`) es una unit que lanza un servicio a ciertas horas: la alternativa moderna a cron (clase 20). Crea un timer que cada minuto añada la fecha y la carga del sistema a `/var/log/latido.log`. Necesitas dos units: `latido.service` (`Type=oneshot`, con `ExecStart=/bin/sh -c 'echo "$(date) $(cat /proc/loadavg)" >> /var/log/latido.log'`) y `latido.timer` (con `[Timer] OnCalendar=minutely` y `[Install] WantedBy=timers.target`).
 
 > 🧩 **Ejemplo resuelto:** un servicio que escribe la fecha **una vez**, sin timer.
 > ```bash

@@ -27,7 +27,7 @@
 
 ## Por qué importa
 
-Cada regla de un security group es **protocolo + puerto + origen**. Cada contenedor publica puertos. Cada balanceador tiene *listeners* en puertos y comprueba la salud de tus apps en otro puerto. Y uno de los fallos más típicos de quien empieza en la nube es una app que escucha en `127.0.0.1` y por eso nunca recibe el tráfico, por muchas reglas que abra.
+Cada regla de un security group es **protocolo + puerto + origen**. Cada balanceador escucha en un puerto y comprueba en otro si tu app sigue viva. Y uno de los fallos más típicos de quien empieza en la nube es una app que escucha en `127.0.0.1` y por eso nunca recibe el tráfico, por muchas reglas que abra.
 
 ## Cómo va esta clase
 
@@ -45,7 +45,7 @@ IP=$(multipass info servidor-01 | awk '/IPv4/ {print $2}'); echo $IP
 
 ### Pieza 1 — Puertos y sockets
 
-Una IP identifica una **máquina**. Un **puerto** (0–65535) identifica un **programa** dentro de ella. Un **socket** es la pareja `IP:puerto`. Una conexión TCP queda definida por **5 datos**: protocolo, IP de origen, puerto de origen, IP de destino y puerto de destino.
+Una IP identifica una **máquina**. Un **puerto** (0–65535) identifica un **programa** dentro de ella. Un **socket** es la pareja `IP:puerto`.
 
 ```
    Tu PC 10.x.x.1:51234  ──TCP──►  VM 10.x.x.5:80 (nginx)
@@ -58,17 +58,6 @@ Una IP identifica una **máquina**. Un **puerto** (0–65535) identifica un **pr
 | 0–1023 | conocidos / privilegiados | hace falta root (o un permiso especial) para escuchar en ellos |
 | 1024–49151 | registrados | apps (8080, 5432…) |
 | 32768–60999 | efímeros (en Linux) | puertos de **origen** de tus conexiones salientes |
-
-Los que debes saber de memoria:
-
-| Puerto | Servicio | | Puerto | Servicio |
-|--------|----------|-|--------|----------|
-| 22/tcp | SSH | | 3306/tcp | MySQL |
-| 53/udp+tcp | DNS | | 5432/tcp | PostgreSQL |
-| 80/tcp | HTTP | | 6379/tcp | Redis |
-| 443/tcp | HTTPS | | 8080/tcp | HTTP alternativo |
-| 123/udp | NTP (hora) | | 2049/tcp | NFS / Amazon EFS |
-| 25/tcp | SMTP | | 3389/tcp | RDP (Windows) |
 
 **Pruébalo.** En la VM:
 
@@ -104,6 +93,8 @@ tcp   LISTEN 0.0.0.0:80          0.0.0.0:*          users:(("nginx",pid=812,fd=6
 tcp   LISTEN 127.0.0.1:5432      0.0.0.0:*          users:(("postgres",pid=900,fd=5))
        └ qué protocolo y en qué IP:puerto escucha        └ quién
 ```
+
+*(Aquí se han quitado las columnas `Recv-Q` y `Send-Q` que salen entre `State` y `Local Address`: son dos números de cola que hoy no importan).*
 
 La columna *Local Address* dice **dónde** escucha cada servidor, y eso decide quién puede conectar:
 
@@ -149,7 +140,7 @@ ss -tlnp | grep 8000
 
 Desde tu PC: `curl -s http://$IP:8000`.
 
-👀 **Qué deberías ver:** `LISTEN … 0.0.0.0:8000` en la VM y, en tu PC, `hola desde la VM`. **Es el mismo programa con otra dirección de escucha.** Así se comportan Flask, Node o Postgres según cómo se configuren. Y dentro de un contenedor, una app que escucha en `127.0.0.1` no recibe nada aunque publiques el puerto (fase 5).
+👀 **Qué deberías ver:** `LISTEN … 0.0.0.0:8000` en la VM y, en tu PC, `hola desde la VM`. **Es el mismo programa con otra dirección de escucha.**
 
 `kill %1` al terminar.
 
@@ -171,7 +162,7 @@ Una conexión TCP pasa por estados, y `ss` te los enseña:
 |--------|-------------|
 | `LISTEN` | servidor esperando conexiones |
 | `ESTAB` | conexión establecida |
-| `TIME-WAIT` | cerrada hace poco; el kernel la retiene unos segundos. Miles indican muchas conexiones cortas |
+| `TIME-WAIT` | cerrada hace poco; el kernel la retiene unos 60 segundos. Miles indican muchas conexiones cortas |
 | `SYN-SENT` | el cliente envió SYN y espera: si se queda así, algo descarta los paquetes |
 
 Y TCP no es más que un canal: lo que escribes en un extremo sale por el otro. HTTP, por ejemplo, es solo **texto** sobre TCP.
@@ -200,9 +191,10 @@ ss -tnp | grep 9000
 
 ```bash
 printf 'GET / HTTP/1.1\r\nHost: servidor-01\r\nConnection: close\r\n\r\n' | nc $IP 80 | head -15
+ss -tn state time-wait
 ```
 
-👀 **Qué deberías ver:** `HTTP/1.1 200 OK`, las cabeceras de nginx (`Server: nginx/…`, `Content-Type: text/html`) y el principio del HTML. Escribiste a mano lo que `curl` y el navegador envían por ti.
+👀 **Qué deberías ver:** `HTTP/1.1 200 OK`, las cabeceras de nginx (`Server: nginx/…`, `Content-Type: text/html`) y el principio del HTML (escribiste a mano lo que `curl` y el navegador envían por ti); y en `ss -tn state time-wait`, la conexión recién cerrada esperando unos 60 segundos.
 
 ✋ **Sin mirar:** en `ss` ves muchas conexiones en `SYN-SENT` hacia el mismo destino. ¿Qué sospechas?
 
@@ -294,6 +286,17 @@ Para no tener que correr como root: el 8080 no es privilegiado. Delante se pone 
 | `127.0.0.1` | solo la propia máquina |
 | `0.0.0.0` · `*` · `[::]` | cualquiera que llegue por cualquier interfaz |
 
+Puertos habituales (apréndelos con Anki):
+
+| Puerto | Servicio | | Puerto | Servicio |
+|--------|----------|-|--------|----------|
+| 22/tcp | SSH | | 3306/tcp | MySQL |
+| 53/udp+tcp | DNS | | 5432/tcp | PostgreSQL |
+| 80/tcp | HTTP | | 6379/tcp | Redis |
+| 443/tcp | HTTPS | | 8080/tcp | HTTP alternativo |
+| 123/udp | NTP (hora) | | 2049/tcp | NFS / Amazon EFS |
+| 25/tcp | SMTP | | 3389/tcp | RDP (Windows) |
+
 ## Rómpelo
 
 **1. Puerto ocupado:**
@@ -308,10 +311,10 @@ sudo lsof -i :8080
 Después de un despliegue que falla al arrancar, este es el primer sospechoso: la versión vieja sigue viva ocupando el puerto.
 
 **2. El puerto equivocado:**
-Desde tu PC, `curl -s -m 3 http://$IP:8081`. Refused. Comprueba en la VM con `ss -tlnp` **en qué puerto** escucha de verdad la app. Muchos "no funciona" son una errata en el número de puerto de la configuración, del security group o del health check.
+Desde tu PC, `curl -s -m 3 http://$IP:8081`. Refused. Imagina que la configuración decía 8081: con `sudo ss -tlnp` en la VM ves que `miapp` escucha en el 8080. Muchos "no funciona" son una errata en el número de puerto de la configuración o del security group.
 
 **3. Lo que ve el destino:**
-En la VM: `nc -l 9000`. Desde tu PC: `nc $IP 9000`. En la VM, en otra sesión: `ss -tn | grep 9000`. Observa que el servidor ve **tu** IP y tu puerto efímero. Los security groups son *stateful*: si permites la entrada al 9000, la respuesta hacia tu puerto efímero sale sola. Las NACLs de AWS **no** lo son: hay que permitir los efímeros de forma explícita (clase 33).
+En la VM: `nc -l 9000`. Desde tu PC: `nc $IP 9000`. En la VM, en otra sesión: `ss -tn | grep 9000`. Observa que el servidor ve **tu** IP y tu puerto efímero. En AWS, los security groups recuerdan la conexión y dejan salir la respuesta hacia tu puerto efímero solos (clase 33).
 
 ## Reto
 
@@ -346,7 +349,7 @@ La dirección que significa «todas las interfaces» en IPv4 es la del último p
 <details>
 <summary>Pista</summary>
 
-`nc -zv` acepta un rango, escrito como `inicio-fin`. Los que fallan escriben en stderr: por eso el `2>&1` antes del `grep`.
+`nc -zv` acepta un rango, escrito como `inicio-fin`. `nc -v` escribe todos sus mensajes, también los `succeeded`, en stderr: por eso el `2>&1` antes del `grep`.
 </details>
 
 **3.** ¿Qué puerto **de origen** usó tu PC para su último `curl` a la VM?

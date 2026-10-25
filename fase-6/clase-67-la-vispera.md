@@ -50,7 +50,7 @@ Ten a mano el gestor de contraseñas y el móvil con una app autenticadora.
 
 ## Las piezas
 
-### Pieza 1 — El plan gratuito, y crear la cuenta
+### Pieza 1a — El plan gratuito y preparar el registro
 
 Al crear la cuenta eliges entre el **plan gratuito** y el **plan de pago**. Tú eliges el gratuito:
 
@@ -62,14 +62,25 @@ Al crear la cuenta eliges entre el **plan gratuito** y el **plan de pago**. Tú 
 | Al terminar | la cuenta **se cierra sola**. Tienes 90 días para pasar al plan de pago y recuperarla; después, AWS borra la cuenta y todo lo que tenía |
 | Lo que no incluye | servicios que podrían gastar más que los créditos (Savings Plans, instancias reservadas, algunas ofertas del Marketplace) |
 
-"Gratis" no significa ilimitado. Lo que usas se paga con créditos al precio de siempre:
+"Gratis" no significa ilimitado: una EC2 `t3.small` olvidada un mes gasta unos 15 USD de créditos y un NAT Gateway, unos 33 USD. Por eso cada clase termina destruyendo lo que creaste.
 
-| Si se te olvida encendido un mes entero | Créditos que gasta |
-|---|---|
-| una EC2 t3.small | unos 15 USD |
-| un NAT Gateway | unos 33 USD |
+**Pruébalo — antes de abrir la cuenta (10 min):**
 
-Un par de olvidos y la cuenta se cierra antes de tiempo. Por eso cada clase termina destruyendo lo que creaste.
+1. **El correo:** uno que controles a largo plazo, porque ahí llegan los avisos de seguridad y de facturación. Si usas Gmail, puedes usar un alias como `tunombre+aws@gmail.com`: llega a tu buzón y lo puedes filtrar.
+2. **El gestor de contraseñas:** genera una contraseña de 20 caracteres o más y crea la entrada `AWS raíz`.
+3. **El nombre de la cuenta:** por ejemplo, `eduardo-devops`. Solo lo ves tú.
+
+✋ **Sin mirar:** ¿qué pasa con tu cuenta cuando se acaban los créditos o pasan los 6 meses?
+
+<details>
+<summary>Comprueba</summary>
+
+Se cierra sola. Tienes 90 días para pasar al plan de pago y recuperarla; después, AWS la borra con todo lo que tenía.
+</details>
+
+**En resumen:** plan gratuito = créditos durante 6 meses, sin cobros; lo que usas descuenta créditos a precio normal.
+
+### Pieza 1b — Crear la cuenta sin pasar al plan de pago
 
 ⚠️ **Lo que pasa la cuenta al plan de pago sin preguntar:**
 - unirte a **AWS Organizations**;
@@ -78,13 +89,7 @@ Un par de olvidos y la cuenta se cierra antes de tiempo. Por eso cada clase term
 
 En este curso no los usarás. Si alguna guía de internet te dice "crea una organización", no lo hagas en esta cuenta.
 
-**Hazlo — antes de abrir la cuenta (10 min):**
-
-1. **El correo:** uno que controles a largo plazo, porque ahí llegan los avisos de seguridad y de facturación. Si usas Gmail, puedes usar un alias como `tunombre+aws@gmail.com`: llega a tu buzón y lo puedes filtrar.
-2. **El gestor de contraseñas:** genera una contraseña de 20 caracteres o más y crea la entrada `AWS raíz`.
-3. **El nombre de la cuenta:** por ejemplo, `eduardo-devops`. Solo lo ves tú.
-
-**Hazlo — crear la cuenta (20 min):**
+**Pruébalo — crear la cuenta (20 min):**
 
 1. En `aws.amazon.com`, **Create an AWS account** (arriba a la derecha puedes poner la página en español).
 2. Correo y nombre de la cuenta. AWS te manda un código de verificación al correo.
@@ -97,15 +102,15 @@ En este curso no los usarás. Si alguna guía de internet te dice "crea una orga
 
 👀 **Qué deberías ver:** la activación suele tardar unos minutos (como mucho, 24 h) y te llega un correo cuando está lista. Al entrar en la consola, arriba a la derecha, el **ID de la cuenta**: 12 dígitos. Guárdalo en la entrada del gestor, con el correo y la contraseña.
 
-✋ **Sin mirar:** ¿qué pasa con tu cuenta cuando se acaban los créditos o pasan los 6 meses?
+✋ **Sin mirar:** ¿qué tres elecciones debes marcar durante el alta, y qué dos servicios no debes activar nunca en esta cuenta?
 
 <details>
 <summary>Comprueba</summary>
 
-Se cierra sola. Tienes 90 días para pasar al plan de pago y recuperarla; después, AWS la borra con todo lo que tenía.
+En el alta: **plan gratuito** (*Free plan*), cuenta **Personal** y soporte **Basic**. Y no activar **AWS Organizations** ni **Control Tower**, porque pasan la cuenta al plan de pago.
 </details>
 
-**En resumen:** plan gratuito = créditos durante 6 meses, sin cobros; lo que usas gasta créditos a precio normal, y unirte a Organizations te pasa al plan de pago.
+**En resumen:** alta con *Free plan*, cuenta *Personal* y soporte *Basic*; el ID de 12 dígitos, guardado en el gestor.
 
 ### Pieza 2 — El usuario raíz y el MFA
 

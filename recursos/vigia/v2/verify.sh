@@ -72,16 +72,21 @@ check "todos los servicios se reinician solos (restart)" bash -c '
   done'
 
 echo "== Persistencia"
+MARCA="https://persistencia-$$.invalid"
+docker compose exec -T db psql -U vigia -d vigia -c \
+  "INSERT INTO checks (url, status_code, seconds, up, error, checked_at) VALUES ('$MARCA', 200, 0.01, 1, NULL, '2026-01-01T00:00:00Z')" >/dev/null 2>&1 || true
 antes=$(filas)
 docker compose down >/dev/null 2>&1
 docker compose up -d >/dev/null 2>&1
 esperar 120 curl -fsS "$API/health"
 esperar 30 bash -c '[[ -n $(docker compose exec -T db psql -U vigia -d vigia -tAc "SELECT 1" 2>/dev/null) ]]'
+sigue=$(docker compose exec -T db psql -U vigia -d vigia -tAc "SELECT COUNT(*) FROM checks WHERE url = '$MARCA'" 2>/dev/null | tr -d '[:space:]')
+docker compose exec -T db psql -U vigia -d vigia -c "DELETE FROM checks WHERE url = '$MARCA'" >/dev/null 2>&1 || true
 despues=$(filas)
-if [[ -n $antes && -n $despues ]] && (( despues >= antes )); then
+if [[ ${sigue:-0} == 1 && -n $antes && -n $despues ]]; then
   ok "los datos sobreviven a docker compose down y up ($antes → $despues filas)"
 else
-  mal "los datos no sobrevivieron a docker compose down y up (${antes:-?} → ${despues:-?} filas): ¿tienes un volumen con nombre?"
+  mal "los datos no sobrevivieron a docker compose down y up: ¿tienes un volumen con nombre en db?"
 fi
 
 echo "== Parada ordenada"

@@ -85,9 +85,9 @@ Antes de empezar la fase, pídeme `revisa la fase 9`.
 |------|-------|------------|--------|
 | kind | v0.33.0 (2026-08-26); nodo por defecto `kindest/node:v1.37.0` | 2026-10-10 | github.com/kubernetes-sigs/kind/releases |
 | Kubernetes y kubectl | 1.37 (2026-08-26) · kubectl v1.37.1, que admite una versión menor de diferencia con el cluster | 2026-10-10 | kubernetes.io/releases, kubernetes.io/docs/tasks/tools |
-| cloud-provider-kind | v0.12.0: LoadBalancer, Ingress (clase `cloud-provider-kind`) y Gateway API (instala sus CRD, v1.6.1 *standard*); no implementa el filtro `URLRewrite` | 2026-10-10 | github.com/kubernetes-sigs/cloud-provider-kind |
+| cloud-provider-kind | v0.12.0: LoadBalancer, Ingress (clase `cloud-provider-kind`) y Gateway API (instala de serie las CRD v1.6.1 *standard*); no implementa el filtro `URLRewrite` | 2026-10-10 | github.com/kubernetes-sigs/cloud-provider-kind |
 | ingress-nginx | **retirado**: su última versión fue la controller-v1.15.1 (2026-03-19) y ya no recibe parches | 2026-10-10 | github.com/kubernetes/ingress-nginx |
-| Gateway API | v1.6.3 | 2026-10-10 | gateway-api.sigs.k8s.io |
+| Gateway API | v1.6.3 (última versión publicada; `cloud-provider-kind` v0.12.0 instala las CRD v1.6.1) | 2026-10-10 | gateway-api.sigs.k8s.io |
 | metrics-server | v0.9.0; en kind necesita `--kubelet-insecure-tls` | 2026-10-10 | github.com/kubernetes-sigs/metrics-server |
 | Helm | v4.3.0. Helm 4 usa *server-side apply* en las instalaciones nuevas; `--atomic` pasa a llamarse `--rollback-on-failure` | 2026-10-10 | helm.sh/docs |
 | podinfo | 6.15.0: imagen `ghcr.io/stefanprodan/podinfo` y chart `oci://ghcr.io/stefanprodan/charts/podinfo` | 2026-10-10 | github.com/stefanprodan/podinfo |

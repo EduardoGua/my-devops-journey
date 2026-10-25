@@ -1,6 +1,6 @@
 # Clase 32 — HTTP y HTTPS
 
-**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 120 min (puedes partirla en dos sesiones) · **Bloque:** A. Redes
+**Dónde:** tu PC + VM `servidor-01` · **Tiempo:** 120 min (en tres sesiones de 35–45 min) · **Bloque:** A. Redes
 
 > 💡 **La idea de hoy:** HTTP es una **petición** de texto (método, ruta y cabeceras) y una **respuesta** con un **código de estado** que dice qué pasó: los 2xx van bien, los 4xx son culpa del cliente y los 5xx, del servidor. Delante de las apps se pone un **proxy inverso** (nginx, un ALB) que elige el sitio por la cabecera `Host` y devuelve 502 o 504 cuando la app falla. **HTTPS** es lo mismo, dentro de TLS: cifrado, y un **certificado** que demuestra con quién hablas.
 
@@ -15,9 +15,13 @@
 > - **método**: lo que pides hacer: `GET` (leer), `POST` (crear), `DELETE` (borrar)…
 > - **código de estado**: el número de la respuesta: `200`, `404`, `502`…
 > - **cabecera**: un dato de la petición o de la respuesta, como `Host` o `Content-Type`.
+> - **virtual host**: varios sitios web servidos desde la misma IP y puerto, diferenciados por `Host`.
 > - **proxy inverso**: el servidor que recibe las peticiones y se las pasa a la app de detrás.
 > - **TLS**: la capa que cifra HTTP y autentica al servidor; HTTP + TLS = HTTPS.
 > - **certificado**: el documento firmado por una **autoridad de certificación (CA)** que dice «este servidor es `tienda.com`».
+> - **SAN**: el campo del certificado con los nombres para los que vale.
+> - **autofirmado**: firmado por sí mismo, sin CA.
+> - **SNI**: el nombre del sitio enviado al principio de TLS (`-servername`) para que el servidor elija el certificado correcto.
 
 ## Objetivo
 
@@ -32,11 +36,11 @@ Casi todo lo que desplegarás habla HTTP: webs, APIs, health checks y los propio
 
 ## Cómo va esta clase
 
-Seis piezas y un Rómpelo en el que fabricas tus propios errores 5xx. En cada pieza lees **una** idea (en la 1, dos que van juntas) y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. Necesitas una terminal en tu PC y otra en la VM (`ssh servidor-01`).
+Siete piezas cortas (la 5 partida en 5a y 5b) y un Rómpelo en el que fabricas tus propios errores 5xx. En cada pieza lees **una** idea (en la 1, dos que van juntas) y la pruebas enseguida; no pases a la siguiente sin haber ejecutado la anterior. Necesitas una terminal en tu PC y otra en la VM (`ssh servidor-01`).
 
-Es una clase larga: hazla en dos mañanas. El primer día, las **piezas 1 a 3** (unos 55 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto y el cierre.
+Es una clase larga: hazla en **tres mañanas de 35–45 min**. Día 1: **piezas 1 a 3**; día 2: **piezas 4 y 5a**; día 3: **piezas 5b y 6**, el Rómpelo, el reto y el cierre.
 
-En **tu PC** (repítelo el segundo día):
+En **tu PC** (repítelo al empezar cada sesión):
 
 ```bash
 IP=$(multipass info servidor-01 | awk '/IPv4/ {print $2}'); echo $IP
@@ -51,7 +55,7 @@ PETICIÓN (cliente → servidor)                 RESPUESTA (servidor → cliente
 ─────────────────────────────                  ──────────────────────────────
 GET /api/productos?id=7 HTTP/1.1               HTTP/1.1 200 OK
 Host: tienda.com                               Content-Type: application/json
-User-Agent: curl/8.5.0                         Content-Length: 42
+User-Agent: curl/8.18.0                        Content-Length: 42
 Accept: application/json                       Cache-Control: max-age=60
                                                
 (cuerpo vacío en un GET)                       {"id":7,"nombre":"Taza","precio":9.5}
@@ -136,10 +140,8 @@ curl -sIL http://github.com | grep -iE "^(HTTP|location)"   # -L sigue redirecci
 |----------|----------|
 | `Host` | **qué sitio** quieres. Permite servir muchos dominios desde una sola IP (*virtual hosts*) |
 | `Content-Type` | formato del cuerpo (`text/html`, `application/json`) |
-| `Location` | a dónde redirige (con 3xx) |
-| `Cache-Control` | cuánto tiempo puede cachearse (CDNs como CloudFront) |
-| `X-Forwarded-For` | la IP **real** del cliente cuando hay un proxy o ALB delante |
-| `Authorization` | credenciales (un token) |
+
+Cada sitio de nginx es un bloque `server { }`: `listen` es el puerto, `server_name` el nombre (`Host`) que atiende y `root` la carpeta de sus archivos. Se escribe en `sites-available/` y se activa con un enlace (`ln -s`, clase 02) en `sites-enabled/`: nginx solo lee esta segunda carpeta.
 
 **Pruébalo: dos sitios en la misma IP.** En la VM:
 
@@ -181,12 +183,16 @@ curl -s http://$IP/ | head -3
 <details>
 <summary>Compruébalo</summary>
 
-`<h1>TIENDA</h1>`, `<h1>BLOG</h1>`, y en los dos últimos, la página de bienvenida de nginx.
+`<h1>TIENDA</h1>`, `<h1>BLOG</h1>`, y en los dos últimos, la página del sitio por defecto (la de bienvenida de nginx, o la tuya si hiciste el reto 2 de la clase 15).
 </details>
 
 Misma IP, mismo puerto, **distinto sitio según `Host`**. Si ningún `server_name` coincide, nginx usa el sitio por defecto. Así funcionan el hosting compartido y las reglas por *host* de un ALB.
 
-> ⚠️ Trampa real: si pruebas **dentro de la VM** con `curl -H "Host: tienda.lab" localhost`, quizá te responda el sitio por defecto. `localhost` puede resolverse primero a `::1` (IPv6). El sitio por defecto escucha en IPv6 (`listen [::]:80`) y los tuyos solo en IPv4 (`listen 80`). Usa `127.0.0.1`, o añade `listen [::]:80;` a tus sitios. Es el tipo de detalle que cuesta una tarde de depuración.
+<details>
+<summary>Si pruebas desde dentro de la VM…</summary>
+
+⚠️ Trampa real: si pruebas **dentro de la VM** con `curl -H "Host: tienda.lab" localhost`, quizá te responda el sitio por defecto. `localhost` puede resolverse primero a `::1` (IPv6). El sitio por defecto escucha en IPv6 (`listen [::]:80`) y los tuyos solo en IPv4 (`listen 80`). Usa `127.0.0.1`, o añade `listen [::]:80;` a tus sitios. Es el tipo de detalle que cuesta una tarde de depuración.
+</details>
 
 ✋ **Sin mirar:** pides con un `Host` que no coincide con ningún `server_name`. ¿Qué sitio responde?
 
@@ -198,7 +204,7 @@ El sitio **por defecto** de nginx.
 
 **En resumen:** la cabecera `Host` elige el sitio; si no coincide con ningún `server_name`, responde el sitio por defecto.
 
-> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí.
+> ⏸️ Si partes la clase en tres mañanas, el primer día termina aquí.
 
 ### Pieza 4 — El proxy inverso, delante de `miapp`
 
@@ -209,6 +215,8 @@ El sitio **por defecto** de nginx.
                    · añade X-Forwarded-For
                    · devuelve 502/504 si la app falla
 ```
+
+Dentro de `server { }`, `location /` dice qué hacer con las rutas que empiezan por `/`, y `proxy_pass` reenvía la petición al servidor de detrás en vez de buscar un archivo en el disco.
 
 **Pruébalo.** En la VM:
 
@@ -250,14 +258,14 @@ Por la cabecera `X-Forwarded-For`, que añade el proxy. Lo verás en el reto 3.
 
 **En resumen:** el proxy inverso recibe la petición, se la pasa a la app con `proxy_pass` y le añade `X-Forwarded-For`.
 
-### Pieza 5 — HTTPS: TLS y los certificados
+### Pieza 5a — HTTPS: qué es un certificado
 
 TLS aporta tres cosas:
 1. **Cifrado**: nadie en el camino puede leer el contenido (recuerda el `tcpdump -A` de la clase 26).
 2. **Integridad**: nadie puede modificarlo sin que se note.
 3. **Autenticidad**: el servidor demuestra que **es** `tienda.com` con un **certificado**.
 
-Un **certificado** contiene un nombre (`tienda.com`, en el campo SAN), la clave pública del servidor, unas fechas de validez y la **firma de una autoridad de certificación** (CA). Tu sistema confía en una lista de CAs (`/etc/ssl/certs`). El cliente comprueba que:
+Un **certificado** contiene un nombre (`tienda.com`, en el campo SAN), la llave pública del servidor (clase 15), unas fechas de validez y la **firma de una autoridad de certificación** (CA). Tu sistema confía en una lista de CAs (`/etc/ssl/certs`). El cliente comprueba que:
 - la cadena de firmas llega a una CA en la que confía,
 - el nombre coincide con el que pidió,
 - no ha caducado.
@@ -266,7 +274,32 @@ Si algo falla: `certificate verify failed`, `NET::ERR_CERT_…`. **Un certificad
 
 En AWS: **ACM** emite certificados gratis para el ALB y CloudFront, y los **renueva solo**. Fuera de AWS, **Let's Encrypt** (`certbot`).
 
-**Pruébalo: un certificado autofirmado.** En la VM:
+**Pruébalo: lee un certificado real.** En tu PC (`-servername` manda el nombre antes del cifrado mediante **SNI**, para que el servidor elija el certificado correcto):
+
+```bash
+echo | openssl s_client -connect github.com:443 -servername github.com 2>/dev/null \
+  | openssl x509 -noout -subject -issuer -dates
+```
+
+👀 **Qué deberías ver:** `subject=CN=github.com`, un `issuer` que es una CA real (distinto del subject) y las fechas; mira `notAfter`. Esta línea es la base de cualquier monitor de **caducidad de certificados**, como el de Vigía v0.2.
+
+✋ **Sin mirar:** ¿qué tres cosas comprueba un cliente en el certificado al conectar por HTTPS?
+
+<details>
+<summary>Comprueba</summary>
+
+Que la cadena de firmas llega a una CA de confianza, que el nombre coincide con el pedido y que no ha caducado.
+</details>
+
+**En resumen:** HTTPS = HTTP dentro de TLS; el certificado tiene un nombre (SAN), unas fechas y la firma de una CA.
+
+> ⏸️ Si partes la clase en tres mañanas, el segundo día termina aquí.
+
+### Pieza 5b — Certificado autofirmado y HTTPS en nginx
+
+En un laboratorio no tienes un dominio público para que una CA te firme un certificado, así que creas uno **autofirmado** (su emisor es él mismo).
+
+**Pruébalo.** En la VM:
 
 ```bash
 sudo openssl req -x509 -nodes -days 30 -newkey rsa:2048 \
@@ -278,7 +311,7 @@ openssl x509 -in /etc/ssl/certs/tienda.crt -noout -subject -issuer -dates -ext s
 
 👀 **Qué deberías ver:** `subject=CN=tienda.lab` e `issuer=CN=tienda.lab` (iguales: el emisor es **él mismo**, ninguna CA lo respalda); las fechas `notBefore` y `notAfter`, con 30 días entre ellas; y `DNS:tienda.lab` en el SAN. Sirve para laboratorios, no para producción.
 
-Añade HTTPS al sitio de la tienda:
+Añade HTTPS al sitio de la tienda (`return 301` redirige todo el tráfico del puerto 80 al 443):
 
 ```bash
 sudo tee /etc/nginx/sites-available/tienda <<'EOF'
@@ -298,59 +331,50 @@ EOF
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-✋ **Sin mirar:** ¿qué tres cosas comprueba un cliente en el certificado al conectar por HTTPS?
-
-<details>
-<summary>Comprueba</summary>
-
-Que la cadena de firmas llega a una CA de confianza, que el nombre coincide con el pedido y que no ha caducado. Lo pruebas en la pieza 6.
-</details>
-
-**En resumen:** HTTPS = HTTP dentro de TLS; el certificado tiene un nombre, unas fechas y la firma de una CA.
-
-### Pieza 6 — Lo que comprueba el cliente, una cosa cada vez
-
-`curl` hace las tres comprobaciones de la pieza 5. `--resolve` hace de `/etc/hosts` solo para ese comando.
-
-**Pruébalo.** En tu PC:
-
-```bash
-curl -sI --resolve tienda.lab:80:$IP http://tienda.lab/ | grep -iE "^(HTTP|location)"
-curl -s --resolve tienda.lab:443:$IP https://tienda.lab/
-```
-
-🔮 **Predice:** ¿funcionará el segundo?
-
-👀 **Qué deberías ver:** el primero, `301` con `Location: https://tienda.lab/`. El segundo falla con `SSL certificate problem: self-signed certificate`: tu PC **no confía** en ese emisor.
-
-Ahora una comprobación cada vez:
-
-```bash
-curl -sk --resolve tienda.lab:443:$IP https://tienda.lab/          # -k: no verificar (¡solo para probar!)
-scp servidor-01:/etc/ssl/certs/tienda.crt /tmp/tienda.crt
-curl -s --cacert /tmp/tienda.crt --resolve tienda.lab:443:$IP https://tienda.lab/   # confía en ese cert concreto
-curl -s --cacert /tmp/tienda.crt --resolve otra.lab:443:$IP https://otra.lab/       # nombre que no coincide
-```
-
-👀 **Qué deberías ver:** `<h1>TIENDA</h1>` con `-k`; otra vez `<h1>TIENDA</h1>` con `--cacert` (ahora sí confías en el emisor); y el último falla con un error de nombre (`no alternative certificate subject name matches…`), aunque confíes en el certificado. Las tres comprobaciones (cadena, nombre y fecha) son independientes.
-
-> `curl -k` o `verify=False` "para que funcione" desactiva la autenticidad: cualquiera en el camino podría suplantar al servidor. En código de producción **no se usa**.
-
-**Y un certificado real:**
-
-```bash
-echo | openssl s_client -connect github.com:443 -servername github.com 2>/dev/null \
-  | openssl x509 -noout -subject -issuer -dates
-```
-
-👀 **Qué deberías ver:** `subject=CN=github.com`, un `issuer` que es una CA real (distinto del subject) y las fechas; mira `notAfter`. Esta línea es la base de cualquier monitor de **caducidad de certificados**, como el de Vigía v0.2.
-
 ✋ **Sin mirar:** ¿qué significa que un certificado sea **autofirmado**?
 
 <details>
 <summary>Comprueba</summary>
 
-Que su emisor es él mismo: ninguna CA de confianza lo firma, así que los clientes no lo aceptan sin más.
+Que su emisor es él mismo: ninguna CA de confianza lo firma, así que los clientes no lo aceptan sin más. Lo pruebas en la pieza 6.
+</details>
+
+**En resumen:** un certificado autofirmado cifra igual, pero ninguna CA lo avala; en nginx se activa con `listen 443 ssl` y `ssl_certificate`.
+
+### Pieza 6 — Lo que comprueba el cliente, una cosa cada vez
+
+`curl` hace las tres comprobaciones de la pieza 5a. `--resolve` hace de `/etc/hosts` solo para ese comando, y `-sS` oculta la barra de progreso pero **muestra el error** si falla (con `-s` a secas, `curl` callaría el error).
+
+**Pruébalo.** En tu PC:
+
+```bash
+curl -sI --resolve tienda.lab:80:$IP http://tienda.lab/ | grep -iE "^(HTTP|location)"
+curl -sS --resolve tienda.lab:443:$IP https://tienda.lab/
+```
+
+🔮 **Predice:** ¿funcionará el segundo?
+
+👀 **Qué deberías ver:** el primero, `301` con `Location: https://tienda.lab/`. El segundo falla con `curl: (60) SSL certificate OpenSSL verify result: self-signed certificate (18)`: tu PC **no confía** en ese emisor.
+
+Ahora una comprobación cada vez:
+
+```bash
+curl -sSk --resolve tienda.lab:443:$IP https://tienda.lab/          # -k: no verificar (¡solo para probar!)
+scp servidor-01:/etc/ssl/certs/tienda.crt /tmp/tienda.crt
+curl -sS --cacert /tmp/tienda.crt --resolve tienda.lab:443:$IP https://tienda.lab/   # confía en ese cert concreto
+curl -sS --cacert /tmp/tienda.crt --resolve otra.lab:443:$IP https://otra.lab/       # nombre que no coincide
+```
+
+👀 **Qué deberías ver:** `<h1>TIENDA</h1>` con `-k`; otra vez `<h1>TIENDA</h1>` con `--cacert` (ahora sí confías en el emisor); y el último falla con un error de nombre (`SSL: no alternative certificate subject name matches target hostname 'otra.lab'`), aunque confíes en el certificado. Las tres comprobaciones (cadena, nombre y fecha) son independientes.
+
+> `curl -k` o `verify=False` "para que funcione" desactiva la autenticidad: cualquiera en el camino podría suplantar al servidor. En código de producción **no se usa**.
+
+✋ **Sin mirar:** ¿por qué falla el último comando si ya le pasaste `--cacert /tmp/tienda.crt`?
+
+<details>
+<summary>Comprueba</summary>
+
+Porque `--cacert` hace que confíes en el emisor, pero el certificado es para `tienda.lab` (SAN) y pediste `otra.lab`: la comprobación del nombre sigue fallando.
 </details>
 
 **En resumen:** sin CA de confianza, error de certificado; con un nombre que no coincide, error de nombre; `-k` lo salta todo, y por eso solo vale para probar.
@@ -438,7 +462,7 @@ Si sigue diciendo `ok` con la app parada, ¿qué está comprobando de verdad ese
 
 **2.** ¿Cuántos días le quedan al certificado de `amazon.com`?
 
-> 🧩 **Ejemplo resuelto:** las fechas del de GitHub, como en la pieza 6:
+> 🧩 **Ejemplo resuelto:** las fechas del de GitHub, como en la pieza 5a:
 > ```bash
 > echo | openssl s_client -connect github.com:443 -servername github.com 2>/dev/null | openssl x509 -noout -dates
 > ```
@@ -448,6 +472,8 @@ Si sigue diciendo `ok` con la app parada, ¿qué está comprobando de verdad ese
 FIN=$(echo | openssl s_client -connect ____:443 -servername ____ 2>/dev/null | openssl x509 -noout -____ | cut -d= -f2)
 echo "caduca: $FIN · quedan $(( ( $(date -d "$FIN" +%s) - $(date +%s) ) / 86400 )) días"
 ```
+
+`date -d "$FIN" +%s` y `date +%s` dan esas fechas en segundos desde 1970; la resta dividida entre 86400 da los días (lo usarás en Vigía, clase 35).
 
 <details>
 <summary>Pista</summary>
@@ -504,7 +530,7 @@ Después, escríbeme `examíname clase-32`.
 
 **3.** Que el certificado esté firmado por una cadena que termina en una **CA de confianza**, que el **nombre** pedido coincida con el del certificado (SAN) y que esté **dentro de sus fechas** de validez. `-k` desactiva esas comprobaciones: el canal sigue cifrado, pero **no sabes con quién hablas**, así que un atacante en el camino podría hacerse pasar por el servidor (*man-in-the-middle*) y leerlo todo.
 
-**4.** `dig` pregunta directamente a un servidor DNS e ignora `/etc/hosts`. `getent` sigue el orden de `/etc/nsswitch.conf` (primero `/etc/hosts`, después DNS), igual que las aplicaciones.
+**4.** `dig` no lee `/etc/hosts`, aunque en Ubuntu pregunta a `systemd-resolved` (`127.0.0.53`), que sí lo lee; por eso para consultar el DNS de verdad se usa `dig nombre @8.8.8.8`. `getent` sigue el orden de `/etc/nsswitch.conf` (primero `/etc/hosts`, después DNS), igual que las aplicaciones.
 
 **Reto:** 1) `location = /salud { return 200 "ok\n"; }`. Sigue diciendo `ok` con `miapp` parada: solo demuestra que **nginx** responde, no que la app ni la base de datos funcionen. Un buen health check llama a un endpoint de la app que comprueba sus dependencias críticas. 2) `amazon.com` dos veces y `-enddate`. 3) `port 8080`; `X-Forwarded-For: <IP de tu PC>`. 4) (a) **500** si la app devuelve el error (o **502** si la app se cae y cierra la conexión); (b) **503**; (c) **504** (el idle timeout por defecto del ALB es de 60 s).
 </details>

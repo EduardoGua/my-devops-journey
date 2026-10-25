@@ -1,6 +1,6 @@
 # Clase 80 — CLF-C02 (I): la guía del examen como lista de control
 
-**Dónde:** navegador (la guía oficial y AWS Skill Builder) + Anki · **Tiempo:** 2 bloques en clase y unas 15–20 h de estudio durante 2 o 3 semanas · **Bloque:** D. Certificación
+**Dónde:** navegador (la guía oficial y AWS Skill Builder) + Anki · **Tiempo:** 2 bloques en clase y unas 15–20 h de estudio durante 2 o 3 semanas (que, sumadas a las ~45–60 h de clases y proyecto, completan las 60–80 h de la fase) · **Bloque:** D. Certificación
 
 > 💡 **La idea de hoy:** el CLF-C02 pregunta **qué** servicio o concepto encaja, no **cómo** se configura. Ya hiciste más práctica de la que pide; lo que falta es **amplitud**: reconocer un centenar de servicios por su nombre y su propósito, y no confundir los que se parecen. Hoy conviertes la guía oficial del examen en tu lista de control, cubres los huecos con tarjetas de Anki y haces tu primera medición.
 

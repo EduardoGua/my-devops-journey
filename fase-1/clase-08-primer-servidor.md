@@ -182,12 +182,13 @@ multipass exec servidor-01 -- df -h /
 
 👀 **Qué deberías ver:** cuánto lleva encendida la VM y su disco, sin haber entrado en ella.
 
-Ahora, un archivo de tu PC a la VM:
+Ahora, un archivo de tu PC a la VM (lo creamos en `~` porque Multipass es un paquete *snap* y no puede leer el `/tmp` de tu PC):
 
 ```bash
-echo "hola desde el host" > /tmp/saludo.txt
-multipass transfer /tmp/saludo.txt servidor-01:/home/ubuntu/
+echo "hola desde el host" > ~/saludo.txt
+multipass transfer ~/saludo.txt servidor-01:/home/ubuntu/
 multipass exec servidor-01 -- cat /home/ubuntu/saludo.txt
+rm ~/saludo.txt
 ```
 
 👀 **Qué deberías ver:** `hola desde el host`: el archivo viajó de tu PC a la VM.

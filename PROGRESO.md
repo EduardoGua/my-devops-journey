@@ -40,12 +40,12 @@ Una clase se cierra cuando el cierre está escrito y **calificado** (✅ 🟡 �
 - [ ] 16 · Tu primer script: variables, argumentos y comillas ·
 - [ ] 17 · Decisiones: if, test y case ·
 - [ ] 18 · Bucles: for, while y leer archivos ·
-- [ ] 19 · Funciones y scripts robustos ·
+- [ ] 19 · Funciones y scripts robustos: set -euo pipefail, trap y logs ·
 - [ ] 20 · Tareas programadas: cron y un backup con rotación ·
 - [ ] Repaso del bloque C ·
 
 ### D. Proyecto
-- [ ] 21 · Vigía v0: Bash + cron ·
+- [ ] 21 · Proyecto: Vigía v0 ·
 
 ### Criterios de salida de la fase 1 (sin mirar)
 - [ ] Escribo un script que recibe una carpeta, la comprime con la fecha en el nombre y borra las copias de más de 7 días
@@ -64,7 +64,7 @@ Una clase se cierra cuando el cierre está escrito y **calificado** (✅ 🟡 �
 - [ ] 22 · Git por dentro ·
 - [ ] 23 · Ramas, merge y conflictos ·
 - [ ] 24 · GitHub y pull requests ·
-- [ ] 25 · Vigía v0.1: publicado en GitHub ·
+- [ ] 25 · Proyecto: Vigía v0.1 ·
 
 ### Criterios de salida de la fase 2
 - [ ] Creo una rama, hago dos commits, abro un pull request y lo uno
@@ -88,9 +88,9 @@ Una clase se cierra cuando el cierre está escrito y **calificado** (✅ 🟡 �
 - [ ] 34 · Dos servidores: tu primera red ·
 
 ### B. Proyectos y examen
-- [ ] 35 · Vigía v0.2: DNS y certificados ·
-- [ ] 36 · P1 — Runbook de incidentes ·
-- [ ] 37 · P2 — Servidor reproducible con cloud-init ·
+- [ ] 35 · Proyecto: Vigía v0.2 ·
+- [ ] 36 · P1: Runbook de incidentes ·
+- [ ] 37 · P2: Servidor reproducible con cloud-init ·
 - [ ] 38 · Examen de fundamentos (fases 1 a 3) ·
 
 ### Criterios de salida de la fase 3 (sin mirar)
@@ -142,9 +142,11 @@ Qué hacer en cada paso: [`fase-noc/README.md`](fase-noc/README.md). Lo que crea
 
 ## Fase 4 — Python para automatizar
 
+> 📌 **Recordatorio al terminar la Fase 3:** antes de empezar la clase 39, pídele a Antigravity `revisa la fase 4 y audita a fondo las fases 4 a 10 con subagentes` para revisar línea por línea las clases intermedias de las fases 4 a 10 con las versiones vigentes en ese momento.
+
 ### A. Python desde cero
 - [ ] 39 · Tu primer programa: el intérprete, tipos y f-strings ·
-- [ ] 40 · Decisiones y bucles ·
+- [ ] 40 · Decisiones y bucles en Python ·
 - [ ] 41 · Listas, diccionarios y compañía ·
 - [ ] 42 · Funciones ·
 - [ ] 43 · Texto, archivos y rutas ·
@@ -386,7 +388,7 @@ Examen final de las fases 8 a 10 (fecha · nota):
 
 ## Antes de cada fase
 
-Las diez fases están escritas, y todas sus clases ya están en el formato por piezas. La fase NOC tiene su plan y sus entregables; sus clases se escriben al llegar a ella, en el mismo formato (pídeme `escribe la fase NOC` al terminar la clase 38). Antes de empezar cada fase, pídeme `revisa la fase N`: solo compruebo que sus versiones, precios y comandos siguen al día, porque el formato ya no cambia. El temario completo y las horas de cada fase están en [`PLAN.md`](PLAN.md).
+Las diez fases están escritas, y todas sus clases ya están en el formato por piezas. La fase NOC tiene su plan y sus entregables; las clases de sus bloques B y C se escriben al llegar a ella, en el mismo formato (pídeme `escribe la fase NOC` al terminar la clase 38). Antes de empezar cada fase, pídeme `revisa la fase N`: solo compruebo que sus versiones, precios y comandos siguen al día, porque el formato ya no cambia. El temario completo y las horas de cada fase están en [`PLAN.md`](PLAN.md).
 
 ---
 
@@ -399,7 +401,10 @@ La columna *Tiempo* es tiempo enfocado. Desde la clase 06 sale de las sesiones m
 | 2026-10-04 | — | — | Curso v4 creado. Empieza la clase 01. |
 | 2026-10-08 | 01 | 40 min | Cierre: preguntas 2 y 4 en 🟡, corregidas. |
 | 2026-10-09 | — | — | Curso v5: alineado con la Ruta 2.0. Scripting y Vigía v0 en la fase 1 (clases 16–21), Git antes de redes, Vigía como proyecto único. |
+| 2026-10-11 | 02 | 1 h | Cierre y reto calificados; preguntas 2, 3 y 4 en 🟡, corregidas. |
+| 2026-10-13 | 03 | 1 h | Cierre y reto calificados; preguntas 2, 3 y 4 en 🟡, corregidas. |
 | 2026-10-14 | — | — | Fase 1 revisada y probada en Ubuntu 26.04: *La idea de hoy* en cada clase, `nueva-nota.sh`, repasos de bloque A, B y C. |
-|2026-10-15|04|3 horas en dos dias| la encontre confusa pero considero que es solo falta de practica. |
-|2026-10-18|05|fueron como 3 dias con 15 a media hora en cada dia | la clase la lei en 3 veces para poder tanto comprender todo lo posible con respecto a los comandos find y grep del resto considero lo mismo no es tanto memorizacion sino practica para dominarlos
-| 2026-10-23 | — | — | Revisión del curso con subagentes (informe en `revision-2026-10-22.md`). Corregidas las clases 06–11 y el repaso A: comandos explicados antes de usarse, salidas reales de Ubuntu 26.04, la 09 en 7 piezas y la 11 en 6. |
+| 2026-10-15 | 04 | 3 horas en dos dias | la encontre confusa pero considero que es solo falta de practica. |
+| 2026-10-18 | 05 | fueron como 3 dias con 15 a media hora en cada dia | la clase la lei en 3 veces para poder tanto comprender todo lo posible con respecto a los comandos find y grep del resto considero lo mismo no es tanto memorizacion sino practica para dominarlos |
+| 2026-10-23 | — | — | Revisión del curso con subagentes. Corregidas las clases 06–11 y el repaso A: comandos explicados antes de usarse, salidas reales de Ubuntu 26.04, la 09 en 7 piezas y la 11 en 6. |
+| 2026-10-25 | — | — | Cierre de la revisión integral: corregidas las clases 12–38 y fases 4–10, scripts de `recursos/` y pruebas de Vigía reforzadas, y calentamiento espaciado añadido a `sesion.sh`. |

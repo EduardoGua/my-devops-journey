@@ -275,9 +275,9 @@ El ejemplo enseña qué variables hay que dar, con valores inventados. El de ver
 
 > ⏸️ Si partes la clase en varias mañanas, el primer día termina aquí. No hay nada que cobre por hora.
 
-### Pieza 4 — Los recursos, y el cloud-init desde Terraform
+### Pieza 4a — El mapa de recursos de Vigía
 
-Escribe `infra/main.tf`, `infra/github.tf` y `infra/outputs.tf`. Este es el mapa: cada fila es algo que ya hiciste a mano, y la columna de la derecha, el recurso de Terraform que lo hace. Busca cada uno en el Registry (clase 93).
+En `infra/main.tf`, `infra/github.tf` y `infra/outputs.tf` cada paso manual de las fases 6 y 7 se convierte en un recurso de Terraform (consulta cada uno en el Registry, clase 93):
 
 | Lo que hiciste a mano (clase) | Recurso de Terraform |
 |-------------------------------|----------------------|
@@ -291,7 +291,9 @@ Escribe `infra/main.tf`, `infra/github.tf` y `infra/outputs.tf`. Este es el mapa
 | la instancia con IMDSv2, límite de saltos 2 y tu cloud-init (78, 79) | `aws_instance` |
 | el proveedor OIDC y el rol del pipeline (86, 90) | `aws_iam_openid_connect_provider`, `aws_iam_role`, `aws_iam_role_policy` |
 
-Tres recursos como ejemplo, para que veas el estilo; los demás, tuyos.
+`jsonencode()` convierte un objeto de Terraform en JSON (ideal para políticas de IAM, ECR y S3 sin comillas escapadas), y `for_each = toset(["api", "checker"])` crea los dos grupos de logs de una vez.
+
+**Pruébalo.** Empieza `infra/main.tf` con este modelo y añade el resto de recursos de red, S3, IAM y OIDC (`infra/github.tf`):
 
 ```hcl
 data "aws_caller_identity" "actual" {}
@@ -328,10 +330,11 @@ resource "aws_cloudwatch_log_group" "vigia" {
 }
 ```
 
-- **`jsonencode()`** escribe el JSON de la política desde un objeto de Terraform. Así escribirás también las políticas de IAM y la del bucket, sin heredocs ni comillas escapadas.
-- **Un `for_each`** con un `toset()` crea los dos grupos: `aws_cloudwatch_log_group.vigia["api"]` y `["checker"]`.
+**En resumen:** cada paso manual es un recurso; `jsonencode()` escribe las políticas JSON y `for_each` evita duplicar bloques.
 
-**El cloud-init.** La instancia usa **tu** `deploy/cloud-init.yaml` de la v3, con sus marcadores. Terraform puede leer el archivo y sustituirlos con funciones:
+### Pieza 4b — El cloud-init desde Terraform con `file()` y `replace()`
+
+La instancia usa **tu** `deploy/cloud-init.yaml` de la v3, con sus marcadores. Terraform lee el archivo y los sustituye con funciones:
 - `file()` lee el archivo;
 - `replace()`, encadenada, cambia cada marcador por su valor: la imagen, la región, el bucket y tu usuario de GitHub (pista 1).
 
@@ -339,7 +342,7 @@ Con `user_data_replace_on_change = true` (clase 95), cambiar la imagen en `terra
 
 ¿Por qué no `templatefile()`? Porque tu script usa `${…}` de Bash, como `${IMAGEN%%/*}`, y `templatefile` intentaría interpretarlo como suyo. Habría que escaparlo todo con `$${…}`.
 
-**Pruébalo.** Escribe los recursos con el mapa y las pistas de abajo. Cuando lo tengas:
+**Pruébalo.** Añade `aws_instance` y `infra/outputs.tf` con las pistas de abajo y valida:
 
 ```bash
 terraform fmt
@@ -356,7 +359,7 @@ terraform validate
 Porque el script usa `${…}` de Bash (`${IMAGEN%%/*}`), y `templatefile` lo interpretaría como suyo. Con `replace()` solo se tocan los marcadores `__…__`.
 </details>
 
-**En resumen:** cada paso que hiciste a mano es un recurso; el cloud-init se lee con `file()` y se rellena con `replace()`.
+**En resumen:** el cloud-init se lee con `file()`, se rellena con `replace()` y se valida con `terraform validate`.
 
 > ⏸️ Si partes la clase en varias mañanas, el segundo día termina aquí. Mañana empiezas aplicando: reserva tiempo para terminar y destruir la instancia el mismo día.
 

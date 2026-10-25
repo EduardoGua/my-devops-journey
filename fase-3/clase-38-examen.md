@@ -5,6 +5,7 @@
 ## Reglas
 
 - Responde en `notas/fase-3/examen-<fecha>.md`.
+- Puedes hacerlo **por partes en días seguidos** (A · B · C · D · E, una por sesión de 30–45 min; la D hasta 60 min), cronometrando cada parte y sin mirar nada entre medias.
 - Puedes usar `man` y `--help` **solo** en la parte D (práctica). En la vida real también los tienes.
 - Cronometra. Si te pasas de tiempo, anótalo: es información, no un suspenso.
 - Corrígete al terminar con [`examen-respuestas.md`](examen-respuestas.md) y la rúbrica. Sé exigente: puntúa como lo haría un entrevistador.
@@ -48,7 +49,7 @@ Respuestas de 2–4 frases, con un ejemplo cuando sea posible.
 
 **A15.** Security groups frente a NACLs: dos diferencias.
 
-## Parte B — Cálculo de redes (20 puntos, 4 por pregunta)
+## Parte B — Redes: cálculo y diseño (20 puntos, 4 por pregunta)
 
 Sin calculadora.
 
@@ -88,13 +89,13 @@ Lanza una VM limpia: `multipass launch lts --name examen`. Tienes **60 minutos**
 
 ## Parte E — Inglés de entrevista (10 puntos)
 
-Responde **en inglés**, en voz alta (grábate si puedes) y por escrito, en 4–6 frases cada una:
+Responde **en inglés**, en voz alta (grábate si puedes). Por escrito, anota **solo las palabras clave en orden**, como en [`examen-respuestas.md`](examen-respuestas.md) (no hace falta redactar párrafos):
 
 **E1.** *Walk me through what happens when you type `https://example.com` in your browser.*
 
 **E2.** *A website is down. How do you troubleshoot it?*
 
-**E3.** *Tell me about a time you fixed a problem on a Linux system.* (Usa un incidente de tu P1, con el formato STAR.)
+**E3.** *Tell me about a time you fixed a problem on a Linux system.* (E3 se practica y se califica **en voz alta**: apóyate en tu ficha del P1 y en el modelo STAR de la clase 36.)
 
 ---
 
@@ -120,4 +121,4 @@ Responde **en inglés**, en voz alta (grábate si puedes) y por escrito, en 4–
 2. Revisa los **criterios de salida de la fase 3** en [`../PROGRESO.md`](../PROGRESO.md): subredes a mano, explicar `curl https://…` de memoria, diagnosticar con `dig`, `curl -v` y `ss`.
 3. Actualiza el `README.md` del repo (en inglés) con lo que ya sabes hacer: tu portfolio empieza a hablar por ti.
 4. Celébralo. Has hecho la parte más larga y más difícil del camino.
-5. Pídeme `revisa la fase NOC` y `escribe la fase NOC`, y empieza por el bloque A de la [fase NOC](../fase-noc/README.md): la CCST. La fase 4 viene después.
+5. Pídeme `revisa la fase NOC`, `escribe la fase NOC` y `audita a fondo las fases 4 a 10 con subagentes` (para dejar revisadas línea por línea las clases de las fases 4 a 10 con las versiones vigentes), y empieza por el bloque A de la [fase NOC](../fase-noc/README.md): la CCST. La fase 4 viene después.

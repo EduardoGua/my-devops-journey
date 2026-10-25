@@ -222,7 +222,7 @@ Si reconoces una pregunta, explícate en voz alta por qué es esa respuesta ante
 
 **3.** Cuando tengas la insignia, añádela a LinkedIn (sección *Licencias y certificaciones*) y publica un texto corto en inglés. Te servirá en la fase 7, cuando empieces a postular.
 
-> 🧩 **Ejemplo resuelto** (lo escribió Claude; adáptalo):
+> 🧩 **Ejemplo resuelto** (adáptalo):
 > *I just passed the AWS Certified Cloud Practitioner (CLF-C02). To prepare, I deployed my own uptime monitor, Vigía, on EC2 with an IAM role and no stored credentials, with daily reports in S3 and logs in CloudWatch. Next step: CI/CD with GitHub Actions.*
 
 **Ahora tú, con huecos:** *I just passed the AWS Certified Cloud Practitioner (CLF-C02). To prepare, I ____. The most useful thing I learned was ____. Next step: ____.*

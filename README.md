@@ -27,7 +27,7 @@ Full roadmap with exit criteria: [`PLAN.md`](PLAN.md).
 
 ## Flagship project: Vigía
 
-**Vigía** is a small uptime monitor that grows with every phase: a Bash script with cron (v0), then Python with tests, Docker Compose with PostgreSQL, a deployment on AWS, a CI/CD pipeline with OIDC, Terraform, Kubernetes and, finally, Prometheus metrics, tested alerts and an SLO (v7). It lives in its own repository (published from v0.1); every version has black-box acceptance tests in [`recursos/vigia/`](recursos/vigia/).
+**Vigía** is a small uptime monitor that grows with every phase: a Bash script with cron (v0), then Python with tests, Docker Compose with PostgreSQL, a deployment on AWS, a CI/CD pipeline with OIDC, Terraform, Kubernetes and, finally, Prometheus metrics, tested alerts and an SLO (v7). It lives in its own repository (published from v0.1); every version from v1 to v7 has black-box acceptance tests in [`recursos/vigia/`](recursos/vigia/).
 
 ## Course labs
 

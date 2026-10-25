@@ -1,6 +1,6 @@
 # Clase 34 — Dos servidores: tu primera red
 
-**Dónde:** tu PC + VMs `servidor-01` y `servidor-02` · **Tiempo:** 120 min · **Bloque:** A. Redes
+**Dónde:** tu PC + VMs `servidor-01` y `servidor-02` · **Tiempo:** 90 min · **Bloque:** A. Redes
 
 > Esta clase cierra el bloque de redes. Junta todo: capas, IPs, puertos, rutas, DNS, HTTP y firewall, en una arquitectura de **dos niveles** como las de AWS.
 
@@ -35,7 +35,7 @@ Es el patrón más común de la nube: un ALB o un proxy en la capa pública y la
 
 Seis piezas que montan la arquitectura paso a paso, y un Rómpelo largo con averías a ciegas. En cada pieza lees **una** idea y la haces enseguida; no pases a la siguiente sin haber terminado la anterior. Trabajas en tres sitios (tu PC, `servidor-01` y `servidor-02`): mira el prompt antes de cada comando.
 
-Es una clase larga: hazla en dos mañanas. El primer día, las **piezas 1 a 3** (unos 45 min); el segundo, las **piezas 4 a 6** y el Rómpelo. El reto y el cierre pueden ir a un tercer día.
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 3** (unos 45 min); el segundo, las **piezas 4 a 6**, el Rómpelo, el reto 1 y el cierre (el reto 2 es opcional).
 
 ## Las piezas
 
@@ -70,7 +70,7 @@ Antes de seguir, calcula **en papel** (clase 27): ¿están en la misma subred? �
 
 Comprueba que se ven: `multipass exec servidor-01 -- ping -c 2 $IP2`. Si no hay respuesta, aplica el arreglo de Docker de la pieza 3 de la clase 08.
 
-Añade tu llave de laboratorio y una entrada en `~/.ssh/config` (como en la clase 15):
+Añade tu llave de laboratorio y una entrada en `~/.ssh/config` (como en la clase 15; aquí `EOF` va sin comillas a propósito: así `$IP2` se cambia por la IP, mientras que con `'EOF'` se escribiría `$IP2` tal cual):
 
 ```bash
 multipass exec servidor-02 -- bash -c "echo '$(cat ~/.ssh/lab_ed25519.pub)' >> ~/.ssh/authorized_keys"
@@ -167,6 +167,8 @@ sudo ufw enable
 sudo ufw status numbered
 ```
 
+👀 **Qué deberías ver:** al ejecutar `ufw enable` te preguntará `Command may disrupt existing ssh connections. Proceed with operation (y|n)?` (como ya permitiste OpenSSH, responde `y`); después, `status numbered` mostrará las reglas de `OpenSSH` y de `8080/tcp` desde la IP de `servidor-01`.
+
 🔮 **Predice:** ¿qué pasará con cada una de estas pruebas?
 
 ```bash
@@ -256,7 +258,7 @@ Cuando una petición falla atravesando varias capas, se comprueba **salto a salt
 ```
 DESDE EL CLIENTE
 [ ] 1. ¿Qué devuelve exactamente?   curl -sv -H "Host: api.lab" http://IP1/   (código, tiempo, error)
-       200 → no hay fallo · 502 → el backend falla · 504 → el backend tarda · timeout/refused → capa web
+       200 → no hay fallo · 502 → el backend falla · 504 → el backend tarda o no contesta (un firewall que descarta) · timeout/refused → capa web
 
 EN LA CAPA WEB (servidor-01)
 [ ] 2. ¿nginx vivo y escuchando?    systemctl is-active nginx · ss -tlnp | grep :80
@@ -334,7 +336,7 @@ Cada punto sube en tres escalones: un **ejemplo resuelto** parecido, el mismo re
 La directiva que pasa la petición al backend es la misma del `location /`. Con el backend parado, ¿qué código viste en la clase 32 cuando nginx no obtiene respuesta?
 </details>
 
-**2.** Añade un **segundo** backend: lanza `servidor-03` con el mismo servicio y configura en nginx un `upstream` con los dos. Para uno y comprueba que la web sigue respondiendo.
+**2. ➕ (Opcional)** Añade un **segundo** backend: lanza `servidor-03` con el mismo servicio y configura en nginx un `upstream` con los dos. Para uno y comprueba que la web sigue respondiendo.
 
 > 🧩 **Ejemplo resuelto:** un `upstream` con **un** solo servidor, que funciona igual que el `proxy_pass` de la pieza 5:
 > ```nginx
@@ -402,10 +404,16 @@ Después, escríbeme `examíname clase-34`.
 |--------|------------------|----------------|
 | Servicio parado | `502` (rápido) | error.log: `Connection refused`. En servidor-02: `systemctl status backend` → inactive |
 | Escucha en 127.0.0.1 | `502` (rápido) | `nc` desde servidor-01: refused. En servidor-02: `ss -tlnp` → `127.0.0.1:8080`, y `curl 127.0.0.1:8080` **sí** responde |
-| Firewall DENY | `504`, tras esperar (o 502 con *timed out* al conectar) | error.log: `upstream timed out` / `Connection timed out`. `nc` desde servidor-01: **timeout**. `ufw status` y `[UFW BLOCK]` |
+| Firewall DENY | `504` a los ~3 s (se agota `proxy_connect_timeout`) | error.log: `upstream timed out` / `Connection timed out`. `nc` desde servidor-01: **timeout**. `ufw status` y `[UFW BLOCK]` |
 | Puerto 8081 | `502` (rápido) | refused en el 8080. `ss -tlnp` → escucha en `:8081` |
 
 La clave: **refused** (rápido) apunta al **proceso** (parado, IP o puerto). **Timeout** (lento) apunta a algo que **descarta** paquetes (firewall o SG, rutas, máquina caída).
+
+**Averías extra:**
+- IP inexistente en `/etc/hosts` (`10.255.0.99`) → `504` a los ~3 s (`Connection timed out` en `error.log`; `getent hosts backend.interno` enseña la IP mala).
+- Puerto `8008` en `proxy_pass` → `502` rápido (`Connection refused` al 8008 en `error.log`, mientras el 8080 sí responde).
+- `/srv/backend` en `700` de `root` → el usuario `appsvc` no puede entrar en la carpeta y el backend responde `404` (o `PermissionError` en `journalctl -u backend`).
+- `servidor-02` parada → `502` o `504` con `No route to host` o timeout en `error.log`; `multipass list` la muestra en `Stopped`.
 
 **3.** Por mínimo privilegio en red: si otra máquina de la red se ve comprometida (o un portátil en la misma VPN), no puede llegar al backend directamente y saltarse los controles de la capa web (autenticación, rate limit, logs). Reduce la **superficie de ataque** y el movimiento lateral.
 

@@ -12,7 +12,7 @@
 - **Prometheus:** lee la API (`up{job="vigia"}`), carga `VigiaSitioCaido` (con `severity` y `summary`) y `VigiaApiCaida`, tiene reglas de registro `vigia:…`, ninguna regla con errores, y manda las alertas a Alertmanager, que tiene un receptor;
 - **Grafana:** la contraseña de `.env` es de verdad y es la que recibe Grafana (sin probar `admin`/`admin`: Grafana bloquea al usuario tras varios intentos fallidos), la fuente de datos y un dashboard «Vigía» están aprovisionados desde archivos, y el dashboard muestra disponibilidad y latencia por sitio.
 
-Con `--alerta`, además, la prueba de punta a punta del criterio de salida: inserta en PostgreSQL un chequeo caído de `https://verify.invalid`, espera a que `VigiaSitioCaido` se dispare, llegue a Alertmanager y este avise a tu receptor (unos 6 minutos), y lo borra al terminar.
+Con `--alerta`, además, la prueba de punta a punta del criterio de salida: inserta en PostgreSQL un chequeo caído de `https://verify.invalid`, espera a que `VigiaSitioCaido` se dispare, llegue a Alertmanager y este avise a tu receptor (unos 8 minutos), y lo borra al terminar.
 
 No contiene la solución. Si termina con `Fallos: 0`, tu Vigía cumple el contrato.
 

@@ -36,7 +36,7 @@ La buena noticia: Kubernetes casi siempre te lo está diciendo ya, en los evento
 
 Cuatro piezas cortas con las herramientas y, después, **las seis averías**, que son el centro de la clase. En cada pieza lees **una** idea y la pruebas enseguida.
 
-Si la haces en dos mañanas: el primer día, las **piezas 1 a 4** y las dos primeras averías (unos 90 min); el segundo, las otras cuatro, el Rómpelo, el reto y el cierre.
+Si la haces en dos mañanas: el primer día, las **piezas 1 a 4** (unos 45 min; si te queda tiempo, empieza con las dos primeras averías); el segundo, las **seis averías**, el Rómpelo, el reto y el cierre.
 
 Necesitas la `sonda` de la clase 105:
 
@@ -84,7 +84,7 @@ Déjalo en marcha: lo usarás en la pieza 3.
 
 **En resumen:** estado, eventos, logs, alrededores; la hipótesis va al final.
 
-### Pieza 2 — Qué significa cada estado
+### Pieza 2a — Estados de arranque: cuando el contenedor no corre
 
 | Lo que ves | Qué pasa | Dónde está la causa |
 |------------|----------|---------------------|
@@ -94,28 +94,22 @@ Déjalo en marcha: lo usarás en la pieza 3.
 | `Error` | terminó con un código distinto de 0 | `logs` y el código en `describe` |
 | `CreateContainerConfigError` | falta un ConfigMap, un Secret o una de sus claves | `describe` → `Error: couldn't find key …` (clase 106) |
 | `ContainerCreating` mucho rato | no puede montar un volumen, o la imagen es enorme | `describe` → `FailedMount` |
-| `Pending` | ningún nodo lo acepta: faltan recursos, un PVC sin enlazar, un `nodeSelector` imposible… | `describe` → `FailedScheduling: 0/1 nodes are available: …` |
-| `Running`, pero `READY 0/1` | falla la sonda readiness: está fuera del Service (clase 107) | `describe` → `Readiness probe failed` |
-| `Running` y `READY 1/1`, pero el Service no responde | el Service no tiene endpoints, o apunta a otro puerto (clase 105) | `kubectl get endpointslices -l kubernetes.io/service-name=…` |
-| `Terminating` para siempre | un *finalizer* espera algo (clase 109) | `kubectl get … -o yaml` → `finalizers` |
 
 **Pruébalo, en papel.** Para cada línea de `kubectl get pods`, ¿qué comando ejecutas primero y qué buscas?
 
 ```
-NAME       READY   STATUS              RESTARTS   AGE
-a-7d9f…    0/1     ImagePullBackOff    0          3m
-b-5c2e…    0/1     Running             0          3m
-c-9a1b…    0/1     Pending             0          3m
+NAME       READY   STATUS                       RESTARTS   AGE
+a-7d9f…    0/1     ImagePullBackOff             0          3m
+d-4f8a…    0/1     CreateContainerConfigError   0          1m
 ```
 
 <details>
 <summary>Comprueba</summary>
 
 - **a:** `kubectl describe pod`, el evento `Failed to pull image`: qué imagen exacta y qué dijo el registro.
-- **b:** `kubectl describe pod`, el evento `Readiness probe failed`: qué sonda, qué ruta y qué código.
-- **c:** `kubectl describe pod`, el evento `FailedScheduling`: por qué ningún nodo lo acepta.
+- **d:** `kubectl describe pod`, el evento `Error: couldn't find key …` (o el ConfigMap/Secret que falta).
 
-En los tres, `describe` primero: los `logs` solo sirven si el contenedor llegó a arrancar.
+En los dos, `describe` primero: el contenedor ni siquiera llegó a arrancar, así que `logs` está vacío.
 </details>
 
 ✋ **Sin mirar:** un pod en `OOMKilled` tiene el log vacío. ¿Por qué, y dónde está la prueba?
@@ -126,7 +120,41 @@ En los tres, `describe` primero: los `logs` solo sirven si el contenedor llegó 
 Porque SIGKILL no avisa: el proceso muere sin escribir nada. La prueba está en `describe`: `Reason: OOMKilled, Exit Code: 137`.
 </details>
 
-**En resumen:** cada estado apunta a un sitio: `describe` para lo que no arrancó, `logs` para lo que arrancó y murió.
+**En resumen:** si no arrancó (`ImagePullBackOff`, `CreateContainerConfigError`, `FailedMount`), la causa está en `describe`; si arrancó y murió (`CrashLoopBackOff`), en `logs` y `Last State`.
+
+### Pieza 2b — Estados de planificación, red y borrado
+
+| Lo que ves | Qué pasa | Dónde está la causa |
+|------------|----------|---------------------|
+| `Pending` | ningún nodo lo acepta: faltan recursos, un PVC sin enlazar, un `nodeSelector` imposible… | `describe` → `FailedScheduling: 0/1 nodes are available: …` |
+| `Running`, pero `READY 0/1` | falla la sonda readiness: está fuera del Service (clase 107) | `describe` → `Readiness probe failed` |
+| `Running` y `READY 1/1`, pero el Service no responde | el Service no tiene endpoints, o apunta a otro puerto (clase 105) | `kubectl get endpointslices -l kubernetes.io/service-name=…` |
+| `Terminating` para siempre | un *finalizer* espera algo (clase 109) | `kubectl get … -o yaml` → `finalizers` |
+
+**Pruébalo, en papel.** Para estas dos líneas de `kubectl get pods`, ¿qué comando ejecutas primero y qué evento buscas?
+
+```
+NAME       READY   STATUS    RESTARTS   AGE
+b-5c2e…    0/1     Running   0          3m
+c-9a1b…    0/1     Pending   0          3m
+```
+
+<details>
+<summary>Comprueba</summary>
+
+- **b:** `kubectl describe pod`, el evento `Readiness probe failed`: qué sonda, qué ruta y qué código.
+- **c:** `kubectl describe pod`, el evento `FailedScheduling`: por qué ningún nodo lo acepta.
+</details>
+
+✋ **Sin mirar:** un pod está `Running` y `READY 1/1`, pero el Service no responde. ¿Dónde miras?
+
+<details>
+<summary>Comprueba</summary>
+
+En los endpoints del Service (`kubectl get endpointslices -l kubernetes.io/service-name=…` o `kubectl describe service`): si la lista está vacía, el selector no coincide con las etiquetas del pod; si hay endpoints, revisa `targetPort`.
+</details>
+
+**En resumen:** `Pending` y `READY 0/1` se explican en los eventos de `describe`; cuando el pod está listo y aun así no llegas, mira el Service y sus `EndpointSlices`.
 
 ### Pieza 3 — Los logs del que murió
 
@@ -203,6 +231,8 @@ Porque el contenedor efímero queda en el pod para siempre, y lo que cambies den
 
 **En resumen:** sin shell en la imagen, `kubectl debug --target`; se diagnostica dentro, se arregla en el YAML.
 
+> ⏸️ Si partes la clase en dos mañanas, el primer día termina aquí (o después de resolver `catalogo` y `pagos` si te queda tiempo). Mañana, `cd ~/my-devops-journey/labs/clase-112` y directo a las seis averías.
+
 ## Las seis averías
 
 ```bash
@@ -273,8 +303,6 @@ Los pods están bien: el problema está entre el cliente y ellos. ¿Qué devuelv
 
 `Running`, pero `READY 0/1`. ¿Qué sonda está fallando y con qué código (`describe`)? ¿A qué ruta pregunta? ¿Cuál es la ruta de readiness de podinfo (clase 107)?
 </details>
-
-> ⏸️ Si partes la clase en dos mañanas, el primer día termina después de `catalogo` y `pagos`. Vuelve al namespace `default` (`kubectl config set-context --current --namespace=default`) y apaga el cluster; las averías que faltan seguirán ahí mañana.
 
 Al terminar las seis:
 
