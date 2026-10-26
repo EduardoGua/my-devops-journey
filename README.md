@@ -44,6 +44,7 @@ PLAN.md            roadmap: phases, Vigía versions, exit criteria
 CARRERA.md         career strategy (optional): work experience, education, English, networking
 COMO-ESTUDIAR.md   study method
 PROGRESO.md        progress tracker and log
+CLAUDE.md          standing rules for Claude Code (subagents and verification rounds)
 fase-1/ … fase-10/ 125 lessons (Spanish), each phase with its exit criteria
 fase-noc/          NOC phase (Spanish): CCST, Zabbix, ITIL and the NOC job search
 notas/             my notes and answers for each lesson
