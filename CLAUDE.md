@@ -15,7 +15,7 @@ Lanza al menos 3 subagentes en cada tarea. Cuentan todos los que lances en esa t
 - Verifica el resultado al menos 5 veces antes de terminar.
 - Una ronda de verificación es una revisión hecha por al menos un subagente: compara el resultado (información, código o documentos) con las fuentes, con el repo y con lo que se pidió, y dice si ve alguna posible mejora.
 - Cada ronda revisa la versión más reciente del resultado; varios subagentes que la revisan a la vez cuentan como una sola ronda.
-- Si una ronda encuentra una posible mejora, compruébala. Si es correcta, aplícala y haz otra ronda sobre la versión nueva; si no lo es, descártala y dile a Eduardo por qué.
+- Si una ronda encuentra una posible mejora, compruébala. Si es correcta, aplícala y haz otra ronda sobre la versión nueva; si no lo es, descártala y dile a Eduardo por qué, sin revelarle respuestas que le toque encontrar (por ejemplo, en un examen).
 - Las rondas se suman: la cuenta no vuelve a cero cuando aparece una mejora.
 - Termina solo cuando se cumplan las dos condiciones: llevas 5 rondas o más y la ronda más reciente, hecha sobre la versión final, no encuentra ninguna mejora que resulte correcta al comprobarla.
 
