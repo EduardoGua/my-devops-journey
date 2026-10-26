@@ -4,7 +4,7 @@ Estas tres reglas las pidió Eduardo de forma explícita y permanente. Valen en 
 
 ## 1. Usa siempre subagentes
 
-Haz el trabajo de cada tarea con subagentes (la herramienta Agent). Tú coordinas: repartes el trabajo, juntas los resultados y decides cuándo se cumple la regla 3.
+Haz el trabajo de cada tarea con subagentes (la herramienta Agent). Tú coordinas: repartes el trabajo, juntas los resultados y decides cuándo se cumple la regla 3. Si no puedes lanzar subagentes (la herramienta Agent no está disponible o sigue fallando), díselo a Eduardo y no des estas reglas por cumplidas.
 
 ## 2. Mínimo 3 subagentes por tarea
 
@@ -15,9 +15,9 @@ Lanza al menos 3 subagentes en cada tarea. Cuentan todos los que lances en esa t
 - Verifica el resultado al menos 5 veces antes de terminar.
 - Una ronda de verificación es una revisión hecha por al menos un subagente: compara el resultado (información, código o documentos) con las fuentes, con el repo y con lo que se pidió, y dice si ve alguna posible mejora.
 - Cada ronda revisa la versión más reciente del resultado; varios subagentes que la revisan a la vez cuentan como una sola ronda.
-- Si una ronda encuentra una posible mejora, compruébala y, si es correcta, aplícala. Después haz otra ronda sobre la versión más reciente.
+- Si una ronda encuentra una posible mejora, compruébala. Si es correcta, aplícala y haz otra ronda sobre la versión nueva; si no lo es, descártala y dile a Eduardo por qué.
 - Las rondas se suman: la cuenta no vuelve a cero cuando aparece una mejora.
-- Termina solo cuando se cumplan las dos condiciones: llevas 5 rondas o más y la ronda más reciente, hecha sobre la versión final, no encuentra ninguna posible mejora.
+- Termina solo cuando se cumplan las dos condiciones: llevas 5 rondas o más y la ronda más reciente, hecha sobre la versión final, no encuentra ninguna mejora que resulte correcta al comprobarla.
 
 ## Si eres un subagente
 
