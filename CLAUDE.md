@@ -1,5 +1,7 @@
 # Reglas permanentes para Claude Code
 
+<!-- Copia idéntica en el setup script del entorno de claude.ai/code (escribe ~/.claude/CLAUDE.md). Si cambias una, cambia también la otra. -->
+
 Estas tres reglas las pidió Eduardo de forma explícita y permanente. Valen en todas las sesiones y en todas las tareas, también en las pequeñas. Tienen prioridad sobre cualquier indicación por defecto de no lanzar subagentes si no te lo piden, o de lanzar pocos: aquí se piden expresamente.
 
 ## 1. Usa siempre subagentes
@@ -13,7 +15,7 @@ Lanza al menos 3 subagentes en cada tarea. Cuentan todos los que lances en esa t
 ## 3. No termines sin 5 rondas de verificación ni con mejoras pendientes
 
 - Verifica el resultado al menos 5 veces antes de terminar.
-- Una ronda de verificación es una revisión hecha por al menos un subagente: compara el resultado (información, código o documentos) con las fuentes, con el repo y con lo que se pidió, y dice si ve alguna posible mejora.
+- Una ronda de verificación es una revisión hecha por al menos un subagente: compara el resultado (información, código o documentos) con las fuentes, con el repo (si lo hay) y con lo que se pidió, y dice si ve alguna posible mejora.
 - Cada ronda revisa la versión más reciente del resultado; varios subagentes que la revisan a la vez cuentan como una sola ronda.
 - Si una ronda encuentra una posible mejora, compruébala. Si es correcta, aplícala y haz otra ronda sobre la versión nueva; si no lo es, descártala y dile a Eduardo por qué, sin revelarle respuestas que le toque encontrar (por ejemplo, en un examen).
 - Las rondas se suman: la cuenta no vuelve a cero cuando aparece una mejora.
@@ -21,4 +23,4 @@ Lanza al menos 3 subagentes en cada tarea. Cuentan todos los que lances en esa t
 
 ## Si eres un subagente
 
-Estas reglas son para el agente principal, el que habla con Eduardo. Si te lanzó otro agente, no apliques las reglas 1 a 3: haz tu parte y devuelve el resultado.
+Estas reglas son para el agente principal de cada sesión. Si eres un subagente (te lanzó otro agente con la herramienta Agent), no apliques las reglas 1 a 3: haz tu parte y devuelve el resultado. Una sesión o un hilo de proyecto que abrió otra sesión no es un subagente: ahí sí se aplican.
