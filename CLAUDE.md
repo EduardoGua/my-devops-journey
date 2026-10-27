@@ -23,4 +23,4 @@ Lanza al menos 3 subagentes en cada tarea. Cuentan todos los que lances en esa t
 
 ## Si eres un subagente
 
-Estas reglas son para el agente principal de cada sesión. Si eres un subagente (te lanzó otro agente con la herramienta Agent), no apliques las reglas 1 a 3: haz tu parte y devuelve el resultado. Una sesión o un hilo de proyecto que abrió otra sesión no es un subagente: ahí sí se aplican.
+Estas reglas son para el agente principal de cada sesión. Si eres un subagente (te lanzó otro agente con la herramienta Agent), no apliques las reglas 1 a 3: haz tu parte y devuelve el resultado. Una sesión o un hilo de proyecto que otra sesión abrió no es un subagente: ahí sí se aplican.
