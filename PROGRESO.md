@@ -21,7 +21,7 @@ Una clase se cierra cuando el cierre está escrito y **calificado** (✅ 🟡 �
 - [x] 03 · Archivos y directorios · 2026-10-13
 - [x] 04 · Redirecciones, pipes y códigos de salida · 2026-10-15
 - [x] 05 · Buscar y filtrar: find, grep y compañía · 2026-10-18
-- [ ] 06 · Permisos: usuarios, grupos y rwx ·
+- [x] 06 · Permisos: usuarios, grupos y rwx · 2026-11-05
 - [ ] 07 · Variables de entorno, PATH y el shell ·
 - [ ] Repaso del bloque A ·
 
@@ -408,3 +408,4 @@ La columna *Tiempo* es tiempo enfocado. Desde la clase 06 sale de las sesiones m
 | 2026-10-18 | 05 | fueron como 3 dias con 15 a media hora en cada dia | la clase la lei en 3 veces para poder tanto comprender todo lo posible con respecto a los comandos find y grep del resto considero lo mismo no es tanto memorizacion sino practica para dominarlos |
 | 2026-10-23 | — | — | Revisión del curso con subagentes. Corregidas las clases 06–11 y el repaso A: comandos explicados antes de usarse, salidas reales de Ubuntu 26.04, la 09 en 7 piezas y la 11 en 6. |
 | 2026-10-25 | — | — | Cierre de la revisión integral: corregidas las clases 12–38 y fases 4–10, scripts de `recursos/` y pruebas de Vigía reforzadas, y calentamiento espaciado añadido a `sesion.sh`. |
+| 2026-11-05 | 06 | 1 h 0 min, a ojo |  |
